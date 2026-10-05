@@ -12,7 +12,7 @@ import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/Ga
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 const GAME_TYPE = 'hexgl';
 const GAME_WIDTH = 1280;

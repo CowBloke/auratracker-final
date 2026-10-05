@@ -3,7 +3,7 @@ import {
   Building2,
   Wallet, MapPin, AlertTriangle, ChevronRight, Hammer, Plus, Gauge, TrendingUp,
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';

@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { adminApi, type AdminUser, type BraquageLegalHistoryEntry, type BraquageLegalSession } from '@/services/api';
 import { Clock3, Loader2, Plus, Sparkles, Ticket, Trophy, UserRoundPlus } from 'lucide-react';

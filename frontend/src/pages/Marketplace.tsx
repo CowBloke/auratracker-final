@@ -32,7 +32,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { GridSkeleton } from '@/components/ui/loading-skeletons';
 
 // ── Canvas constants ─────────────────────────────────────

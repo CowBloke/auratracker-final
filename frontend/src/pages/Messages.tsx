@@ -65,7 +65,7 @@ import { ChatSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
 import { FormattedMessageText, hasMessageFormatting, stripMessageFormatting } from '@/lib/message-formatting';
@@ -652,7 +652,7 @@ export default function MessagesPage() {
           return sortedConversations[0]?.id ?? null;
         });
       } catch {
-        toast({ title: 'Messagerie indisponible', variant: 'destructive' });
+        toast.error('Messagerie indisponible');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -663,7 +663,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!selectedId) { setDetail(null); return; }
     loadConversation(selectedId, true, true).catch(() => {
-      toast({ title: 'Conversation indisponible', variant: 'destructive' });
+      toast.error('Conversation indisponible');
     });
   }, [selectedId]);
 
@@ -736,7 +736,7 @@ export default function MessagesPage() {
         setSelectedId(dmConversationId);
       })
       .catch(() => {
-        toast({ title: 'Conversation indisponible', variant: 'destructive' });
+        toast.error('Conversation indisponible');
       });
   }, [conversations, loading, location.search, user?.id]);
 
@@ -899,7 +899,7 @@ export default function MessagesPage() {
       }
     }).catch(() => {
       if (!cancelled) {
-        toast({ title: 'Cabinets indisponibles', variant: 'destructive' });
+        toast.error('Cabinets indisponibles');
       }
     }).finally(() => {
       if (!cancelled) setLawFirmsLoading(false);
@@ -1116,10 +1116,7 @@ export default function MessagesPage() {
         }
         await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
       } catch (error: any) {
-        toast({
-          title: error?.response?.data?.error || 'Envoi impossible',
-          variant: 'destructive',
-        });
+        toast.error(error?.response?.data?.error || 'Envoi impossible');
         setDraft(body);
         setImageUrlToSend(currentImageUrl);
       } finally {
@@ -1164,7 +1161,7 @@ export default function MessagesPage() {
       await refreshConversations();
       setSelectedId(r.data.conversation.id);
     } catch {
-      toast({ title: 'Creation impossible', variant: 'destructive' });
+      toast.error('Creation impossible');
     }
   };
 
@@ -1179,7 +1176,7 @@ export default function MessagesPage() {
         setDetail((prev) => prev ? { ...prev, conversation: { ...prev.conversation, isFavorite: r.data.isFavorite } } : prev);
       }
     } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
+      toast.error('Erreur');
     }
   };
 
@@ -1207,7 +1204,7 @@ export default function MessagesPage() {
       const r = await uploadUserImage(payload);
       setGroupEditImageUrl(r.data.imageUrl);
     } catch {
-      toast({ title: 'Upload impossible', variant: 'destructive' });
+      toast.error('Upload impossible');
     } finally {
       setGroupImageUploading(false);
     }
@@ -1216,7 +1213,7 @@ export default function MessagesPage() {
   const handleSaveGroupSettings = async () => {
     if (!selectedConversation || selectedConversation.type !== 'GROUP') return;
     if (!canManageCourtGroup) {
-      toast({ title: 'Seuls les admins peuvent renommer un groupe de dossier', variant: 'destructive' });
+      toast.error('Seuls les admins peuvent renommer un groupe de dossier');
       return;
     }
     setGroupSettingsSaving(true);
@@ -1230,7 +1227,7 @@ export default function MessagesPage() {
       await Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false) : Promise.resolve()]);
       setGroupSettingsOpen(false);
     } catch {
-      toast({ title: 'Erreur de sauvegarde', variant: 'destructive' });
+      toast.error('Erreur de sauvegarde');
     } finally {
       setGroupSettingsSaving(false);
     }
@@ -1241,24 +1238,24 @@ export default function MessagesPage() {
     try {
       await supportApi.removeMember(selectedIdSafe, memberId);
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false)]);
-      toast({ title: 'Membre retiré' });
+      toast('Membre retiré');
     } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
+      toast.error('Erreur');
     }
   };
 
   const handleAddMember = async (memberId: string) => {
     if (!selectedIdSafe) return;
     if (!canManageCourtGroup) {
-      toast({ title: 'Seuls les admins ou le juge du dossier peuvent ajouter des personnes sur un dossier', variant: 'destructive' });
+      toast.error('Seuls les admins ou le juge du dossier peuvent ajouter des personnes sur un dossier');
       return;
     }
     try {
       await supportApi.addMember(selectedIdSafe, memberId);
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false)]);
-      toast({ title: 'Membre ajouté' });
+      toast('Membre ajouté');
     } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
+      toast.error('Erreur');
     }
   };
 
@@ -1272,9 +1269,9 @@ export default function MessagesPage() {
       setGroupSettingsOpen(false);
       setAddMembersOpen(false);
       setGroupReportOpen(false);
-      toast({ title: 'Tu as quitté le groupe' });
+      toast('Tu as quitté le groupe');
     } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
+      toast.error('Erreur');
     }
   };
 
@@ -1286,9 +1283,9 @@ export default function MessagesPage() {
       await supportApi.reportConversation(selectedIdSafe, reason || undefined);
       setGroupReportOpen(false);
       setGroupReportReason('');
-      toast({ title: 'Conversation signalée' });
+      toast('Conversation signalée');
     } catch {
-      toast({ title: 'Impossible de signaler', variant: 'destructive' });
+      toast.error('Impossible de signaler');
     } finally {
       setGroupReportSubmitting(false);
     }
@@ -1304,7 +1301,7 @@ export default function MessagesPage() {
       }
       await loadConversation(selectedIdSafe, false, false);
     } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
+      toast.error('Erreur');
     }
   };
 
@@ -1314,10 +1311,7 @@ export default function MessagesPage() {
       await supportApi.toggleMessagePin(selectedIdSafe, messageId, pinned);
       await loadConversation(selectedIdSafe, false, false);
     } catch (error: any) {
-      toast({
-        title: error?.response?.data?.error || 'Pin impossible',
-        variant: 'destructive',
-      });
+      toast.error(error?.response?.data?.error || 'Pin impossible');
     }
   };
 
@@ -1326,9 +1320,9 @@ export default function MessagesPage() {
     try {
       await supportApi.deleteConversationMessage(selectedIdSafe, messageId);
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
-      toast({ title: 'Message supprimé' });
+      toast('Message supprimé');
     } catch {
-      toast({ title: 'Suppression impossible', variant: 'destructive' });
+      toast.error('Suppression impossible');
     }
   };
 
@@ -1337,14 +1331,14 @@ export default function MessagesPage() {
       if (blockedIds.has(userId)) {
         await supportApi.unblockUser(userId);
         setBlockedIds((prev) => { const s = new Set(prev); s.delete(userId); return s; });
-        toast({ title: 'Utilisateur débloqué' });
+        toast('Utilisateur débloqué');
       } else {
         await supportApi.blockUser(userId);
         setBlockedIds((prev) => new Set([...prev, userId]));
-        toast({ title: 'Utilisateur bloqué' });
+        toast('Utilisateur bloqué');
       }
     } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
+      toast.error('Erreur');
     }
   };
 
@@ -1383,7 +1377,7 @@ export default function MessagesPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: `${detail.messages.length} message(s) exporté(s)` });
+    toast(`${detail.messages.length} message(s) exporté(s)`);
   };
 
   const handleChangeStatus = async (status: string) => {
@@ -1393,9 +1387,9 @@ export default function MessagesPage() {
       const r = await justiceApi.changeStatus(courtCase.id, status);
       setCourtCase(r.data.courtCase);
       await Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]);
-      toast({ title: 'Statut mis à jour' });
+      toast('Statut mis à jour');
     } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
+      toast.error('Erreur');
     } finally {
       setStatusChanging(false);
     }
@@ -1409,9 +1403,9 @@ export default function MessagesPage() {
       setCourtCase(r.data.courtCase);
       setShowVerdictPanel(false);
       await Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]);
-      toast({ title: 'Verdict rendu' });
+      toast('Verdict rendu');
     } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
+      toast.error('Erreur');
     } finally {
       setVerdictSaving(false);
     }
@@ -1425,7 +1419,7 @@ export default function MessagesPage() {
       const response = await justiceApi.getArguments(courtCase.id);
       setCourtArguments(response.data.arguments);
     } catch {
-      toast({ title: 'Arguments indisponibles', variant: 'destructive' });
+      toast.error('Arguments indisponibles');
     } finally {
       setArgumentsLoading(false);
     }
@@ -1439,7 +1433,7 @@ export default function MessagesPage() {
         const response = await justiceApi.getLawFirms();
         setLawFirms(response.data.lawFirms);
       } catch {
-        toast({ title: 'Cabinets indisponibles', variant: 'destructive' });
+        toast.error('Cabinets indisponibles');
         setLawFirmsLoading(false);
         return;
       } finally {
@@ -1466,10 +1460,10 @@ export default function MessagesPage() {
       setCourtCase(response.data.courtCase);
       setShowRepresentationDialog(false);
       void Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]).catch(() => {});
-      toast({ title: representationType === 'PRIVATE_LAWYER' ? 'Representation mise a jour' : 'Defenseur public demande' });
+      toast(representationType === 'PRIVATE_LAWYER' ? 'Representation mise a jour' : 'Defenseur public demande');
     } catch (error: any) {
       const apiError = typeof error?.response?.data?.error === 'string' ? error.response.data.error : null;
-      toast({ title: 'Representation impossible', description: apiError ?? undefined, variant: 'destructive' });
+      toast.error('Representation impossible', { description: apiError ?? undefined });
     } finally {
       setRepresentationSubmitting(false);
     }
@@ -1483,9 +1477,9 @@ export default function MessagesPage() {
       setShowLawyerRatingDialog(false);
       setLawyerRating(0);
       setLawyerRatingComment('');
-      toast({ title: 'Avis avocat enregistre' });
+      toast('Avis avocat enregistre');
     } catch {
-      toast({ title: "Impossible d'enregistrer l'avis", variant: 'destructive' });
+      toast.error("Impossible d'enregistrer l'avis");
     } finally {
       setLawyerRatingSubmitting(false);
     }
@@ -1520,9 +1514,9 @@ export default function MessagesPage() {
       });
       setWitnessRequestOpen(false);
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
-      toast({ title: 'Demande de temoin envoyee aux admins' });
+      toast('Demande de temoin envoyee aux admins');
     } catch {
-      toast({ title: 'Impossible de demander ce temoin', variant: 'destructive' });
+      toast.error('Impossible de demander ce temoin');
     } finally {
       setWitnessSubmitting(false);
     }
@@ -2057,7 +2051,7 @@ export default function MessagesPage() {
               amount: data.amount,
               message: data.message,
             });
-            toast({ title: 'Sanction proposée', description: 'Votre proposition a été transmise aux administrateurs.' });
+            toast('Sanction proposée', { description: 'Votre proposition a été transmise aux administrateurs.' });
           }}
         />
       )}

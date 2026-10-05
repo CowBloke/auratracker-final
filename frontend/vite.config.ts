@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import fs from 'fs';
 
@@ -44,7 +45,7 @@ function serveStaticGame(mountPath: string, dirName: string): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), serveStaticGame('polytrack', 'polytrack'), serveStaticGame('eaglercraft', 'eaglercraft'), serveStaticGame('watermelon', 'watermelon')],
+  plugins: [react(), tailwindcss(), serveStaticGame('polytrack', 'polytrack'), serveStaticGame('eaglercraft', 'eaglercraft'), serveStaticGame('watermelon', 'watermelon')],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

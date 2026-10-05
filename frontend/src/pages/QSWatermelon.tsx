@@ -10,7 +10,7 @@ import { GameTopBar } from '@/components/game/GameTopBar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 const GAME_TYPE = 'qs_watermelon';
 const CANVAS_WIDTH = 480;

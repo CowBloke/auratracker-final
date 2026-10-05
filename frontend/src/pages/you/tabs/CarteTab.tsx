@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Map as MapView, MapControls, MapMarker, MarkerContent, MarkerLabel, MarkerTooltip, useMap } from '@/components/ui/map';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { type YouBusiness, type YouState, youApi } from '@/services/api';
 import { BusinessBrowserModal } from '../components/BusinessBrowserModal';
@@ -447,7 +447,7 @@ export const CarteTab = forwardRef<
 
       const onLand = await isOnLand(clampedLat, clampedLng);
       if (!onLand) {
-        toast({ title: 'Emplacement invalide', description: 'Les businesses ne peuvent être placés que sur la terre ferme.', variant: 'destructive' });
+        toast.error('Emplacement invalide', { description: 'Les businesses ne peuvent être placés que sur la terre ferme.' });
         return;
       }
 
@@ -457,9 +457,9 @@ export const CarteTab = forwardRef<
         await onReload();
         setSelectedBusinessId(target.id);
         setPlacingBusinessId(null);
-        toast({ title: 'Emplacement mis à jour', description: `${target.name} est maintenant placé sur la carte.` });
+        toast('Emplacement mis à jour', { description: `${target.name} est maintenant placé sur la carte.` });
       } catch (error: any) {
-        toast({ title: 'Impossible de placer le business', description: error?.response?.data?.error ?? 'Réessayez dans un instant.', variant: 'destructive' });
+        toast.error('Impossible de placer le business', { description: error?.response?.data?.error ?? 'Réessayez dans un instant.' });
       } finally {
         setSavingPlacementId(null);
       }

@@ -10,7 +10,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { adminApi, type BraquageLegalDrawResult, type BraquageLegalHistoryEntry, type BraquageLegalSession, type BraquageLegalTier } from '@/services/api';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Clock3, Loader2, Ticket, Users } from 'lucide-react';
 
 const TIER_CONFIG: Record<BraquageLegalTier, { cost: number; tickets: number; maxParticipations: number; label: string; description: string; color: string }> = {

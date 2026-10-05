@@ -3,7 +3,7 @@ import {
   CheckCircle2, ChevronRight, Hammer, Loader2,
   Package, Plus, ShoppingCart, Warehouse, X, Flame,
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';

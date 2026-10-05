@@ -5,7 +5,7 @@ import {
   Megaphone, Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X, Utensils,
   ShieldAlert,
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -1290,7 +1290,7 @@ export function ManageBusinessModal({
     if (!business || !buybackTarget) return;
     const amount = Number(buybackAmountInput);
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast({ title: 'Montant invalide', variant: 'destructive', description: 'Veuillez entrer un montant valide superieur a 0.' });
+      toast.error('Montant invalide', { description: 'Veuillez entrer un montant valide superieur a 0.' });
       return;
     }
 
@@ -1301,10 +1301,7 @@ export function ManageBusinessModal({
         'Impossible d\'envoyer l\'offre de rachat.'
       );
       if (success) {
-        toast({
-          title: 'Offre de rachat envoyee',
-          description: `L'offre de ${amount.toLocaleString('fr-FR')} money a bien ete envoyee a ${buybackTarget.username}.`,
-        });
+        toast('Offre de rachat envoyee', { description: `L'offre de ${amount.toLocaleString('fr-FR')} money a bien ete envoyee a ${buybackTarget.username}.` });
         setBuybackTarget(null);
         setBuybackAmountInput('');
       }

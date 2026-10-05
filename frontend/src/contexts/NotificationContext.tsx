@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 import { infoApi, notificationsApi, type BrowserPushSubscription, type Notification } from '@/services/api';
 import { playNotification } from '@/lib/sound-engine';

@@ -52,7 +52,7 @@ import {
   type NotificationPreferences,
 } from '@/services/api';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   useSoundEnabled,
   useSoundVolume,

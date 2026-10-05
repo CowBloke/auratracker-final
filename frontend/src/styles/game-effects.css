@@ -1,0 +1,213 @@
+/* Effets propres aux jeux et cosmétiques (animations de gameplay, pas de l'UI). */
+@keyframes rotating-gradient {
+  to { --r: 360deg; }
+}
+
+@keyframes message-rainbow-shift {
+  0% { filter: hue-rotate(0deg); background-position: 0% 50%; }
+  50% { filter: hue-rotate(180deg); background-position: 100% 50%; }
+  100% { filter: hue-rotate(360deg); background-position: 0% 50%; }
+}
+
+.animated-message-rainbow {
+  background-image: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e, #06b6d4, #3b82f6, #a855f7, #ec4899, #ef4444);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: message-rainbow-shift 2.2s linear infinite;
+}
+
+.rotatingGradient {
+  background: conic-gradient(from var(--r), #fb923c, #f472b6, #a855f7, #22d3ee, #4ade80, #fb923c);
+  animation: rotating-gradient 3s linear infinite;
+  --color-background: var(--card);
+  --color-text: var(--card-foreground);
+}
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* 2048 tile animations - exact copy from original game */
+  @keyframes appear {
+    0% {
+      opacity: 0;
+      transform: scale(0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes pop {
+    0% {
+      transform: scale(0);
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-tile-appear {
+    animation: appear 200ms ease 100ms;
+    animation-fill-mode: backwards;
+  }
+
+  .animate-tile-merge {
+    z-index: 20;
+    animation: pop 200ms ease 100ms;
+    animation-fill-mode: backwards;
+  }
+
+  .tile-new .tile-inner {
+    animation: appear 200ms ease 100ms;
+    animation-fill-mode: backwards;
+  }
+
+  .tile-merged .tile-inner {
+    z-index: 20;
+    animation: pop 200ms ease 100ms;
+    animation-fill-mode: backwards;
+  }
+
+  @keyframes referral-token-pulse {
+    0%, 100% { transform: scale(1) rotate(0deg); box-shadow: 0 22px 70px rgba(245, 158, 11, 0.18); }
+    50% { transform: scale(1.04) rotate(-2deg); box-shadow: 0 28px 90px rgba(245, 158, 11, 0.28); }
+  }
+
+  @keyframes referral-ring-spin {
+    from { transform: rotate(0deg); opacity: 0.35; }
+    to { transform: rotate(360deg); opacity: 0.75; }
+  }
+
+  @keyframes referral-burst {
+    0% { transform: scale(0.08); opacity: 1; }
+    50% { opacity: 1; }
+    100% { transform: scale(3.8); opacity: 0; }
+  }
+
+  @keyframes referral-reveal {
+    0% { opacity: 0; transform: translateY(28px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .referral-claim-token {
+    animation: referral-token-pulse 1.8s ease-in-out infinite;
+  }
+
+  .referral-claim-ring {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    animation: referral-ring-spin 4s linear infinite;
+  }
+
+  .referral-burst {
+    animation: referral-burst 0.85s ease-out forwards;
+  }
+
+  .referral-reveal-panel {
+    animation: referral-reveal 0.45s cubic-bezier(.22, .61, .36, 1) forwards;
+  }
+
+  /* Poker animations */
+  @keyframes poker-deal {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    to   { opacity: 1; transform: translate(0, 0) scale(1); }
+  }
+  @keyframes poker-reveal {
+    0%   { transform: rotateY(90deg) scale(0.9); opacity: 0.5; }
+    100% { transform: rotateY(0deg)  scale(1);   opacity: 1; }
+  }
+  @keyframes poker-pulse-turn {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0.6); }
+    50%       { box-shadow: 0 0 0 10px rgba(255, 200, 0, 0); }
+  }
+  @keyframes poker-chip-in {
+    from { opacity: 0; transform: translateY(-8px) scale(0.7); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
+  .poker-deal    { animation: poker-deal    0.38s cubic-bezier(.22,.61,.36,1) forwards; }
+  .poker-reveal  { animation: poker-reveal  0.42s cubic-bezier(.22,.61,.36,1) forwards; }
+  .poker-pulse   { animation: poker-pulse-turn 1.6s ease-in-out infinite; }
+  .poker-chip-in { animation: poker-chip-in 0.3s ease-out forwards; }
+
+  @keyframes knife-hit-float {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(0, -18px, 0) scale(1.04); }
+  }
+
+  @keyframes knife-hit-shimmer {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  .knife-hit-float {
+    animation: knife-hit-float 7s ease-in-out infinite;
+  }
+
+  .knife-hit-shimmer {
+    background-size: 200% 100%;
+    animation: knife-hit-shimmer 3.6s linear infinite;
+  }
+
+  /* Badge rarity drop effects (based on % of players owning) */
+  @keyframes badge-rare-pulse {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(96, 165, 250, 0.25)); }
+    50%       { filter: drop-shadow(0 0 7px rgba(96, 165, 250, 0.75)); }
+  }
+  @keyframes badge-ultra-pulse {
+    0%, 100% { filter: drop-shadow(0 0 3px rgba(250, 204, 21, 0.3)); }
+    50%       { filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.9)); }
+  }
+  .badge-rare-shimmer  { animation: badge-rare-pulse  2.5s ease-in-out infinite; }
+  .badge-ultra-shimmer { animation: badge-ultra-pulse 1.8s ease-in-out infinite; }
+
+  .knife-hit-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+
+  /* Strip MapLibre's default white popup chrome globally — our React content provides its own styling */
+  .maplibregl-popup-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  .maplibregl-popup-tip {
+    display: none !important;
+  }
+  /* More specific rule for our no-chrome tooltips */
+  .maplibregl-popup.no-chrome .maplibregl-popup-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  .maplibregl-popup.no-chrome .maplibregl-popup-tip {
+    display: none !important;
+  }
+
+  .business-hover-popup.maplibregl-popup {
+    pointer-events: none;
+  }
+
+  .business-hover-popup .maplibregl-popup-content {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .business-hover-popup .maplibregl-popup-tip {
+    display: none;
+  }
+
+  /* Hard block for all-caps UI styling. Keep this global to prevent regressions. */

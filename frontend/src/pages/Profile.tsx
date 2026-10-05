@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
@@ -364,16 +364,9 @@ export default function Profile() {
       setWarningDialogOpen(false);
       setWarningMessage('');
       setWarningSeverity('MEDIUM');
-      toast({
-        title: 'Avertissement envoye',
-        description: res.data.message || `L'utilisateur ${profileUser.username} verra un popup a confirmer.`,
-      });
+      toast('Avertissement envoye', { description: res.data.message || `L'utilisateur ${profileUser.username} verra un popup a confirmer.` });
     } catch (error) {
-      toast({
-        title: 'Erreur',
-        description: getApiErrorMessage(error, "Impossible d'envoyer l'avertissement."),
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: getApiErrorMessage(error, "Impossible d'envoyer l'avertissement.") });
     } finally {
       setCreatingWarning(false);
     }
@@ -398,16 +391,9 @@ export default function Profile() {
         durationHours: banType === 'TEMPORARY' ? banDuration : undefined,
       });
       setBanDialogOpen(false);
-      toast({
-        title: 'Utilisateur banni',
-        description: `${profileUser.username} a ete banni avec succes.`,
-      });
+      toast('Utilisateur banni', { description: `${profileUser.username} a ete banni avec succes.` });
     } catch (error) {
-      toast({
-        title: 'Erreur',
-        description: getApiErrorMessage(error, 'Erreur lors du bannissement.'),
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: getApiErrorMessage(error, 'Erreur lors du bannissement.') });
     } finally {
       setCreatingBan(false);
     }

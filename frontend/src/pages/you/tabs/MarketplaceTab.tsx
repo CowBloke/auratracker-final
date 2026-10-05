@@ -4,7 +4,7 @@ import {
   Building2, ChevronDown, Loader2, Minus, Plus, RefreshCw,
   Search, ShoppingCart, Sparkles, Tag, TrendingDown, TrendingUp, Trash2, X,
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

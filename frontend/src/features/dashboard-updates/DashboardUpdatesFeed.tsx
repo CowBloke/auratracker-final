@@ -5,7 +5,7 @@ import { dashboardUpdatesApi, type DashboardUpdateEntry, type DashboardUpdateRea
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { formatUpdateDateLabel, formatUpdateTimeLabel, renderUpdateRichText } from './shared';
 import './dashboard-feed.css';
 

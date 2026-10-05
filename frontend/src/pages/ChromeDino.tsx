@@ -12,7 +12,7 @@ import { GameTopBar } from '@/components/game/GameTopBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 const GAME_TYPE = 'chrome_dino';
 const GAME_SRC = '/chrome-dino/index.html';

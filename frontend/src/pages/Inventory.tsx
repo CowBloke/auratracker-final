@@ -25,7 +25,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { PageShell } from '@/components/layout/PageShell';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
 import { GridSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
 

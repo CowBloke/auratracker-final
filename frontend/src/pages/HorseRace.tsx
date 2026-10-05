@@ -47,7 +47,7 @@ import {
   type HorseCosmetics,
   type HorseMarketListingDto,
 } from '@/services/api';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 // =====================================================================

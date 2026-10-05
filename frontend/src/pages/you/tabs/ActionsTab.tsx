@@ -4,7 +4,7 @@ import {
   AlertCircle, AlertTriangle, ArrowRight, ArrowUpCircle, Building2, CheckCircle2, Clock, Coins,
   Hammer, Layers, Loader2, Package, Plus, Play, RefreshCw, Settings2, ShoppingCart, User, Zap,
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {

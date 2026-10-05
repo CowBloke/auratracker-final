@@ -37,7 +37,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
 
@@ -391,12 +391,12 @@ export default function Polymarket() {
     setDeleteSubmitting(true);
     try {
       await polymarketApi.deleteEvent(selectedEventForDelete.id);
-      toast({ title: 'Événement supprimé' });
+      toast('Événement supprimé');
       setDeleteDialogOpen(false);
       setSelectedEventForDelete(null);
       fetchData();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de supprimer l\'événement', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de supprimer l\'événement' });
     } finally {
       setDeleteSubmitting(false);
     }
@@ -440,7 +440,7 @@ export default function Polymarket() {
       setAllBets(allBetsRes.data.bets);
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      toast({ title: 'Erreur', description: 'Impossible de charger les données', variant: 'destructive' });
+      toast.error('Erreur', { description: 'Impossible de charger les données' });
     } finally {
       setLoading(false);
     }
@@ -457,7 +457,7 @@ export default function Polymarket() {
     if (suggestionMode === 'custom') {
       const opts = buildOptionsFromDrafts(suggestionCustomDrafts);
       if (!opts) {
-        toast({ title: 'Erreur', description: 'Veuillez renseigner un libellé et une cote valide (> 1) pour chaque option.', variant: 'destructive' });
+        toast.error('Erreur', { description: 'Veuillez renseigner un libellé et une cote valide (> 1) pour chaque option.' });
         return;
       }
       optionsPayload = opts;
@@ -466,13 +466,13 @@ export default function Polymarket() {
       const hasYes = suggestionBinaryYes.trim() !== '';
       const hasNo = suggestionBinaryNo.trim() !== '';
       if (hasYes !== hasNo) {
-        toast({ title: 'Erreur', description: 'Veuillez renseigner les deux cotes ou laisser les deux vides.', variant: 'destructive' });
+        toast.error('Erreur', { description: 'Veuillez renseigner les deux cotes ou laisser les deux vides.' });
         return;
       }
       if (hasYes && hasNo) {
         const opts = buildOptionsFromBinary(suggestionBinaryYes, suggestionBinaryNo);
         if (!opts) {
-          toast({ title: 'Erreur', description: 'Les cotes doivent être des nombres supérieurs à 1.', variant: 'destructive' });
+          toast.error('Erreur', { description: 'Les cotes doivent être des nombres supérieurs à 1.' });
           return;
         }
         optionsPayload = opts;
@@ -501,7 +501,7 @@ export default function Polymarket() {
       }
 
       await polymarketApi.createSuggestion(payload);
-      toast({ title: 'Suggestion créée', description: 'Votre suggestion a été soumise avec succès' });
+      toast('Suggestion créée', { description: 'Votre suggestion a été soumise avec succès' });
 
       setTitle(''); setDescription(''); setImageUrl(''); setEventDate('');
       setSuggestionMode('binary');
@@ -510,7 +510,7 @@ export default function Polymarket() {
       setSuggestionDialogOpen(false);
       fetchData();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de créer la suggestion', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de créer la suggestion' });
     } finally {
       setSuggestionSubmitting(false);
     }
@@ -525,13 +525,13 @@ export default function Polymarket() {
     try {
       await polymarketApi.placeBet({ eventId: selectedEvent.id, prediction: betPrediction as 'YES' | 'NO', amount: parseInt(betAmount) });
       const label = getOptionByKey(selectedEvent, betPrediction)?.label || betPrediction;
-      toast({ title: 'Pari placé', description: `Vous avez parié ${betAmount} sur ${label}` });
+      toast('Pari placé', { description: `Vous avez parié ${betAmount} sur ${label}` });
       setBetDialogOpen(false);
       setSelectedEvent(null);
       setBetAmount('');
       fetchData();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de placer le pari', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de placer le pari' });
     } finally {
       setBetSubmitting(false);
     }
@@ -542,7 +542,7 @@ export default function Polymarket() {
   const handleApproveSuggestion = async () => {
     if (!selectedSuggestion) return;
     if (!selectedSuggestion.eventDate && !approveEventDate) {
-      toast({ title: 'Erreur', description: 'Merci de renseigner une date de réalisation.', variant: 'destructive' });
+      toast.error('Erreur', { description: 'Merci de renseigner une date de réalisation.' });
       return;
     }
 
@@ -554,7 +554,7 @@ export default function Polymarket() {
     }
 
     if (!optionsPayload) {
-      toast({ title: 'Erreur', description: 'Veuillez renseigner des cotes valides (> 1) pour toutes les options.', variant: 'destructive' });
+      toast.error('Erreur', { description: 'Veuillez renseigner des cotes valides (> 1) pour toutes les options.' });
       return;
     }
 
@@ -567,7 +567,7 @@ export default function Polymarket() {
         eventDate: approveEventDate || undefined,
         ...(approveMode === 'custom' ? { optionsConfig: optionsPayload } : {}),
       });
-      toast({ title: 'Suggestion approuvée', description: 'L\'événement a été créé avec succès' });
+      toast('Suggestion approuvée', { description: 'L\'événement a été créé avec succès' });
       setApproveDialogOpen(false);
       setSelectedSuggestion(null);
       setApproveBinaryYes(''); setApproveBinaryNo('');
@@ -576,7 +576,7 @@ export default function Polymarket() {
       setApproveCustomDrafts([makeDraftOption(0), makeDraftOption(1)]);
       fetchData();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible d\'approuver la suggestion', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible d\'approuver la suggestion' });
     }
   };
 
@@ -585,10 +585,10 @@ export default function Polymarket() {
   const handleRejectSuggestion = async (id: string) => {
     try {
       await polymarketApi.rejectSuggestion(id);
-      toast({ title: 'Suggestion rejetée' });
+      toast('Suggestion rejetée');
       fetchData();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de rejeter la suggestion', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de rejeter la suggestion' });
     }
   };
 
@@ -599,12 +599,12 @@ export default function Polymarket() {
     try {
       await polymarketApi.resolveEvent(selectedEventForResolve.id, resolution as 'YES' | 'NO');
       const label = getOptionByKey(selectedEventForResolve, resolution)?.label || resolution;
-      toast({ title: 'Événement résolu', description: `Résolution: ${label}` });
+      toast('Événement résolu', { description: `Résolution: ${label}` });
       setResolveDialogOpen(false);
       setSelectedEventForResolve(null);
       fetchData();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de résoudre l\'événement', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de résoudre l\'événement' });
     }
   };
 
@@ -639,12 +639,12 @@ export default function Polymarket() {
     }
 
     if (!optionsPayload) {
-      toast({ title: 'Erreur', description: 'Veuillez renseigner des cotes valides (> 1) pour toutes les options.', variant: 'destructive' });
+      toast.error('Erreur', { description: 'Veuillez renseigner des cotes valides (> 1) pour toutes les options.' });
       return;
     }
 
     if (!titleValue || !descriptionValue || !eventDateValue) {
-      toast({ title: 'Erreur', description: 'Tous les champs requis doivent être renseignés.', variant: 'destructive' });
+      toast.error('Erreur', { description: 'Tous les champs requis doivent être renseignés.' });
       return;
     }
 
@@ -663,13 +663,13 @@ export default function Polymarket() {
         status: statusValue,
         ...(editMode === 'custom' ? { optionsConfig: optionsPayload } : { optionsConfig: null }),
       });
-      toast({ title: 'Événement modifié', description: 'Les changements ont été enregistrés.' });
+      toast('Événement modifié', { description: 'Les changements ont été enregistrés.' });
       setEditEventDialogOpen(false);
       setSelectedEventForEdit(null);
       setEditEventImageUrl('');
       fetchData();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de modifier l\'événement', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de modifier l\'événement' });
     } finally {
       setEditSubmitting(false);
     }
@@ -2147,7 +2147,7 @@ export default function Polymarket() {
               }
 
               if (!optionsPayload) {
-                toast({ title: 'Erreur', description: 'Veuillez renseigner des cotes valides pour toutes les options.', variant: 'destructive' });
+                toast.error('Erreur', { description: 'Veuillez renseigner des cotes valides pour toutes les options.' });
                 return;
               }
 
@@ -2163,7 +2163,7 @@ export default function Polymarket() {
                   noOdds,
                   ...(createMode === 'custom' ? { optionsConfig: optionsPayload } : {}),
                 });
-                toast({ title: 'Événement créé', description: 'L\'événement a été créé avec succès' });
+                toast('Événement créé', { description: 'L\'événement a été créé avec succès' });
                 setCreateEventDialogOpen(false);
                 setCreateEventImageUrl('');
                 setCreateBinaryYes(''); setCreateBinaryNo('');
@@ -2171,7 +2171,7 @@ export default function Polymarket() {
                 setCreateCustomDrafts([makeDraftOption(0), makeDraftOption(1)]);
                 fetchData();
               } catch (error: any) {
-                toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de créer l\'événement', variant: 'destructive' });
+                toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de créer l\'événement' });
               }
             }}
             className="space-y-4"

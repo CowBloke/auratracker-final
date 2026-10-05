@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usersApi, type UserPendingSurvey } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 const BLOCKED_ROUTE_PREFIXES = ['/games', '/party'];
 

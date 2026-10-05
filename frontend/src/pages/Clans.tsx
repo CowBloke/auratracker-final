@@ -43,7 +43,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { ClanTag, ClanTagStyle, DEFAULT_CLAN_TAG_STYLE, getClanTagBackground, parseClanTagStyle } from '@/components/clans/ClanTag';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
@@ -530,9 +530,9 @@ export default function Clans() {
       setSavingTag(true);
       await clansApi.updateTag(selectedClan.id, { tagText: tagText.trim(), tagStyle });
       await fetchClanDetail(selectedClan.id);
-      toast({ title: 'Tag sauvegardé' });
+      toast('Tag sauvegardé');
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de sauvegarder.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de sauvegarder.' });
     } finally {
       setSavingTag(false);
     }
@@ -553,9 +553,9 @@ export default function Clans() {
       setPumpUpDraft('');
       setPumpUpColor('#ffffff');
       setPumpUpEditId(null);
-      toast({ title: pumpUpEditId ? 'Message modifié' : 'Message ajouté' });
+      toast(pumpUpEditId ? 'Message modifié' : 'Message ajouté');
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de sauvegarder.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de sauvegarder.' });
     } finally {
       setPumpUpSaving(false);
     }
@@ -571,9 +571,9 @@ export default function Clans() {
         setPumpUpDraft('');
         setPumpUpColor('#ffffff');
       }
-      toast({ title: 'Message supprimé' });
+      toast('Message supprimé');
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de supprimer.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de supprimer.' });
     }
   };
 
@@ -601,11 +601,7 @@ export default function Clans() {
       setViewerClanId(res.data.meta.viewerClanId ?? null);
     } catch (error) {
       console.error('Failed to fetch clans:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible de charger les clans.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: 'Impossible de charger les clans.' });
     } finally {
       setLoading(false);
     }
@@ -618,11 +614,7 @@ export default function Clans() {
       setSelectedClan(res.data.clan);
     } catch (error) {
       console.error('Failed to fetch clan detail:', error);
-      if (!silent) toast({
-        title: 'Erreur',
-        description: 'Impossible de charger ce clan.',
-        variant: 'destructive',
-      });
+      if (!silent) toast.error('Erreur', { description: 'Impossible de charger ce clan.' });
     } finally {
       if (!silent) setDetailLoading(false);
     }
@@ -634,11 +626,7 @@ export default function Clans() {
       setGlobalWarHistory(res.data.wars ?? []);
     } catch (error) {
       console.error('Failed to fetch global war history:', error);
-      toast({
-        title: 'Erreur',
-        description: "Impossible de charger l'historique global des guerres.",
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: "Impossible de charger l'historique global des guerres." });
     }
   };
 
@@ -720,18 +708,11 @@ export default function Clans() {
     try {
       setEventMiniGameSubmitting(true);
       const res = await clansApi.submitEventMiniGame(featuredEvent.id, miniGame.id, { rawScore });
-      toast({
-        title: 'Score enregistré',
-        description: `+${res.data.result.pointsAwarded} points pour ton clan.`,
-      });
+      toast('Score enregistré', { description: `+${res.data.result.pointsAwarded} points pour ton clan.` });
       await fetchFeaturedEvent(selectedClanId, false);
       closeEventMiniGame();
     } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || "Impossible d'enregistrer ce score.",
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || "Impossible d'enregistrer ce score." });
       setEventMiniGameSubmitting(false);
     }
   };
@@ -800,10 +781,10 @@ export default function Clans() {
     if (!selectedClan) return;
     try {
       await clansApi.submitMemoryGame(selectedClan.id, { ...result, isPractice: false });
-      toast({ title: 'Défenses renforcées !', description: 'Les structures de ton clan ont été améliorées.' });
+      toast('Défenses renforcées !', { description: 'Les structures de ton clan ont été améliorées.' });
       await afterGame();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de valider.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de valider.' });
     }
   };
 
@@ -812,10 +793,10 @@ export default function Clans() {
     if (!selectedClan) return;
     try {
       const res = await clansApi.submitBombGame(selectedClan.id, { ...result, isPractice: false });
-      toast({ title: 'Attaque enregistrée !', description: `+${res.data.finalPoints} pts de guerre.` });
+      toast('Attaque enregistrée !', { description: `+${res.data.finalPoints} pts de guerre.` });
       await afterGame();
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de valider.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de valider.' });
     }
   };
 
@@ -845,7 +826,7 @@ export default function Clans() {
       });
       setDialogOpen(false);
       resetForm();
-      toast({ title: 'Clan créé', description: 'Ton organisation est prête à recruter, négocier et combattre.' });
+      toast('Clan créé', { description: 'Ton organisation est prête à recruter, négocier et combattre.' });
       await refreshData(res.data.clan.id);
     } catch (error: any) {
       console.error('Failed to create clan:', error);
@@ -860,21 +841,13 @@ export default function Clans() {
     setActionLoading(true);
     try {
       const res = await clansApi.join(selectedClan.id);
-      toast({
-        title: res.data.status === 'joined' ? 'Clan rejoint' : 'Demande envoyée',
-        description:
-          res.data.status === 'joined'
+      toast(res.data.status === 'joined' ? 'Clan rejoint' : 'Demande envoyée', { description: res.data.status === 'joined'
             ? 'Tu as rejoint le clan.'
-            : 'Ta demande a été envoyée au chef du clan.',
-      });
+            : 'Ta demande a été envoyée au chef du clan.' });
       await refreshData(selectedClan.id);
     } catch (error: any) {
       console.error('Failed to join clan:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de rejoindre le clan.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de rejoindre le clan.' });
     } finally {
       setActionLoading(false);
     }
@@ -889,18 +862,11 @@ export default function Clans() {
       } else {
         await clansApi.rejectRequest(selectedClan.id, requestId);
       }
-      toast({
-        title: action === 'accept' ? 'Demande acceptée' : 'Demande refusée',
-        description: action === 'accept' ? 'Le joueur a rejoint le clan.' : 'La demande a été rejetée.',
-      });
+      toast(action === 'accept' ? 'Demande acceptée' : 'Demande refusée', { description: action === 'accept' ? 'Le joueur a rejoint le clan.' : 'La demande a été rejetée.' });
       await refreshData(selectedClan.id);
     } catch (error: any) {
       console.error('Failed to update request:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de traiter la demande.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de traiter la demande.' });
     } finally {
       setActionLoading(false);
     }
@@ -911,15 +877,11 @@ export default function Clans() {
     setActionLoading(true);
     try {
       await clansApi.removeMember(selectedClan.id, userId);
-      toast({ title: 'Membre retiré', description: 'Le membre a été retiré du clan.' });
+      toast('Membre retiré', { description: 'Le membre a été retiré du clan.' });
       await refreshData(selectedClan.id);
     } catch (error: any) {
       console.error('Failed to remove member:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de retirer ce membre.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de retirer ce membre.' });
     } finally {
       setActionLoading(false);
     }
@@ -930,15 +892,11 @@ export default function Clans() {
     setActionLoading(true);
     try {
       await clansApi.promoteMember(selectedClan.id, userId);
-      toast({ title: 'Membre promu', description: 'Le membre est maintenant officier.' });
+      toast('Membre promu', { description: 'Le membre est maintenant officier.' });
       await refreshData(selectedClan.id);
     } catch (error: any) {
       console.error('Failed to promote member:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de promouvoir ce membre.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de promouvoir ce membre.' });
     } finally {
       setActionLoading(false);
     }
@@ -949,15 +907,11 @@ export default function Clans() {
     setActionLoading(true);
     try {
       await clansApi.demoteMember(selectedClan.id, userId);
-      toast({ title: 'Membre rétrogradé', description: 'Le membre est repassé au rang membre.' });
+      toast('Membre rétrogradé', { description: 'Le membre est repassé au rang membre.' });
       await refreshData(selectedClan.id);
     } catch (error: any) {
       console.error('Failed to demote member:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de rétrograder ce membre.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de rétrograder ce membre.' });
     } finally {
       setActionLoading(false);
     }
@@ -970,15 +924,11 @@ export default function Clans() {
     setActionLoading(true);
     try {
       await clansApi.transferLeadership(selectedClan.id, userId);
-      toast({ title: 'Chef transféré', description: `${username} est maintenant le chef du clan.` });
+      toast('Chef transféré', { description: `${username} est maintenant le chef du clan.` });
       await refreshData(selectedClan.id);
     } catch (error: any) {
       console.error('Failed to transfer leadership:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de transférer le rôle de chef.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de transférer le rôle de chef.' });
     } finally {
       setActionLoading(false);
     }
@@ -991,15 +941,11 @@ export default function Clans() {
     setActionLoading(true);
     try {
       await clansApi.leave(selectedClan.id);
-      toast({ title: 'Clan quitté', description: 'Tu as quitté le clan.' });
+      toast('Clan quitté', { description: 'Tu as quitté le clan.' });
       await refreshData(null);
     } catch (error: any) {
       console.error('Failed to leave clan:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de quitter le clan.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de quitter le clan.' });
     } finally {
       setActionLoading(false);
     }
@@ -1010,16 +956,12 @@ export default function Clans() {
     setWarActionKey(`declare:${targetClanId}`);
     try {
       await clansApi.declareWar(selectedClan.id, targetClanId);
-      toast({ title: 'Guerre déclarée !', description: 'La bataille commence maintenant — attaquez !' });
+      toast('Guerre déclarée !', { description: 'La bataille commence maintenant — attaquez !' });
       setWarDialogOpen(false);
       await refreshData(selectedClan.id);
     } catch (error: any) {
       console.error('Failed to declare war:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de déclarer cette guerre.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de déclarer cette guerre.' });
     } finally {
       setWarActionKey(null);
     }
@@ -1030,18 +972,11 @@ export default function Clans() {
     setWarActionKey(`attack:${attackType}`);
     try {
       const res = await clansApi.attackWar(selectedClan.id, attackType);
-      toast({
-        title: 'Assaut lancé',
-        description: `+${res.data.finalPoints} pts avec ${attackType.toLowerCase()}.`,
-      });
+      toast('Assaut lancé', { description: `+${res.data.finalPoints} pts avec ${attackType.toLowerCase()}.` });
       await refreshData(selectedClan.id);
       await fetchGameStatus(selectedClan.id);
     } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || "Impossible d'effectuer cette attaque.",
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || "Impossible d'effectuer cette attaque." });
     } finally {
       setWarActionKey(null);
     }
@@ -1052,25 +987,17 @@ export default function Clans() {
 
     const amount = Number(bankDepositAmount);
     if (!Number.isInteger(amount) || amount <= 0) {
-      toast({
-        title: 'Montant invalide',
-        description: 'Entre un montant entier supérieur à 0.',
-        variant: 'destructive',
-      });
+      toast.error('Montant invalide', { description: 'Entre un montant entier supérieur à 0.' });
       return;
     }
 
     try {
       setDepositingBank(true);
       await clansApi.depositToBank(selectedClan.id, amount);
-      toast({ title: 'Dépôt effectué', description: `${amount.toLocaleString('fr-FR')} money ajouté à la banque de clan.` });
+      toast('Dépôt effectué', { description: `${amount.toLocaleString('fr-FR')} money ajouté à la banque de clan.` });
       await refreshData(selectedClan.id);
     } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de déposer dans la banque de clan.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de déposer dans la banque de clan.' });
     } finally {
       setDepositingBank(false);
     }
@@ -1094,16 +1021,9 @@ export default function Clans() {
       setUsingClanItemId(clanItem.id);
       await clansApi.useOwnedItem(selectedClan.id, clanItem.id);
       await Promise.all([fetchClanDetail(selectedClan.id), refreshUser()]);
-      toast({
-        title: "Effet active",
-        description: `${clanItem.item.name} booste maintenant les gains d'argent du clan.`,
-      });
+      toast("Effet active", { description: `${clanItem.item.name} booste maintenant les gains d'argent du clan.` });
     } catch (error: any) {
-      toast({
-        title: "Activation impossible",
-        description: error.response?.data?.error || "Impossible d'activer cet objet.",
-        variant: "destructive",
-      });
+      toast.error("Activation impossible", { description: error.response?.data?.error || "Impossible d'activer cet objet." });
     } finally {
       setUsingClanItemId(null);
     }
@@ -1123,17 +1043,13 @@ export default function Clans() {
         setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, imageUrl: appliedImageUrl } : c));
       }
       setBannerItemDialogOpen(false);
-      toast({ title: bannerItemEffectType === 'CLAN_BANNER' ? "Banniere de clan appliquee" : 'Photo de profil de clan appliquee' });
+      toast(bannerItemEffectType === 'CLAN_BANNER' ? "Banniere de clan appliquee" : 'Photo de profil de clan appliquee');
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.response?.data?.error || (
+      toast.error("Erreur", { description: error.response?.data?.error || (
           bannerItemEffectType === 'CLAN_BANNER'
             ? "Impossible d'appliquer la banniere."
             : "Impossible d'appliquer la photo de profil du clan."
-        ),
-        variant: "destructive",
-      });
+        ) });
     } finally {
       setSavingBannerItem(false);
       setBannerItemId(null);
@@ -1171,9 +1087,9 @@ export default function Clans() {
         setSelectedClan((prev) => prev ? { ...prev, roles: [...prev.roles, res.data.role] } : prev);
       }
       setRoleEditOpen(false);
-      toast({ title: roleEditId ? 'Rôle mis à jour' : 'Rôle créé' });
+      toast(roleEditId ? 'Rôle mis à jour' : 'Rôle créé');
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de sauvegarder le rôle.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de sauvegarder le rôle.' });
     } finally {
       setRoleSaving(false);
     }
@@ -1186,9 +1102,9 @@ export default function Clans() {
     try {
       await clansApi.deleteRole(selectedClan.id, roleId);
       setSelectedClan((prev) => prev ? { ...prev, roles: prev.roles.filter((r) => r.id !== roleId) } : prev);
-      toast({ title: 'Rôle supprimé' });
+      toast('Rôle supprimé');
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de supprimer ce rôle.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de supprimer ce rôle.' });
     }
   };
 
@@ -1205,7 +1121,7 @@ export default function Clans() {
         };
       });
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible d\'assigner ce rôle.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible d\'assigner ce rôle.' });
     }
   };
 
@@ -1216,9 +1132,9 @@ export default function Clans() {
       const res = await clansApi.updateImage(selectedClan.id, editImageUrl.trim() || null);
       setSelectedClan((prev) => prev ? { ...prev, imageUrl: res.data.imageUrl } : prev);
       setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, imageUrl: res.data.imageUrl } : c));
-      toast({ title: 'Image mise à jour' });
+      toast('Image mise à jour');
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de modifier l\'image.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de modifier l\'image.' });
     } finally {
       setSavingImage(false);
     }
@@ -1231,9 +1147,9 @@ export default function Clans() {
       const res = await clansApi.updateDescription(selectedClan.id, editDescription.trim() || null);
       setSelectedClan((prev) => prev ? { ...prev, description: res.data.description } : prev);
       setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, description: res.data.description } : c));
-      toast({ title: 'Description mise à jour' });
+      toast('Description mise à jour');
     } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de modifier la description.', variant: 'destructive' });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de modifier la description.' });
     } finally {
       setSavingDescription(false);
     }
@@ -1253,11 +1169,7 @@ export default function Clans() {
       setChatDraft('');
     } catch (error: any) {
       console.error('Failed to send clan chat message:', error);
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || "Impossible d'envoyer le message.",
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || "Impossible d'envoyer le message." });
     } finally {
       setChatSending(false);
     }

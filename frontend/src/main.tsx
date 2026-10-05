@@ -13,7 +13,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { FeaturesProvider } from './contexts/FeaturesContext';
 import { AppDialogProvider } from './contexts/AppDialogContext';
 import { RewardQueueProvider } from './contexts/RewardQueueContext';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import './index.css';
 

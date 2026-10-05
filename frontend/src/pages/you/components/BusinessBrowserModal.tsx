@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { type YouBusiness, type YouPlayer, youApi, justiceApi } from '@/services/api';
 import {
@@ -1083,7 +1083,7 @@ export function BusinessBrowserModal({
                               handleClose();
                               navigate(`/messages?conversation=${res.data.result.conversationId}`);
                             }).catch(() => {
-                              toast({ title: 'Impossible d\'ouvrir le support.', variant: 'destructive' });
+                              toast.error('Impossible d\'ouvrir le support.');
                             });
                           }
                         : undefined

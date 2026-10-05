@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 import { UsernameDisplay } from '@/components/ui/username-display';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -240,11 +240,7 @@ export default function ClashVillage() {
         });
       }
     } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de charger Clash Village.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de charger Clash Village.' });
     } finally {
       if (!silent) setLoading(false);
     }
@@ -265,11 +261,7 @@ export default function ClashVillage() {
       const response = await clashApi.getMatchmaking();
       setTargets(response.data.targets);
     } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de trouver de nouvelles cibles.',
-        variant: 'destructive',
-      });
+      toast.error('Erreur', { description: error.response?.data?.error || 'Impossible de trouver de nouvelles cibles.' });
     } finally {
       setRefreshingTargets(false);
     }
@@ -281,16 +273,9 @@ export default function ClashVillage() {
       const response = await clashApi.bootstrap();
       setState(response.data);
       await loadPage({ silent: true });
-      toast({
-        title: 'Village créé',
-        description: 'Ton village Clash est prêt à être joué et peut désormais être attaqué.',
-      });
+      toast('Village créé', { description: 'Ton village Clash est prêt à être joué et peut désormais être attaqué.' });
     } catch (error: any) {
-      toast({
-        title: 'Création impossible',
-        description: error.response?.data?.error || 'Impossible de créer ton village.',
-        variant: 'destructive',
-      });
+      toast.error('Création impossible', { description: error.response?.data?.error || 'Impossible de créer ton village.' });
     } finally {
       setCreateLoading(false);
     }
@@ -316,16 +301,9 @@ export default function ClashVillage() {
         defenses: [],
         activities: [],
       });
-      toast({
-        title: 'Village supprimé',
-        description: 'Ton village a été retiré du jeu. Tu restes inattaquable tant que tu n’en recrées pas un.',
-      });
+      toast('Village supprimé', { description: 'Ton village a été retiré du jeu. Tu restes inattaquable tant que tu n’en recrées pas un.' });
     } catch (error: any) {
-      toast({
-        title: 'Suppression impossible',
-        description: error.response?.data?.error || 'Impossible de supprimer ton village.',
-        variant: 'destructive',
-      });
+      toast.error('Suppression impossible', { description: error.response?.data?.error || 'Impossible de supprimer ton village.' });
     } finally {
       setDeleteLoading(false);
     }
@@ -338,16 +316,9 @@ export default function ClashVillage() {
       setState(response.data);
       await refreshUser();
       await Promise.all([refreshTargets(), loadPage({ silent: true })]);
-      toast({
-        title: 'Amélioration terminée',
-        description: `${BUILDING_LABELS[buildingType]} amélioré avec succès.`,
-      });
+      toast('Amélioration terminée', { description: `${BUILDING_LABELS[buildingType]} amélioré avec succès.` });
     } catch (error: any) {
-      toast({
-        title: 'Amélioration impossible',
-        description: error.response?.data?.error || 'Impossible d’améliorer ce bâtiment.',
-        variant: 'destructive',
-      });
+      toast.error('Amélioration impossible', { description: error.response?.data?.error || 'Impossible d’améliorer ce bâtiment.' });
     } finally {
       setUpgradeLoading(null);
     }
@@ -360,16 +331,9 @@ export default function ClashVillage() {
       const response = await clashApi.attack(target.user.id);
       setState(response.data);
       await Promise.all([refreshTargets(), loadPage({ silent: true })]);
-      toast({
-        title: 'Raid lancé',
-        description: `${response.data.attack.moneyStolen.toLocaleString('fr-FR')} money pillés pour ${response.data.attack.destructionPercent}% de destruction.`,
-      });
+      toast('Raid lancé', { description: `${response.data.attack.moneyStolen.toLocaleString('fr-FR')} money pillés pour ${response.data.attack.destructionPercent}% de destruction.` });
     } catch (error: any) {
-      toast({
-        title: 'Attaque impossible',
-        description: error.response?.data?.error || 'Impossible de lancer cette attaque.',
-        variant: 'destructive',
-      });
+      toast.error('Attaque impossible', { description: error.response?.data?.error || 'Impossible de lancer cette attaque.' });
     } finally {
       setAttackLoading(null);
     }

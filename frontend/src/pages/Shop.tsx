@@ -9,7 +9,7 @@ import { PageShell } from '@/components/layout/PageShell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   Loader2, Package, ShoppingBasket,
   Timer, Gamepad2, RotateCcw, ShoppingCart,

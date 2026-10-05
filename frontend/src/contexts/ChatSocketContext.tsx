@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 import { chatEvents, initSocket, getSocket } from '../services/socket';
 import { t } from '@/lib/i18n';
@@ -333,13 +333,9 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     s.on('chat:moderation-warning', (notice: ChatModerationNotice) => {
       setModerationNotice(notice);
       if (typeof window !== 'undefined') {
-        toast({
-          title: notice.title,
-          description: notice.durationLabel
+        toast.error(notice.title, { description: notice.durationLabel
             ? `${notice.message} Raison : ${notice.reason}`
-            : notice.message,
-          variant: notice.type === 'warning' ? undefined : 'destructive',
-        });
+            : notice.message });
       }
       if (notice.type === 'mute') {
         setIsChatMuted(true);
