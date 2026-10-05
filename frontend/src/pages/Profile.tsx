@@ -812,14 +812,9 @@ export default function Profile() {
                           <ItemContent>
                             <ItemTitle>
                               Marié(e) avec{' '}
-                              <button
-                                type="button"
-                                className="hover:underline"
-                                style={profileUser.marriage.partner.usernameColor ? { color: profileUser.marriage.partner.usernameColor } : undefined}
-                                onClick={() => navigate(`/profile/${profileUser.marriage!.partner.id}`)}
-                              >
+                              <Button variant="link" size="xs" type="button" style={profileUser.marriage.partner.usernameColor ? { color: profileUser.marriage.partner.usernameColor } : undefined} onClick={() => navigate(`/profile/${profileUser.marriage!.partner.id}`)} className="justify-start text-left">
                                 {profileUser.marriage.partner.username}
-                              </button>
+                              </Button>
                             </ItemTitle>
                             {profileUser.marriage.marriedAt ? (
                               <ItemDescription>

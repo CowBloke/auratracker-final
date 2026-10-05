@@ -598,10 +598,7 @@ export function DashboardUpdatesManagerDialog({
                       <div className="flex items-center gap-3 pt-1">
                         <Popover>
                           <PopoverTrigger asChild>
-                            <button
-                              type="button"
-                              className="group relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border/60 transition hover:border-primary/60"
-                            >
+                            <Button variant="outline" size="xs" type="button" className="relative shrink-0">
                               <img
                                 src={form.authorAvatarUrl ? resolveImageUrl(form.authorAvatarUrl) : '/aura-icon.svg'}
                                 alt=""
@@ -610,7 +607,7 @@ export function DashboardUpdatesManagerDialog({
                               <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60 opacity-0 transition-opacity group-hover:opacity-100">
                                 <ImagePlus className="h-4 w-4" />
                               </div>
-                            </button>
+                            </Button>
                           </PopoverTrigger>
                           <PopoverContent align="start" className="w-[360px]">
                             <ImagePicker
@@ -672,14 +669,9 @@ export function DashboardUpdatesManagerDialog({
                                   className="pr-8 hover:bg-transparent focus:bg-transparent"
                                 />
                                 {(items.length > 1 || item.trim().length > 0) ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeSectionItem(category, index)}
-                                    className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground group-hover:opacity-100 focus:opacity-100"
-                                    aria-label="Retirer cette ligne"
-                                  >
+                                  <Button variant="ghost" size="icon-xs" type="button" onClick={() => removeSectionItem(category, index)} aria-label="Retirer cette ligne" className="absolute right-2 top-2">
                                     <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
+                                  </Button>
                                 ) : null}
                               </CardContent></Card>
                             ))}

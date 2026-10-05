@@ -216,31 +216,22 @@ function OptionsEditor({
                 className="w-24"
               />
               {customDrafts.length > 2 && (
-                <button
-                  type="button"
-                  onClick={() => onCustomDraftsChange(customDrafts.filter((_, j) => j !== i))}
-                  className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors flex-shrink-0"
-                  title="Supprimer"
-                >
+                <Button variant="ghost" size="icon-xs" type="button" onClick={() => onCustomDraftsChange(customDrafts.filter((_, j) => j !== i))} title="Supprimer">
                   <X className="h-3 w-3" />
-                </button>
+                </Button>
               )}
             </div>
           ))}
           {customDrafts.length < 4 && (
-            <button
-              type="button"
-              onClick={() =>
+            <Button variant="ghost" size="xs" type="button" onClick={() =>
                 onCustomDraftsChange([
                   ...customDrafts,
                   makeDraftOption(customDrafts.length),
                 ])
-              }
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
+              }>
               <Plus className="h-3 w-3" />
               Ajouter une option
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -947,13 +938,9 @@ export default function Polymarket() {
                                       {((event.optionStats ?? {})[opt.key] ?? (opt.key === 'YES' ? (event.totalYes || 0) : opt.key === 'NO' ? (event.totalNo || 0) : 0)).toLocaleString('fr-FR')} misés
                                     </div>
                                     {canBet ? (
-                                      <button
-                                        className="mt-auto w-full rounded-lg py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-85 active:scale-95"
-                                        style={{ background: opt.color }}
-                                        onClick={() => { setSelectedEvent(event); setBetPrediction(opt.key); setBetAmount(''); setBetDialogOpen(true); }}
-                                      >
+                                      <Button variant="ghost" size="xs" style={{ background: opt.color }} onClick={() => { setSelectedEvent(event); setBetPrediction(opt.key); setBetAmount(''); setBetDialogOpen(true); }} className="w-full mt-auto">
                                         Parier
-                                      </button>
+                                      </Button>
                                     ) : isMyBet ? (
                                       <div className="mt-auto w-full rounded-lg py-1.5 text-xs font-bold text-center text-white" style={{ background: opt.color + 'cc' }}>
                                         ✓ Mon pari

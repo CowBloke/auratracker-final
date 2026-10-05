@@ -166,18 +166,13 @@ export default function BraquageLegal() {
     const canSelect = Boolean(session) && !session?.isExpired && slotsLeft > 0;
 
     return (
-      <button
+      <Item
+        asChild
         key={tier}
-        type="button"
-        onClick={() => setParticipatingTier(tier)}
-        disabled={!canSelect}
-        className={cn(
-          'rounded-xl border p-4 text-left transition-all',
-          config.color,
-          isSelected ? 'ring-2 ring-primary shadow-primary/10' : 'hover:-translate-y-0.5',
-          !canSelect && 'cursor-not-allowed opacity-50 hover:translate-y-0 hover:shadow-none'
-        )}
+        variant="outline"
+        className={cn('block', isSelected && 'border-primary bg-accent', !canSelect && 'opacity-50')}
       >
+        <button type="button" onClick={() => setParticipatingTier(tier)} disabled={!canSelect} className="w-full text-left">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold ">{config.label}</p>
@@ -200,6 +195,7 @@ export default function BraquageLegal() {
           </div>
         </div>
       </button>
+      </Item>
     );
   };
 

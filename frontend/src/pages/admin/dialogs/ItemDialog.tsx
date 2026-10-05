@@ -246,26 +246,18 @@ export function ItemDialog({
                         {badges
                           .filter((b) => b.isActive)
                           .map((badge) => (
-                            <button
-                              key={badge.id}
-                              type="button"
-                              onClick={() => {
+                            <Button variant={itemForm.badgeId === badge.id ? 'secondary' : 'ghost'} size="xs" key={badge.id} type="button" onClick={() => {
                                 const svg = generateBadgeSvgDataUrl(badge);
                                 setItemForm((prev) => ({
                                   ...prev,
                                   badgeId: badge.id,
                                   imageUrl: prev.imageUrl || svg,
                                 }));
-                              }}
-                              className={cn(
-                                'flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted/40',
-                                itemForm.badgeId === badge.id ? 'bg-muted/60 ring-1 ring-border' : '',
-                              )}
-                            >
+                              }}>
                               <BadgeIcon badge={badge} size="xs" />
                               <span className="truncate font-medium">{badge.name}</span>
                               <span className="ml-auto shrink-0 text-muted-foreground">{badge.rarity}</span>
-                            </button>
+                            </Button>
                           ))}
                       </div>
                     )}

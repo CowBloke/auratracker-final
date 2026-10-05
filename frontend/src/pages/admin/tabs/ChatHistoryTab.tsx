@@ -82,12 +82,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                       {chatHistoryDays.map((dayEntry: any) => {
                         const selected = chatHistoryDay === dayEntry.day;
                         return (
-                          <button
-                            key={dayEntry.day}
-                            type="button"
-                            onClick={() => void fetchChatHistoryDay(dayEntry.day, showDeletedChatMessages)}
-                            className={cn('w-full px-3 py-2 text-left transition-colors hover:bg-muted/30', selected && 'bg-muted/50')}
-                          >
+                          <Item asChild size="sm" key={dayEntry.day} className={selected ? 'bg-accent' : undefined}><button type="button" onClick={() => void fetchChatHistoryDay(dayEntry.day, showDeletedChatMessages)} className="w-full text-left">
                             <div className="text-sm font-medium">
                               {new Date(`${dayEntry.day}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                             </div>
@@ -96,7 +91,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                               <span>{dayEntry.visibleMessages.toLocaleString('fr-FR')} visibles</span>
                               <span>{dayEntry.deletedMessages.toLocaleString('fr-FR')} supprimes</span>
                             </div>
-                          </button>
+                          </button></Item>
                         );
                       })}
                       {chatHistoryCursor && (

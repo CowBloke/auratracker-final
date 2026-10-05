@@ -97,7 +97,7 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
           </Alert>
         </div>
       ) : null}
-      <button type="button" onClick={onManage} className="flex flex-col gap-3 px-3 text-left">
+      <Button variant="ghost" size="xs" type="button" onClick={onManage}>
         <Item size="sm" className="p-0">
           <ItemMedia variant="icon">
             <Icon />
@@ -135,7 +135,7 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
           </>
         ) : null}
         <Sparkline data={sparkData} />
-      </button>
+      </Button>
     </Card>
   );
 }
@@ -168,7 +168,7 @@ function MemberBizTile({ b, currentUserId, onOpen, onWork }: {
           </Alert>
         </div>
       ) : null}
-      <button type="button" onClick={onOpen} className="px-3 text-left">
+      <Button variant="ghost" size="xs" type="button" onClick={onOpen}>
         <Item size="sm" className="p-0">
           <ItemMedia variant="icon">
             <Icon />
@@ -192,7 +192,7 @@ function MemberBizTile({ b, currentUserId, onOpen, onWork }: {
             <ChevronRight className="size-4 text-muted-foreground" />
           </ItemActions>
         </Item>
-      </button>
+      </Button>
     </Card>
   );
 }

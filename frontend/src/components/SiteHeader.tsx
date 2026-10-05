@@ -331,14 +331,10 @@ export function SiteHeader() {
                         </ItemMedia>
                         <ItemContent>
                           <ItemTitle>
-                            <button
-                              type="button"
-                              className="min-w-0 text-left"
-                              onClick={() => {
+                            <Button variant="ghost" size="xs" type="button" onClick={() => {
                                 setShowUsers(false);
                                 navigate(`/profile/${onlineUser.userId}`);
-                              }}
-                            >
+                              }}>
                               <PlayerHoverCard
                                 userId={onlineUser.userId}
                                 username={onlineUser.username}
@@ -351,7 +347,7 @@ export function SiteHeader() {
                                   className="block"
                                 />
                               </PlayerHoverCard>
-                            </button>
+                            </Button>
                           </ItemTitle>
                           <ItemDescription className="flex items-center gap-1">
                             <PageIcon className="size-3" />

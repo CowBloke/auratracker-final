@@ -1655,23 +1655,17 @@ export default function MessagesPage() {
           </DialogHeader>
           <div className="flex border-b border-border/60">
             {(['DM', 'GROUP'] as const).map((mode) => (
-              <button key={mode} type="button"
-                onClick={() => { setCreateMode(mode); setCreateParticipantIds([]); setCreateSendAs('perso'); }}
-                className={cn('flex-1 py-2 text-xs font-medium transition-colors', createMode === mode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50')}
-              >
+              <Button variant={createMode === mode ? 'secondary' : 'ghost'} size="xs" key={mode} type="button" onClick={() => { setCreateMode(mode); setCreateParticipantIds([]); setCreateSendAs('perso'); }} className="flex-1">
                 {mode === 'DM' ? 'Message privé' : 'Groupe'}
-              </button>
+              </Button>
             ))}
           </div>
           {isAdminViewer && createMode === 'DM' && (
             <div className="flex border-b border-border/60">
               {(['perso', 'support'] as const).map((sender) => (
-                <button key={sender} type="button"
-                  onClick={() => setCreateSendAs(sender)}
-                  className={cn('flex-1 py-1.5 text-xs font-medium transition-colors', createSendAs === sender ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted/50')}
-                >
+                <Button variant={createSendAs === sender ? 'secondary' : 'ghost'} size="xs" key={sender} type="button" onClick={() => setCreateSendAs(sender)} className="flex-1">
                   {sender === 'perso' ? 'Mon compte' : 'Support'}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -1797,14 +1791,9 @@ export default function MessagesPage() {
                         disabled={!canManageCourtGroup}
                       />
                       {(groupEditIcon || groupEditImageUrl) && (
-                        <button
-                          type="button"
-                          onClick={() => { setGroupEditIcon(''); setGroupEditImageUrl(null); }}
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                          disabled={!canManageCourtGroup}
-                        >
+                        <Button variant="ghost" size="xs" type="button" onClick={() => { setGroupEditIcon(''); setGroupEditImageUrl(null); }} disabled={!canManageCourtGroup}>
                           <X className="h-3 w-3" />Retirer photo & icône
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -1900,18 +1889,13 @@ export default function MessagesPage() {
                 {witnessCandidates.map((player) => {
                   const selected = witnessUserId === player.id;
                   return (
-                    <button
-                      key={player.id}
-                      type="button"
-                      onClick={() => setWitnessUserId(player.id)}
-                      className={cn('flex w-full items-center gap-2 px-3 py-2 text-left transition-colors', selected ? 'bg-primary/10' : 'hover:bg-muted/40')}
-                    >
+                    <Item asChild size="sm" key={player.id} className={selected ? 'bg-accent' : undefined}><button type="button" onClick={() => setWitnessUserId(player.id)} className="w-full text-left">
                       <Avatar className="h-6 w-6 shrink-0">
                         {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} /> : null}
                         <AvatarFallback className="text-xs">{getInitials(player.username)}</AvatarFallback>
                       </Avatar>
                       <span className="truncate text-xs" style={player.usernameColor ? { color: player.usernameColor } : undefined}>{player.username}</span>
-                    </button>
+                    </button></Item>
                   );
                 })}
                 {witnessCandidates.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">Aucun témoin disponible.</p>}
@@ -2222,9 +2206,9 @@ export default function MessagesPage() {
             ) : null}
             <div className="flex items-center justify-center gap-2">
               {[1, 2, 3, 4, 5].map((value) => (
-                <button key={value} type="button" onClick={() => setLawyerRating(value)} className="transition-transform hover:scale-110">
+                <Button variant="ghost" size="icon-xs" key={value} type="button" onClick={() => setLawyerRating(value)} aria-label="Action">
                   <Star className={cn('h-8 w-8', lawyerRating >= value ? 'fill-warning text-warning' : 'fill-transparent text-muted-foreground/30')} />
-                </button>
+                </Button>
               ))}
             </div>
             <Textarea
@@ -2326,8 +2310,7 @@ export default function MessagesPage() {
                   <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 rounded-lg lg:hidden" onClick={() => setSelectedId(null)}>
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <button type="button" onClick={handleHeaderClick}
-                    className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-muted/50">
+                  <Button variant="ghost" size="xs" type="button" onClick={handleHeaderClick} className="flex-1">
                     <ConversationAvatar conversation={selectedConversation} size="sm" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold leading-tight">{conversationDisplayTitle}</p>
@@ -2337,7 +2320,7 @@ export default function MessagesPage() {
                           : 'Discussion privée'}
                       </p>
                     </div>
-                  </button>
+                  </Button>
                   <div className="flex shrink-0 items-center gap-0.5">
                     {isAdminViewer && detail && (
                       <Button
@@ -2717,18 +2700,12 @@ export default function MessagesPage() {
                                             {supportImages.map((img, i) => {
                                               const resolvedImageUrl = resolveImageUrl(img);
                                               return (
-                                                <button
-                                                  key={i}
-                                                  type="button"
-                                                  aria-label="Aperçu de l'image"
-                                                  onClick={(event) => {
+                                                <Button variant="ghost" size="xs" key={i} type="button" aria-label="Aperçu de l'image" onClick={(event) => {
                                                     event.stopPropagation();
                                                     setCourtImagePreviewUrl(resolvedImageUrl);
-                                                  }}
-                                                  className="overflow-hidden rounded-lg"
-                                                >
+                                                  }}>
                                                   <img src={resolvedImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover transition-transform hover:scale-105" />
-                                                </button>
+                                                </Button>
                                               );
                                             })}
                                           </div>
@@ -2745,30 +2722,18 @@ export default function MessagesPage() {
                                     <PopoverContent className="w-auto p-1.5" side={isOwn ? 'left' : 'right'} align="center">
                                       <div className="flex items-center gap-0.5">
                                         {REACTION_OPTIONS.map((emoji) => (
-                                          <button key={emoji} type="button"
-                                            onClick={() => handleReact(msg.id, emoji)}
-                                            className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-muted/60', reactions.find((r) => r.emoji === emoji)?.myReaction && 'bg-primary/15')}>
+                                          <Button variant={reactions.find((r) => r.emoji === emoji)?.myReaction ? 'secondary' : 'ghost'} size="xs" key={emoji} type="button" onClick={() => handleReact(msg.id, emoji)}>
                                             {emoji}
-                                          </button>
+                                          </Button>
                                         ))}
                                         <div className="mx-1 h-5 w-px bg-border/60" />
-                                        <button
-                                          type="button"
-                                          onClick={() => setReplyTarget({ id: msg.id, body: msg.body || (supportImages.length > 0 ? '[image]' : ''), senderUsername: msg.sender?.username ?? 'Inconnu', senderColor: msg.sender?.usernameColor })}
-                                          className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted/60"
-                                          title="Répondre"
-                                        >
+                                        <Button variant="ghost" size="icon-xs" type="button" onClick={() => setReplyTarget({ id: msg.id, body: msg.body || (supportImages.length > 0 ? '[image]' : ''), senderUsername: msg.sender?.username ?? 'Inconnu', senderColor: msg.sender?.usernameColor })} title="Répondre">
                                           <Reply className="h-4 w-4 text-muted-foreground" />
-                                        </button>
+                                        </Button>
                                         {canPinMessage && (
-                                          <button
-                                            type="button"
-                                            onClick={() => void handleToggleMessagePin(msg.id, !isPinnedMessage)}
-                                            className={cn('flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted/60', isPinnedMessage && 'bg-warning/10')}
-                                            title={isPinnedMessage ? 'Désépingler' : 'Épingler'}
-                                          >
+                                          <Button variant={isPinnedMessage ? 'secondary' : 'ghost'} size="icon-xs" type="button" onClick={() => void handleToggleMessagePin(msg.id, !isPinnedMessage)} title={isPinnedMessage ? 'Désépingler' : 'Épingler'}>
                                             <Pin className={cn('h-4 w-4', isPinnedMessage ? 'fill-warning/20 text-warning' : 'text-muted-foreground')} />
-                                          </button>
+                                          </Button>
                                         )}
                                       </div>
                                     </PopoverContent>
@@ -2794,11 +2759,7 @@ export default function MessagesPage() {
                                       </div>
                                     )}
                                     {/* Bouton reply (hover) */}
-                                    <button
-                                      type="button"
-                                      className="absolute right-2 top-2 z-10 hidden rounded p-1 text-muted-foreground hover:bg-muted/60 group-hover:block"
-                                      title="Répondre"
-                                      onClick={(e) => {
+                                    <Button variant="ghost" size="icon-xs" type="button" title="Répondre" onClick={(e) => {
                                         e.stopPropagation();
                                         setReplyTarget({
                                           id: msg.id,
@@ -2806,27 +2767,20 @@ export default function MessagesPage() {
                                           senderUsername: msg.sender?.username ?? 'Inconnu',
                                           senderColor: msg.sender?.usernameColor ?? undefined,
                                         });
-                                      }}
-                                    >
+                                      }} className="absolute right-2 top-2 z-10">
                                       <Reply className="h-4 w-4" />
-                                    </button>
+                                    </Button>
                                     {supportImages.length > 0 && (
                                       <div className="mb-1.5 flex flex-wrap gap-1">
                                         {supportImages.map((img, i) => {
                                           const resolvedImageUrl = resolveImageUrl(img);
                                           return (
-                                            <button
-                                              key={i}
-                                              type="button"
-                                              aria-label="Aperçu de l'image"
-                                              onClick={(event) => {
+                                            <Button variant="ghost" size="xs" key={i} type="button" aria-label="Aperçu de l'image" onClick={(event) => {
                                                 event.stopPropagation();
                                                 setCourtImagePreviewUrl(resolvedImageUrl);
-                                              }}
-                                              className="overflow-hidden rounded-lg"
-                                            >
+                                              }}>
                                               <img src={resolvedImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover transition-transform hover:scale-105" />
-                                            </button>
+                                            </Button>
                                           );
                                         })}
                                       </div>
@@ -2841,32 +2795,21 @@ export default function MessagesPage() {
                                   </div>
                                 )}
                                 {canDeleteMessage && (
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
+                                  <Button variant={isOwn ? 'secondary' : 'ghost'} size="icon-xs" type="button" onClick={async () => {
                                       if (!(await confirm('Supprimer ce message ?'))) return;
                                       void handleDeleteMessage(msg.id);
-                                    }}
-                                    className={cn(
-                                      'absolute top-1/2 z-10 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-background/95 text-destructive/80 opacity-0 shadow-sm transition-all pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive',
-                                      isOwn ? 'right-full mr-2' : 'left-full ml-2',
-                                    )}
-                                    title="Supprimer le message"
-                                  >
+                                    }} title="Supprimer le message" className="absolute top-1/2 z-10">
                                     <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
+                                  </Button>
                                 )}
                               </div>
                               {conversationReactionsEnabled && reactions.length > 0 && (
                                 <div className={cn('mt-0.5 flex flex-wrap gap-1 px-1', isOwn ? 'justify-end' : 'justify-start')}>
                                   {reactions.map((r) => (
-                                    <button key={r.emoji} type="button"
-                                      onClick={() => handleReact(msg.id, r.emoji)}
-                                      title={r.users.join(', ')}
-                                      className={cn('inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition-colors hover:bg-muted/60', r.myReaction ? 'border-primary/40 bg-primary/10' : 'border-border/60 bg-card')}>
+                                    <Button variant={r.myReaction ? 'default' : 'outline'} size="xs" key={r.emoji} type="button" onClick={() => handleReact(msg.id, r.emoji)} title={r.users.join(', ')}>
                                       <span>{r.emoji}</span>
                                       <span className="font-medium">{r.count}</span>
-                                    </button>
+                                    </Button>
                                   ))}
                                 </div>
                               )}
@@ -2887,9 +2830,9 @@ export default function MessagesPage() {
                       <Reply className="h-3.5 w-3.5 mr-1" />
                       <span className="font-semibold" style={{ color: replyTarget.senderColor ?? undefined }}>{replyTarget.senderUsername}</span>
                       <span className="ml-1">{replyTarget.body.length > 60 ? replyTarget.body.slice(0, 60) + '…' : replyTarget.body}</span>
-                      <button className="ml-auto p-1 hover:text-destructive" title="Annuler la réponse" onClick={() => setReplyTarget(null)}>
+                      <Button variant="ghost" size="icon-xs" title="Annuler la réponse" onClick={() => setReplyTarget(null)} className="ml-auto">
                         <X className="h-4 w-4" />
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {dmTypingUser && (
@@ -2900,13 +2843,9 @@ export default function MessagesPage() {
                     <div className="mb-2 flex items-center gap-2 flex-wrap">
                       <span className="text-xs text-muted-foreground font-medium">Envoyer en tant que :</span>
                       {Object.entries(COURT_ROLE_LABELS).map(([role, label]) => (
-                        <button key={role} type="button"
-                          onClick={() => setSelectedCourtRole(role)}
-                          className={cn('rounded-full px-2 py-0.5 text-xs font-semibold transition-colors border', selectedCourtRole === role
-                            ? cn(COURT_ROLE_COLORS[role]?.badge ?? 'bg-primary/15 text-primary', 'border-transparent')
-                            : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground')}>
+                        <Button variant={selectedCourtRole === role ? 'default' : 'outline'} size="xs" key={role} type="button" onClick={() => setSelectedCourtRole(role)}>
                           {label}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   )}

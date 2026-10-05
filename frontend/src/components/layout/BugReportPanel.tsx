@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { Item } from '@/components/ui/item';
 
 interface BugReportPanelProps {
   open: boolean;
@@ -257,14 +258,9 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                       {images.map((img, idx) => (
                         <div key={idx} className="relative group">
                           <img src={img} alt={`Upload ${idx}`} className="w-full h-24 object-cover rounded border border-border" />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(idx)}
-                            className="absolute top-1 right-1 bg-destructive text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                            title={t('bug_report_remove_image')}
-                          >
+                          <Button variant="ghost" size="icon-xs" type="button" onClick={() => removeImage(idx)} title={t('bug_report_remove_image')} className="absolute top-1 right-1">
                             <X className="h-3 w-3" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -309,11 +305,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
               ) : (
                 <div className="divide-y divide-border/40">
                   {myReports.map(report => (
-                    <button
-                      key={report.id}
-                      className="w-full text-left px-6 py-4 hover:bg-muted/20 transition-colors"
-                      onClick={() => openReport(report)}
-                    >
+                    <Item asChild size="sm" key={report.id}><button onClick={() => openReport(report)} className="w-full text-left">
                       <div className="flex items-center gap-2 mb-1">
                         <span className={cn('text-xs px-1.5 py-0.5 rounded', report.status === 'DONE' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning')}>
                           {report.status === 'DONE' ? 'Résolu' : 'En cours'}
@@ -326,7 +318,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                       {report.adminReply && (
                         <p className="text-xs text-primary/70 mt-0.5 truncate">Support: {report.adminReply}</p>
                       )}
-                    </button>
+                    </button></Item>
                   ))}
                 </div>
               )}

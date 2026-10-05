@@ -97,11 +97,7 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
         )}
       >
         <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
-          <button
-            type="button"
-            onClick={() => setMinimized((value) => !value)}
-            className="flex min-w-0 items-center gap-3 text-left"
-          >
+          <Button variant="ghost" size="xs" type="button" onClick={() => setMinimized((value) => !value)}>
             <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted">
               <MessageCircle className="h-4 w-4" />
               {unreadCount > 0 && (
@@ -116,7 +112,7 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
                 {currentParty.name || (isDuel ? 'Duel en cours' : 'Groupe actif')} · {partyMembers.length}/{currentParty.maxSize}
               </p>
             </div>
-          </button>
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -173,14 +169,10 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
                   ))}
                   {hasNewMessage && (
                     <div className="sticky bottom-0 flex justify-center py-2">
-                      <button
-                        onClick={scrollToBottom}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground/10 hover:bg-foreground/20 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        title="Aller au dernier message"
-                      >
+                      <Button variant="ghost" size="xs" onClick={scrollToBottom} title="Aller au dernier message">
                         <ChevronDown className="h-3 w-3" />
                         <span>Nouveau message</span>
-                      </button>
+                      </Button>
                     </div>
                   )}
                   <div ref={messagesEndRef} />

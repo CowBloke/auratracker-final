@@ -294,13 +294,9 @@ export function TutorialOverlay() {
             )}
             <span className="truncate text-sm font-semibold">{currentStep.title}</span>
           </div>
-          <button
-            onClick={stop}
-            className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Quitter le tutoriel"
-          >
+          <Button variant="ghost" size="icon-xs" onClick={stop} aria-label="Quitter le tutoriel" className="shrink-0">
             <X className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
@@ -320,13 +316,10 @@ export function TutorialOverlay() {
         {isFirstStepOfSection && currentSection && (
           <div className="mx-4 mb-3 flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-2">
             <span className="text-xs text-muted-foreground">Passer « {currentSection.title} »</span>
-            <button
-              onClick={skipSection}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
+            <Button variant="ghost" size="xs" onClick={skipSection}>
               <SkipForward className="h-3 w-3" />
               Passer
-            </button>
+            </Button>
           </div>
         )}
 

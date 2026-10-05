@@ -63,9 +63,9 @@ function PostCard({
           <span>{age}</span>
         </CardDescription>
         <CardTitle>
-          <button type="button" className="text-left hover:underline" onClick={() => navigate(postPath)}>
+          <Button variant="link" size="xs" type="button" onClick={() => navigate(postPath)} className="justify-start text-left">
             {post.title}
-          </button>
+          </Button>
         </CardTitle>
       </CardHeader>
       {(post.type === 'link' && post.url) || (post.type === 'text' && post.body) ? (

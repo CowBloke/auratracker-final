@@ -4,6 +4,8 @@ import { Building2, Check, Star } from 'lucide-react';
 import { AppModal } from '@/components/ui/app-modal';
 import { cn } from '@/lib/utils';
 import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
+import { Button } from '@/components/ui/button';
+import { Item } from '@/components/ui/item';
 
 export type SelectableBusiness = {
   id: string;
@@ -66,17 +68,7 @@ export function BusinessSelectionModal<TBusiness extends SelectableBusiness>({
             const disabled = Boolean(isBusinessDisabled?.(business));
             const active = business.id === currentId;
             return (
-              <button
-                key={business.id}
-                type="button"
-                disabled={disabled}
-                onClick={() => setCurrentId(business.id)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors',
-                  active ? 'border-border/50 bg-muted/10' : 'border-border bg-card hover:bg-accent',
-                  disabled && 'cursor-not-allowed opacity-45 hover:bg-card',
-                )}
-              >
+              <Item asChild size="sm" key={business.id} className={active ? 'bg-accent' : undefined}><button type="button" disabled={disabled} onClick={() => setCurrentId(business.id)} className="w-full text-left">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted/12 text-primary">
                   <Building2 className="h-4 w-4" />
                 </div>
@@ -100,7 +92,7 @@ export function BusinessSelectionModal<TBusiness extends SelectableBusiness>({
                     <Check className="h-3.5 w-3.5" />
                   </div>
                 )}
-              </button>
+              </button></Item>
             );
           })
         )}

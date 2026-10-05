@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Archive, Loader2, Plus, RefreshCw, Send, Upload, X } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 export type CommunicationTabProps = Record<string, unknown>;
 
@@ -116,14 +117,9 @@ export function CommunicationTab(props: CommunicationTabProps) {
                     .filter((u: any) => u.username.toLowerCase().includes(newThreadSearch.toLowerCase()))
                     .slice(0, 10)
                     .map((u: any) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        className={cn('w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors', newThreadUserId === u.id && 'bg-muted font-medium')}
-                        onClick={() => { setNewThreadUserId(u.id); setNewThreadSearch(u.username); }}
-                      >
+                      <Item asChild size="sm" key={u.id} className={newThreadUserId === u.id ? 'bg-accent' : undefined}><button type="button" onClick={() => { setNewThreadUserId(u.id); setNewThreadSearch(u.username); }} className="w-full text-left">
                         {u.username}
-                      </button>
+                      </button></Item>
                     ))}
                 </div>
               )}
@@ -368,15 +364,10 @@ export function CommunicationTab(props: CommunicationTabProps) {
                       const selectedUser = users.find((user: any) => user.id === userId);
                       if (!selectedUser) return null;
                       return (
-                        <button
-                          key={userId}
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs"
-                          onClick={() => setSurveySelectedUserIds((prev: string[]) => prev.filter((id) => id !== userId))}
-                        >
+                        <Button variant="outline" size="xs" key={userId} type="button" onClick={() => setSurveySelectedUserIds((prev: string[]) => prev.filter((id) => id !== userId))}>
                           {selectedUser.username}
                           <X className="h-3 w-3" />
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -388,14 +379,9 @@ export function CommunicationTab(props: CommunicationTabProps) {
                       <p className="px-3 py-2 text-sm text-muted-foreground">Aucun utilisateur trouvé.</p>
                     ) : (
                       filteredSurveyUsers.map((user: any) => (
-                        <button
-                          key={user.id}
-                          type="button"
-                          className="w-full border-b border-border/50 px-3 py-2 text-left text-sm hover:bg-muted/50 last:border-b-0"
-                          onClick={() => setSurveySelectedUserIds((prev: string[]) => [...prev, user.id])}
-                        >
+                        <Item asChild size="sm" key={user.id}><button type="button" onClick={() => setSurveySelectedUserIds((prev: string[]) => [...prev, user.id])} className="w-full text-left">
                           {user.username}
-                        </button>
+                        </button></Item>
                       ))
                     )}
                   </CardContent></Card>
@@ -629,15 +615,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                 <p className={cn('text-sm text-muted-foreground', 'p-4 text-center')}>Aucune conversation.</p>
               ) : (
                 supportThreads.map((thread: any) => (
-                  <button
-                    key={thread.userId}
-                    type="button"
-                    onClick={() => openSupportThread(thread.userId)}
-                    className={cn(
-                      'w-full text-left px-4 py-3 border-b border-border/50 hover:bg-muted/40 transition-colors',
-                      activeThreadUserId === thread.userId && 'bg-muted'
-                    )}
-                  >
+                  <Item asChild size="sm" key={thread.userId} className={activeThreadUserId === thread.userId ? 'bg-accent' : undefined}><button type="button" onClick={() => openSupportThread(thread.userId)} className="w-full text-left">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium truncate">
                         {thread.user?.username ?? thread.userId}
@@ -651,7 +629,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {thread.lastFromAdmin ? '↩ ' : ''}{thread.lastBody}
                     </p>
-                  </button>
+                  </button></Item>
                 ))
               )}
             </div>
@@ -713,14 +691,9 @@ export function CommunicationTab(props: CommunicationTabProps) {
                             alt={`Support ${idx}`}
                             className="h-12 w-12 object-cover rounded border border-border"
                           />
-                          <button
-                            type="button"
-                            onClick={() => removeSupportReplyImage(idx)}
-                            className="absolute -top-2 -right-2 bg-destructive text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Supprimer l'image"
-                          >
+                          <Button variant="ghost" size="icon-xs" type="button" onClick={() => removeSupportReplyImage(idx)} title="Supprimer l'image" className="absolute -top-2 -right-2">
                             <X className="h-3 w-3" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>

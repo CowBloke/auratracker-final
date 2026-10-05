@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export interface SpectateFloatingMessage {
   id: number;
@@ -95,23 +96,13 @@ export function SpectateEffectBar({ messages, onSend, onConfetti, showInput = tr
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
             />
             {onConfetti && (
-              <button
-                type="button"
-                onClick={onConfetti}
-                className="text-muted-foreground hover:text-warning transition-colors shrink-0"
-                tabIndex={0}
-                title="Lancer des confettis"
-              >
+              <Button variant="ghost" size="icon-xs" type="button" onClick={onConfetti} tabIndex={0} title="Lancer des confettis" className="shrink-0">
                 <Sparkles className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             )}
-            <button
-              type="submit"
-              className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              tabIndex={0}
-            >
+            <Button variant="ghost" size="icon-xs" type="submit" tabIndex={0} aria-label="Action" className="shrink-0">
               <Send className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </form>
         </div>
       )}

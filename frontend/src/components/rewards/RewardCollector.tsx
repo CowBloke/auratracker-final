@@ -4,6 +4,7 @@ import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { type RewardItem } from '../../contexts/RewardQueueContext';
 import { Alert } from '@/components/ui/alert';
 import { Item } from '@/components/ui/item';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   items: RewardItem[];
@@ -81,12 +82,9 @@ export default function RewardCollector({ items, currentIndex, phase, onAdvance,
             <p className="text-sm font-semibold text-muted-foreground">
               Récompenses collectées
             </p>
-            <button
-              onClick={onClose}
-              className="text-muted-foreground transition-colors hover:text-foreground"
-            >
+            <Button variant="ghost" size="icon-xs" onClick={onClose} aria-label="Action">
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
 
           <div className="space-y-2">
@@ -119,12 +117,9 @@ export default function RewardCollector({ items, currentIndex, phase, onAdvance,
             })}
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-          >
+          <Button onClick={onClose} className="w-full">
             Fermer
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -162,12 +157,9 @@ export default function RewardCollector({ items, currentIndex, phase, onAdvance,
           )}
         </div>
 
-        <button
-          onClick={handleCardClick}
-          className="mt-2 rounded-xl bg-primary px-8 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-        >
+        <Button onClick={handleCardClick} className="mt-2">
           {remaining > 0 ? 'Continuer' : 'Voir le résumé'}
-        </button>
+        </Button>
       </div>
     </div>
   );

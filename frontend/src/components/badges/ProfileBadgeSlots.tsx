@@ -144,22 +144,9 @@ export function ProfileBadgeSlots({
                     const isCurrent = b.id === (slot === 1 ? equippedBadge1Id : equippedBadge2Id);
 
                     return (
-                      <button
-                        key={b.id}
-                        type="button"
-                        disabled={isOther}
-                        onClick={() => !isOther && handleEquip(slot, b.id)}
-                        className={cn(
-                          'w-full aspect-square flex items-center justify-center rounded border transition-colors',
-                          isCurrent
-                            ? 'border-foreground bg-foreground/5'
-                            : isOther
-                              ? 'opacity-30 cursor-not-allowed border-transparent'
-                              : 'border-transparent hover:border-border hover:bg-muted/40',
-                        )}
-                      >
+                      <Button variant={isCurrent ? 'secondary' : 'ghost'} size="icon-xs" key={b.id} type="button" disabled={isOther} onClick={() => !isOther && handleEquip(slot, b.id)} aria-label="Action" className="w-full">
                         <BadgeIcon badge={b as BadgeData} size="lg" tooltipSide="top" />
-                      </button>
+                      </Button>
                     );
                   })
                 )}

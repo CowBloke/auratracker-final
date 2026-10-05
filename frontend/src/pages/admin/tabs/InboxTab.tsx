@@ -35,6 +35,7 @@ import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { useEffect, useRef } from 'react';
 import type { AdminChatModerationEvent, BanAppeal, BugReport, BugReportMessage, CustomBadgeRequest, NameChangeRequest, PendingFormationReviewItem, PendingSanction, PendingUser } from '../../../services/api';
 import { Alert } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -265,16 +266,7 @@ export function InboxTab(props: InboxTabProps) {
             <div className="flex" style={{ height: 'calc(100vh - 280px)', minHeight: '400px' }}>
               <div className="w-44 shrink-0 border-r border-border/40 p-1.5 space-y-0.5 overflow-y-auto custom-scroll">
                 {ADMIN_CATS.map((cat) => (
-                  <button
-                    key={cat.key}
-                    onClick={() => { setInboxFilter(cat.key); setSelectedInboxItem(null); }}
-                    className={cn(
-                      'w-full flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors text-left',
-                      inboxFilter === cat.key
-                        ? 'bg-accent text-accent-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                    )}
-                  >
+                  <Item asChild size="sm" key={cat.key} className={inboxFilter === cat.key ? 'bg-accent' : undefined}><button onClick={() => { setInboxFilter(cat.key); setSelectedInboxItem(null); }} className="w-full text-left">
                     <cat.Icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="flex-1 truncate">{cat.label}</span>
                     {cat.count > 0 && (
@@ -282,7 +274,7 @@ export function InboxTab(props: InboxTabProps) {
                         {cat.count}
                       </span>
                     )}
-                  </button>
+                  </button></Item>
                 ))}
               </div>
 
@@ -371,15 +363,13 @@ export function InboxTab(props: InboxTabProps) {
                       }
 
                       return (
-                        <button
+                        <Item
+                          asChild
                           key={item.id}
-                          onClick={() => setSelectedInboxItem(isSelected ? null : item.id)}
-                          className={cn(
-                            'w-full text-left border-l-2 border-b border-b-border/20 transition-colors',
-                            borderAccent,
-                            isSelected ? 'bg-accent/70' : 'hover:bg-accent/30'
-                          )}
+                          size="sm"
+                          className={cn('rounded-none border-0 border-b border-l-2 border-b-border', borderAccent, isSelected && 'bg-accent')}
                         >
+                        <button onClick={() => setSelectedInboxItem(isSelected ? null : item.id)} className="w-full text-left">
                           <div className="px-3 py-3">
                             <div className="flex items-center justify-between gap-2 mb-1.5">
                               <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium shrink-0', badgeColor)}>
@@ -393,6 +383,7 @@ export function InboxTab(props: InboxTabProps) {
                             <p className="text-xs text-muted-foreground/70 truncate mt-0.5">{subtitle}</p>
                           </div>
                         </button>
+                        </Item>
                       );
                     })}
                   </div>

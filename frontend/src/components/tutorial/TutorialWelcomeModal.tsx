@@ -21,13 +21,9 @@ export function TutorialWelcomeModal() {
     <>
       <div className="fixed inset-0 bg-black/50" style={{ zIndex: 1000000 }} />
       <Card className="gap-0 py-0 shadow-none left-1/2 top-1/2 z-[1000001] w-[min(420px,calc(100vw-2rem))]"><CardContent className="p-6 fixed -translate-x-1/2 -translate-y-1/2">
-        <button
-          onClick={handleDecline}
-          className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Fermer"
-        >
+        <Button variant="ghost" size="icon-xs" onClick={handleDecline} aria-label="Fermer" className="absolute right-4 top-4">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
 
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
           <BookOpen className="h-6 w-6 text-primary" />

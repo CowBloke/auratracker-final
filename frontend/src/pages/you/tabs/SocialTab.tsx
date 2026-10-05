@@ -564,22 +564,14 @@ function CreateContractModal({ open, onClose, players, currentUserId, onCreated 
                 {players.filter((p) => p.id !== currentUserId).map((p) => {
                   const checked = selectedIds.includes(p.id);
                   return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => toggle(p.id)}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition-all',
-                        checked ? 'bg-warning/15 ring-1 ring-warning/30' : 'hover:bg-muted/20',
-                      )}
-                    >
+                    <Item asChild size="sm" key={p.id} className={checked ? 'bg-accent' : undefined}><button type="button" onClick={() => toggle(p.id)} className="w-full text-left">
                       <Avatar className="h-6 w-6 shrink-0">
                         <AvatarImage src={p.profilePicture ? resolveImageUrl(p.profilePicture) : undefined} />
                         <AvatarFallback className="text-xs">{(p.firstName?.[0] ?? p.username[0]).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <span className="flex-1 text-xs font-medium">{p.username}</span>
                       {checked && <CheckCircle2 className="h-3.5 w-3.5 text-warning" />}
-                    </button>
+                    </button></Item>
                   );
                 })}
               </CardContent></Card>
