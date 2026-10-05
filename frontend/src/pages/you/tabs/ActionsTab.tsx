@@ -2,13 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, AlertTriangle, ArrowRight, ArrowUpCircle, Building2, CheckCircle2, Clock, Coins,
-  Hammer, Layers, Loader2, Package, Plus, Play, RefreshCw, Settings2, ShoppingCart, User, Zap,
+  Hammer, Layers, Loader2, Package, Plus, Play, RefreshCw, Settings2, ShoppingCart, Star, User, Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Spinner } from '@/components/ui/spinner';
+import { Toggle } from '@/components/ui/toggle';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { AppModal } from '@/components/ui/app-modal';
 import { RESOURCE_META, type ResourceType } from '@/lib/resources';
@@ -28,8 +32,9 @@ import {
   type YouSupplyInventory,
   youApi,
 } from '@/services/api';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Item } from '@/components/ui/item';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 
 const UPGRADE_CONFIGS = {
   productionSpeed: [
@@ -126,33 +131,31 @@ function getBusinessStyle(typeKey: string) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-// Color-coded stock card (used in the right column of each recipe)
+// Stock level of one resource (right column of each recipe)
 function StockCard({ inventory }: { inventory: YouSupplyInventory }) {
   const meta = RESOURCE_META[inventory.resourceType as ResourceType];
   const Icon = meta?.Icon ?? Building2;
   const pct = inventory.capacity > 0 ? Math.min(100, (inventory.quantity / inventory.capacity) * 100) : 0;
-  const barCls = meta?.iconColor?.split(' ')[0]?.replace('text-', 'bg-') ?? 'bg-muted-foreground';
   return (
-    <div className={cn('rounded-xl border p-2 h-[58px] flex flex-col justify-between', meta?.bg ?? 'bg-muted/20', 'border-border/30')}>
-      <div className="flex items-center justify-between gap-1 leading-none">
-        <div className="flex items-center gap-1 min-w-0">
-          <Icon className={cn('h-3 w-3 shrink-0', meta?.iconColor ?? 'text-muted-foreground')} />
-          <span className={cn('text-xs font-bold truncate', meta?.iconColor ?? 'text-muted-foreground')}>{resourceLabel(inventory.resourceType)}</span>
-        </div>
-        <span className="text-xs text-muted-foreground tabular-nums shrink-0 leading-none">~{inventory.globalMarketUnitPrice}€</span>
-      </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10 my-0.5">
-        <div className={cn('h-full rounded-full transition-all opacity-70', barCls)} style={{ width: `${pct}%` }} />
-      </div>
-      <div className="flex justify-between text-xs leading-none">
-        <span className={cn('font-bold tabular-nums', meta?.iconColor ?? 'text-foreground')}>{inventory.quantity}</span>
-        <span className="text-muted-foreground">/ {inventory.capacity}</span>
-      </div>
-    </div>
+    <Item variant="outline" size="sm" className="flex-1">
+      <ItemMedia variant="icon">
+        <Icon />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle className="w-full justify-between">
+          {resourceLabel(inventory.resourceType)}
+          <span className="text-xs font-normal tabular-nums text-muted-foreground">~{inventory.globalMarketUnitPrice}€</span>
+        </ItemTitle>
+        <Progress value={pct} />
+        <ItemDescription className="tabular-nums">
+          {inventory.quantity} / {inventory.capacity}
+        </ItemDescription>
+      </ItemContent>
+    </Item>
   );
 }
 
-// Total Payment Card - shows total sum and allows selecting funding source
+// Funding source (business treasury or personal money) for the action total
 function TotalPaymentCard({
   biz, totalCost, isPersonalPay, userMoney, onSelect,
 }: {
@@ -167,111 +170,35 @@ function TotalPaymentCard({
   const treasuryShort = availableMoney < totalCost;
 
   return (
-    <Select value={value} onValueChange={(v) => onSelect(v as 'business' | 'personal')}>
-      <SelectTrigger
-        className={cn(
-          'p-0 rounded-xl border flex items-center overflow-hidden h-[58px] text-left w-full shadow-sm transition duration-200 mt-1',
-          'focus:ring-1 focus:ring-primary/20 hover:bg-background/80',
-          treasuryShort
-            ? 'border-destructive/30 bg-destructive/8'
-            : 'border-border/40 bg-muted/20'
-        )}
-      >
-        {/* Left: Full height Icon block */}
-        <div className={cn(
-          "flex h-full w-12 shrink-0 items-center justify-center border-r transition",
-          treasuryShort
-            ? "bg-destructive/15 border-destructive/20 text-destructive"
-            : "bg-muted/40 border-border/40 text-foreground"
-        )}>
-          <Coins className="h-5 w-5" />
-        </div>
-
-        {/* Right: Info block */}
-        <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 pr-6 relative text-left gap-1">
-          <div className="flex items-baseline justify-between w-full leading-none">
-            <span className="text-sm font-bold text-muted-foreground truncate">
-              Total à payer
-            </span>
-            <span className={cn(
-              "text-base font-semibold tabular-nums",
-              treasuryShort ? "text-destructive" : "text-foreground"
-            )}>
-              {totalCost > 0 ? `${fmt(totalCost)}€` : '0€'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-1 w-full text-xs leading-none">
-            <span className="text-muted-foreground/75 truncate font-semibold flex items-center gap-1">
-              Source: {isPersonalPay ? 'Poche perso' : 'Trésorerie pro'}
-            </span>
-            {treasuryShort && (
-              <span className="shrink-0 text-xs font-bold text-destructive">Insuffisant</span>
-            )}
-          </div>
-        </div>
-      </SelectTrigger>
-      
-      <SelectContent align="start" className="w-[260px] p-1 border-black/10 dark:border-white/10 rounded-xl">
-        <div className="px-2.5 py-2 text-xs font-semibold text-foreground bg-muted/65 border-b border-border/35 rounded-lg mb-1 text-left pl-3">
-          Sélectionner source pour paiement ({fmt(totalCost)}€)
-        </div>
-        {/* Option 1: Business Treasury */}
-        <SelectItem value="business" className="rounded-lg py-1.5 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
-          <div className="flex items-center gap-2.5 min-w-0 py-0.5">
-            <span className={cn(
-              'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm',
-              biz.treasuryMoney >= totalCost ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'
-            )}>
-              <Building2 className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                <span className="truncate">Trésorerie du business</span>
-              </div>
-              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                <span className="font-semibold text-foreground/80">{fmt(biz.treasuryMoney)}€ dispo</span>
-                {biz.treasuryMoney < totalCost && (
-                  <>
-                    <span>·</span>
-                    <span className="text-destructive font-bold">faible</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </SelectItem>
-
-        {/* Option 2: Personal Money */}
-        <SelectItem value="personal" className="rounded-lg py-1.5 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
-          <div className="flex items-center gap-2.5 min-w-0 py-0.5">
-            <span className={cn(
-              'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm',
-              userMoney >= totalCost ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-            )}>
-              <User className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                <span className="truncate">Payer de ma poche</span>
-              </div>
-              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                <span className="font-semibold text-foreground/80">{fmt(userMoney)}€ dispo</span>
-                {userMoney < totalCost && (
-                  <>
-                    <span>·</span>
-                    <span className="text-destructive font-bold">faible</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </SelectItem>
-      </SelectContent>
-    </Select>
+    <Item variant="outline" size="sm" className={cn(treasuryShort && 'border-destructive/50')}>
+      <ItemMedia variant="icon">
+        <Coins />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle className="w-full justify-between">
+          Total à payer
+          <span className={cn('tabular-nums', treasuryShort && 'text-destructive')}>{totalCost > 0 ? `${fmt(totalCost)}€` : '0€'}</span>
+        </ItemTitle>
+        <Select value={value} onValueChange={(v) => onSelect(v as 'business' | 'personal')}>
+          <SelectTrigger size="sm" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="start">
+            <SelectItem value="business">
+              Trésorerie pro · {fmt(biz.treasuryMoney)}€ dispo{biz.treasuryMoney < totalCost ? ' (faible)' : ''}
+            </SelectItem>
+            <SelectItem value="personal">
+              Ma poche · {fmt(userMoney)}€ dispo{userMoney < totalCost ? ' (faible)' : ''}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        {treasuryShort ? <ItemDescription className="text-destructive">Insuffisant</ItemDescription> : null}
+      </ItemContent>
+    </Item>
   );
 }
 
-// Ingredient card for a resource cost — shows resource info + source selector
+// Ingredient of a recipe, with its source selector
 function IngredientCard({
   biz, action, cost, sourceOptions, selections, onSelect, onBuyAtMarket,
 }: {
@@ -290,151 +217,65 @@ function IngredientCard({
   const meta = RESOURCE_META[cost.resourceType as ResourceType];
   const Icon = meta?.Icon ?? Building2;
   const noSource = opts.length === 0 || !selected;
-  const ownSelected = selected?.kind === 'inventory' && selected.businessId === biz.id;
   const extra = selected ? sourceCost(biz.id, cost, selected) : 0;
-
-  const selBizStyle = selected ? getBusinessStyle(selected.businessTypeKey) : null;
-  const SelBizIcon = selected
-    ? (BUSINESS_ICON_MAP[selected.businessTypeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2)
-    : Building2;
-
-  const bgCls = noSource ? 'bg-destructive/8' : (meta?.bg ?? 'bg-muted/10');
-  const borderCls = noSource
-    ? 'border-destructive/25'
-    : (meta?.bg ? meta.bg.replace('bg-', 'border-').replace('/15', '/25') : 'border-border/40');
 
   if (noSource) {
     return (
-      <button
-        type="button"
-        onClick={() => onBuyAtMarket(cost.resourceType)}
-        className={cn(
-          'rounded-xl border flex items-center overflow-hidden h-[58px] text-left w-full transition duration-200',
-          'border-destructive/30 bg-destructive/8 hover:bg-destructive/12'
-        )}
-      >
-        {/* Left: Full height Icon block */}
-        <div className="flex h-full w-12 shrink-0 items-center justify-center border-r bg-destructive/15 border-destructive/20 text-destructive">
-          <Icon className="h-5 w-5" />
-        </div>
-
-        {/* Right: Info block */}
-        <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 text-left gap-1">
-          <div className="flex items-baseline gap-1.5 w-full leading-none">
-            <span className="text-base font-semibold text-destructive tabular-nums mr-1">{cost.quantity}×</span>
-            <span className="text-sm font-bold text-muted-foreground truncate">{resourceLabel(cost.resourceType)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-1 w-full text-xs text-destructive leading-none">
-            <span className="font-semibold flex items-center gap-1">
-              <AlertCircle className="h-3 w-3 shrink-0" />
+      <Item asChild variant="outline" size="sm" className="border-destructive/50">
+        <button type="button" onClick={() => onBuyAtMarket(cost.resourceType)} className="w-full text-left">
+          <ItemMedia variant="icon">
+            <Icon />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>{cost.quantity}× {resourceLabel(cost.resourceType)}</ItemTitle>
+            <ItemDescription className="flex items-center gap-1 text-destructive">
+              <AlertCircle className="size-3" />
               Stock insuffisant
-            </span>
-            <span className="font-bold flex items-center gap-0.5 hover:underline">
-              Acheter <ShoppingCart className="h-2.5 w-2.5" />
-            </span>
-          </div>
-        </div>
-      </button>
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <Badge variant="outline">
+              Acheter <ShoppingCart />
+            </Badge>
+          </ItemActions>
+        </button>
+      </Item>
     );
   }
 
-  return (
-    <Select value={value} onValueChange={(v) => onSelect(key, v)}>
-      <SelectTrigger
-        className={cn(
-          'p-0 rounded-xl border flex items-center overflow-hidden h-[58px] text-left w-full shadow-sm transition duration-200',
-          'focus:ring-1 focus:ring-primary/20 hover:bg-background/80',
-          bgCls,
-          borderCls,
-        )}
-      >
-        {/* Left: Full height Icon block */}
-        <div className={cn(
-          "flex h-full w-12 shrink-0 items-center justify-center border-r transition",
-          meta?.bg ? meta.bg.replace('/15', '/25') : 'bg-muted/20',
-          meta?.bg ? meta.bg.replace('bg-', 'border-').replace('/15', '/20') : 'border-border/20',
-          meta?.iconColor ?? 'text-foreground'
-        )}>
-          <Icon className="h-5 w-5" />
-        </div>
+  const describe = (opt: YouResourceActionSourceOption) => {
+    const own = opt.kind === 'inventory' && opt.businessId === biz.id;
+    const price = own ? 'gratuit' : `${fmt(opt.unitPrice)}€/unité`;
+    const tag = own ? ' · interne' : opt.kind === 'offer' && !opt.autoAccept ? ' · offre' : '';
+    return `${opt.businessName}${tag} · ${opt.quantity} dispo · ${price}`;
+  };
 
-        {/* Right: Info block */}
-        <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 pr-6 relative text-left gap-1">
-          <div className="flex items-baseline justify-between w-full leading-none">
-            <div className="flex items-baseline gap-1.5 min-w-0">
-              <span className="text-base font-semibold text-foreground tabular-nums mr-1">{cost.quantity}×</span>
-              <span className="text-sm font-bold text-muted-foreground truncate">{resourceLabel(cost.resourceType)}</span>
-            </div>
-            <span className={cn(
-              "text-sm font-bold shrink-0 tabular-nums",
-              extra > 0 ? "text-warning" : "text-success"
-            )}>
-              {extra > 0 ? `${fmt(extra)}€` : 'Gratuit'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-1 w-full text-xs leading-none">
-            <span className="text-muted-foreground/75 truncate font-semibold flex items-center gap-1">
-              {selBizStyle && (
-                <span className={cn('flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded', selBizStyle.iconWrap)}>
-                  <SelBizIcon className={cn('h-2 w-2', selBizStyle.icon)} />
-                </span>
-              )}
-              {ownSelected ? 'Stock interne' : (selected?.businessName ?? '?')}
-            </span>
-          </div>
-        </div>
-      </SelectTrigger>
-      
-      <SelectContent align="start" className="w-[260px] p-1 border-black/10 dark:border-white/10 rounded-xl">
-        <div className="px-2.5 py-2 text-xs font-semibold text-foreground bg-muted/65 border-b border-border/35 rounded-lg mb-1 text-left pl-3">
-          Sélectionner source pour {resourceLabel(cost.resourceType)}
-        </div>
-        {opts.map((opt) => {
-          const cost2 = sourceCost(biz.id, cost, opt);
-          const own = opt.kind === 'inventory' && opt.businessId === biz.id;
-          const bizStyle = getBusinessStyle(opt.businessTypeKey);
-          const BizIcon = BUSINESS_ICON_MAP[opt.businessTypeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
-          return (
-            <SelectItem key={sourceValue(opt)} value={sourceValue(opt)} className="rounded-lg py-1 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
-              <div className="flex items-center gap-2.5 min-w-0 py-0.5">
-                <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm', bizStyle.iconWrap)}>
-                  <BizIcon className={cn('h-3.5 w-3.5', bizStyle.icon)} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <span className="truncate">{opt.businessName}</span>
-                    {own && <span className="shrink-0 rounded px-1.5 py-0.2 text-xs font-bold bg-success/15 text-success">interne</span>}
-                    {opt.kind === 'offer' && !opt.autoAccept && <span className="shrink-0 rounded px-1.5 py-0.2 text-xs font-bold bg-warning/15 text-warning">offre</span>}
-                  </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <span className="font-semibold text-foreground/80">{opt.quantity} dispo</span>
-                    <span>·</span>
-                    <span className={cn(own ? 'text-success font-bold' : 'font-semibold text-warning')}>
-                      {own ? 'gratuit' : `${fmt(opt.unitPrice)}€/unité`}
-                    </span>
-                    {!own && (
-                      <>
-                        <span>·</span>
-                        <span className="truncate text-muted-foreground/60">{opt.ownerName}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
-  );
-}
-
-// Arrow between pipeline columns
-function PipelineArrow() {
   return (
-    <div className="flex shrink-0 items-center justify-center self-center">
-      <ArrowRight className="h-4 w-4 text-muted-foreground/30" />
-    </div>
+    <Item variant="outline" size="sm">
+      <ItemMedia variant="icon">
+        <Icon />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle className="w-full justify-between">
+          {cost.quantity}× {resourceLabel(cost.resourceType)}
+          <span className={cn('text-xs tabular-nums', extra > 0 ? 'text-warning' : 'text-success')}>
+            {extra > 0 ? `${fmt(extra)}€` : 'Gratuit'}
+          </span>
+        </ItemTitle>
+        <Select value={value} onValueChange={(v) => onSelect(key, v)}>
+          <SelectTrigger size="sm" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="start">
+            {opts.map((opt) => (
+              <SelectItem key={sourceValue(opt)} value={sourceValue(opt)}>
+                {describe(opt)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </ItemContent>
+    </Item>
   );
 }
 
@@ -531,79 +372,56 @@ function ActionPipeline({
     : null;
 
   return (
-    <div className="border border-border bg-card/45 dark:bg-card/25 rounded-xl p-4 shadow-sm flex flex-col gap-3 transition hover:border-border/80">
-      {/* Header with big title and running job details */}
-      <div className="flex items-center justify-between pl-0.5">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-foreground">
-            {action.label}
-          </span>
-          {action.rewardMoney > 0 && (
-            <span className="text-xs font-semibold text-success bg-success/10 px-2.5 py-0.5 rounded-full border border-success/15">
-              +{fmt(action.rewardMoney)}€ à la fin
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex flex-wrap items-center gap-2">
+          {action.label}
+          {action.rewardMoney > 0 && <Badge variant="success">+{fmt(action.rewardMoney)}€ à la fin</Badge>}
+        </CardTitle>
+        <CardAction className="flex flex-wrap items-center gap-2">
           {upgrades.queueLvl >= 3 && (
-            <Button
+            <Toggle
               size="sm"
-              variant={isConstantProdEnabled ? "default" : "outline"}
-              className={cn(
-                "h-6 px-2.5 text-xs font-bold rounded-full transition-all duration-200 shrink-0",
-                isConstantProdEnabled 
-                  ? "bg-success text-success-foreground hover:bg-success/90 border-transparent" 
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              onClick={() => onToggleConstantProd(biz.id, action.key, !isConstantProdEnabled)}
+              variant="outline"
+              pressed={isConstantProdEnabled}
+              onPressedChange={(pressed) => void onToggleConstantProd(biz.id, action.key, pressed)}
             >
-              <RefreshCw className={cn("mr-1 h-3 w-3", isConstantProdEnabled && "animate-spin")} />
-              {isConstantProdEnabled ? "Loop : ON" : "Loop : OFF"}
-            </Button>
+              <RefreshCw />
+              {isConstantProdEnabled ? 'Loop : ON' : 'Loop : OFF'}
+            </Toggle>
           )}
           {isCooldownActive && (
-            <span className="text-xs font-semibold text-warning bg-warning/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <Clock className="h-3 w-3 animate-spin" /> Action active — {timeLeft}s rest.
-            </span>
+            <Badge variant="warning">
+              <Clock /> Action active — {timeLeft}s
+            </Badge>
           )}
           {queuedCount > 0 && (
-            <span className="text-xs font-semibold text-primary bg-muted/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <RefreshCw className="h-3 w-3" /> {queuedCount} en file
-            </span>
+            <Badge variant="secondary">
+              <RefreshCw /> {queuedCount} en file
+            </Badge>
           )}
-        </div>
-      </div>
+        </CardAction>
+      </CardHeader>
 
-      <div className="flex items-stretch gap-2.5">
-        {/* Left: Ingrédients */}
-        <div className="flex flex-1 flex-col gap-2 min-w-0" data-tutorial-id="actions-ingredients">
-          <div className="text-xs font-bold text-muted-foreground/50 pl-0.5">Ingrédients</div>
+      <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-2" data-tutorial-id="actions-ingredients">
+          <p className="text-xs font-medium text-muted-foreground">Ingrédients</p>
 
-          {/* Action Money Cost (if any) */}
           {action.moneyCost > 0 && (
-            <Alert variant="warning" className="flex items-center overflow-hidden h-[58px] text-left w-full">
-              <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-warning/20 bg-warning/20 text-warning">
-                <Coins className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 relative text-left gap-1">
-                <div className="flex items-baseline justify-between w-full leading-none pr-3">
-                  <div className="flex items-baseline gap-1.5 min-w-0">
-                    <span className="text-sm font-bold text-muted-foreground truncate">Frais de production</span>
-                  </div>
-                  <span className="text-sm font-bold shrink-0 tabular-nums text-warning">
-                    {fmt(action.moneyCost)}€
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-1 w-full text-xs leading-none">
-                  <span className="text-muted-foreground/75 truncate font-semibold flex items-center gap-1">
-                    Coût fixe
-                  </span>
-                </div>
-              </div>
-            </Alert>
+            <Item variant="outline" size="sm">
+              <ItemMedia variant="icon">
+                <Coins />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>Frais de production</ItemTitle>
+                <ItemDescription>Coût fixe</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <span className="text-sm font-semibold tabular-nums">{fmt(action.moneyCost)}€</span>
+              </ItemActions>
+            </Item>
           )}
 
-          {/* Resource ingredient cards */}
           {action.resourceCosts.map((cost) => (
             <IngredientCard
               key={cost.resourceType}
@@ -617,7 +435,6 @@ function ActionPipeline({
             />
           ))}
 
-          {/* Total Payment Card */}
           <TotalPaymentCard
             biz={biz}
             totalCost={totalCost}
@@ -627,81 +444,60 @@ function ActionPipeline({
           />
         </div>
 
-        <PipelineArrow />
-
-        {/* Middle: Produire button */}
-        <div className="flex shrink-0 flex-col items-center justify-center gap-2 px-1" data-tutorial-id="actions-produce-button">
-          {blockedReason && !running && (!isCooldownActive || isPlayDisabled) && (
-            <Alert variant="destructive" className="flex items-center gap-1 font-semibold max-w-[72px]">
-              <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
-              <span className="leading-tight">{blockedReason}</span>
-            </Alert>
-          )}
-          <button
+        <div className="flex flex-col items-center justify-center gap-2 lg:self-center" data-tutorial-id="actions-produce-button">
+          <Button
             type="button"
+            size="icon"
             onClick={() => void run()}
             disabled={isPlayDisabled}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-white transition disabled:cursor-not-allowed disabled:opacity-40"
-            style={{
-              background: isPlayDisabled && !running ? `${hex}60` : hex,
-              boxShadow: isPlayDisabled || running ? 'none' : `0 2px 10px -2px ${hex}90`,
-            }}
             title={action.label}
+            aria-label={action.label}
           >
             {running ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Spinner />
             ) : isCooldownActive && maxQueueSize > 0 && queuedCount < maxQueueSize ? (
-              <Plus className="h-5 w-5 font-semibold" />
+              <Plus />
             ) : isCooldownActive && queuedCount >= maxQueueSize ? (
               <span className="text-xs font-semibold">{timeLeft}s</span>
             ) : (
-              <Play className="h-4 w-4 fill-current" />
+              <Play />
             )}
-          </button>
-          <span className="text-xs text-muted-foreground text-center leading-tight max-w-[72px]">
-            {isCooldownActive && maxQueueSize > 0 && queuedCount < maxQueueSize 
-              ? "Ajouter à file" 
-              : isCooldownActive 
-                ? `Actif (${timeLeft}s)` 
+          </Button>
+          <span className="max-w-24 text-center text-xs text-muted-foreground">
+            {isCooldownActive && maxQueueSize > 0 && queuedCount < maxQueueSize
+              ? 'Ajouter à la file'
+              : isCooldownActive
+                ? `Actif (${timeLeft}s)`
                 : action.label}
           </span>
+          {blockedReason && !running && (!isCooldownActive || isPlayDisabled) && (
+            <Badge variant="destructive">
+              <AlertTriangle /> {blockedReason}
+            </Badge>
+          )}
         </div>
 
-        {/* Right: Stock */}
         {action.outputs.length > 0 && (
-          <>
-            <PipelineArrow />
-            <div className="flex flex-1 flex-col gap-2 min-w-0" data-tutorial-id="actions-stock">
-              <div className="text-xs font-bold text-muted-foreground/50 pl-0.5">Stock</div>
-              {action.outputs.map((o) => {
-                const inv = biz.inventories.find((i) => i.resourceType === o.resourceType);
-                if (!inv) return null;
-                return (
-                  <div key={o.resourceType} className="flex items-center gap-1.5 w-full">
-                    <div className="flex-1 min-w-0 relative">
-                      <div className="absolute -top-1.5 -right-1.5 z-10 rounded-full bg-success px-1.5 py-0.5 text-xs font-semibold tabular-nums text-white shadow-sm border border-success/50 leading-none">
-                        +{o.quantity}
-                      </div>
-                      <StockCard inventory={inv} />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onSellAll(o.resourceType)}
-                      className="flex h-[58px] px-3 shrink-0 flex-col items-center justify-center rounded-xl border border-border/60 bg-muted/20 shadow-sm text-muted-foreground transition hover:bg-muted hover:text-foreground hover:border-border"
-                      title="Mettre en vente"
-                    >
-                      <ShoppingCart className="h-4 w-4 mb-0.5" />
-                      <span className="text-xs font-bold ">Vendre</span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </>
+          <div className="flex min-w-0 flex-col gap-2" data-tutorial-id="actions-stock">
+            <p className="text-xs font-medium text-muted-foreground">Stock</p>
+            {action.outputs.map((o) => {
+              const inv = biz.inventories.find((i) => i.resourceType === o.resourceType);
+              if (!inv) return null;
+              return (
+                <div key={o.resourceType} className="flex items-stretch gap-2">
+                  <StockCard inventory={inv} />
+                  <Button type="button" variant="outline" className="h-auto flex-col gap-0.5 px-3" onClick={() => onSellAll(o.resourceType)} title="Mettre en vente">
+                    <ShoppingCart />
+                    <span className="text-xs">Vendre</span>
+                  </Button>
+                  <Badge variant="success" className="self-start tabular-nums">+{o.quantity}</Badge>
+                </div>
+              );
+            })}
+          </div>
         )}
-
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -775,36 +571,40 @@ function ConstructionPanel({
 
   if (isDone) {
     return (
-      <div className="border-t border-border/40 bg-success/5 px-4 py-4 flex items-center gap-3">
-        <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-success">Chantier terminé !</p>
-          <p className="text-xs text-muted-foreground">Actualisez pour débloquer la production.</p>
-        </div>
-        <Button size="sm" variant="outline" onClick={onDone} className="shrink-0">
-          <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Actualiser
-        </Button>
-      </div>
+      <Alert variant="success">
+        <CheckCircle2 />
+        <AlertTitle>Chantier terminé !</AlertTitle>
+        <AlertDescription>
+          <p>Actualise pour débloquer la production.</p>
+          <Button size="sm" variant="outline" onClick={onDone} className="mt-2">
+            <RefreshCw /> Actualiser
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
   if (timerStarted) {
     return (
-      <div className="border-t border-border/40 bg-warning/5 px-4 py-4 space-y-3">
-        <div className="flex items-center gap-2.5">
-          <Hammer className="h-4 w-4 text-warning shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-warning">Chantier en cours</p>
-            <p className="text-xs text-muted-foreground">Terminé dans <span className="font-mono font-bold text-foreground">{countdown}</span></p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+      <div className="flex flex-col gap-3">
+        <Alert variant="warning">
+          <Hammer />
+          <AlertTitle>Chantier en cours</AlertTitle>
+          <AlertDescription>
+            Terminé dans <span className="font-mono font-semibold text-foreground">{countdown}</span>
+          </AlertDescription>
+        </Alert>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {project.materials.map((m) => (
-            <Item key={m.resourceType} variant="outline" className="gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
-              <span className="text-xs text-muted-foreground truncate">
-                {RESOURCE_META[m.resourceType as ResourceType]?.label ?? m.resourceType} ×{m.requiredQuantity}
-              </span>
+            <Item key={m.resourceType} variant="outline" size="sm">
+              <ItemMedia variant="icon">
+                <CheckCircle2 />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>
+                  {RESOURCE_META[m.resourceType as ResourceType]?.label ?? m.resourceType} ×{m.requiredQuantity}
+                </ItemTitle>
+              </ItemContent>
             </Item>
           ))}
         </div>
@@ -813,45 +613,44 @@ function ConstructionPanel({
   }
 
   return (
-    <div className="border-t border-border/40 bg-warning/5 px-4 py-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <Hammer className="h-4 w-4 text-warning shrink-0" />
-        <p className="text-sm font-semibold text-warning">Plan de construction</p>
-        <span className="ml-auto text-xs text-muted-foreground">Choisissez les sources</span>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-semibold">
+          <Hammer className="size-4" /> Plan de construction
+        </p>
+        <span className="text-xs text-muted-foreground">Choisis les sources</span>
       </div>
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         {project.materials.map((m) => {
           const opts = inventoryOptions(m.resourceType);
           const meta = RESOURCE_META[m.resourceType as ResourceType];
+          const Icon = meta?.Icon ?? Building2;
           const selected = sources[m.resourceType];
           const selectedOpt = opts.find((o) => o.businessId === selected);
           const hasEnough = selectedOpt ? selectedOpt.quantity >= m.requiredQuantity : false;
 
           return (
-            <div key={m.resourceType} className="grid grid-cols-[1fr_auto] items-center gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-base leading-none">{meta?.emoji ?? '📦'}</span>
-                <span className="text-xs font-medium truncate">{meta?.label ?? m.resourceType}</span>
-                <span className="text-xs text-muted-foreground">×{m.requiredQuantity}</span>
-              </div>
-              <div className="min-w-0 w-44">
+            <Item key={m.resourceType} variant="outline" size="sm">
+              <ItemMedia variant="icon">
+                <Icon />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>
+                  {meta?.label ?? m.resourceType}
+                  <span className="font-normal text-muted-foreground">×{m.requiredQuantity}</span>
+                </ItemTitle>
+              </ItemContent>
+              <ItemActions className="w-56">
                 {opts.length === 0 ? (
                   <span className="text-xs text-destructive">Aucun stock disponible</span>
                 ) : (
                   <Select
                     value={selected ?? ''}
-                    onValueChange={(v) => setSources((s) => ({ ...s, [m.resourceType]: v }))}
+                    onValueChange={(v) => setSources((prev) => ({ ...prev, [m.resourceType]: v }))}
                   >
-                    <SelectTrigger className={cn('h-8 text-xs', selected && !hasEnough && 'border-destructive/60')}>
-                      {selected ? (
-                        <span className="truncate">
-                          {selectedOpt?.businessName ?? selected}
-                          {!hasEnough && <span className="ml-1 text-destructive"> (manque)</span>}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Choisir…</span>
-                      )}
+                    <SelectTrigger size="sm" className="w-full" aria-invalid={Boolean(selected && !hasEnough)}>
+                      <SelectValue placeholder="Choisir…" />
                     </SelectTrigger>
                     <SelectContent>
                       {opts.map((o) => (
@@ -862,22 +661,15 @@ function ConstructionPanel({
                     </SelectContent>
                   </Select>
                 )}
-              </div>
-            </div>
+              </ItemActions>
+            </Item>
           );
         })}
       </div>
 
-      <Button
-        size="sm"
-        disabled={!allSourcesSelected || submitting}
-        onClick={handleLaunch}
-        className="w-full bg-warning text-warning-foreground hover:bg-warning/90"
-      >
-        {submitting
-          ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Lancement…</>
-          : <><Hammer className="mr-1.5 h-3.5 w-3.5" /> Lancer le chantier</>
-        }
+      <Button disabled={!allSourcesSelected || submitting} onClick={handleLaunch}>
+        {submitting ? <Spinner /> : <Hammer />}
+        {submitting ? 'Lancement…' : 'Lancer le chantier'}
       </Button>
     </div>
   );
@@ -902,83 +694,67 @@ function BusinessCard({
   onUpgradeClick: (biz: YouResourceActionBusiness) => void;
   onToggleConstantProd: (bizId: string, actionKey: string, enabled: boolean) => Promise<void>;
 }) {
-  const style = getBusinessStyle(biz.typeKey);
   const hex = getBusinessHex(biz.typeKey);
   const Icon = BUSINESS_ICON_MAP[biz.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
 
   const upgrades = biz.upgrades ?? { productionSpeedLvl: 0, stockSizeLvl: 0, queueLvl: 0 };
 
-  return (
-    <Card className="overflow-hidden border-l-[3px]" style={{ borderLeftColor: hex }} data-tutorial-id="actions-business-card">
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-muted/5">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', style.iconWrap)}>
-            <Icon className={cn('h-4.5 w-4.5', style.icon)} />
-          </span>
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold leading-tight" style={{ color: hex }}>
-              {biz.name}
-            </h3>
-            <p className="text-xs text-muted-foreground leading-tight truncate">
-              {biz.typeLabel}
-              {biz.typeKey === 'juterie' && biz.customData && (() => {
-                try {
-                  const d = JSON.parse(biz.customData) as { juiceSpecialization?: string };
-                  const names: Record<string, string> = {
-                    JUICE_ABRICOT: "abricot", JUICE_GINGEMBRE: "gingembre",
-                    JUICE_PAPAYE: "papaye", JUICE_MALAKOUKOU: "malakoukou", JUICE_GOYAVE: "goyave",
-                  };
-                  return d.juiceSpecialization ? ` · ${names[d.juiceSpecialization] ?? d.juiceSpecialization}` : '';
-                } catch { return ''; }
-              })()}
-              {biz.underConstruction ? ' · chantier' : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-          <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-warning/15 px-3.5 text-xs font-bold tabular-nums text-warning border border-warning/10 shadow-sm">
-            <Coins className="h-4 w-4" />{fmt(biz.treasuryMoney)}€
-          </span>
-          {biz.avgRating != null && (
-            <span className="inline-flex h-8 items-center gap-1 px-3.5 text-xs font-bold text-success bg-success/15 rounded-full border border-success/10 shadow-sm">
-              ⭐ {biz.avgRating.toFixed(1)}/5
-            </span>
-          )}
-          <button
-            type="button"
-            data-tutorial-id="actions-upgrade-button"
-            onClick={() => onUpgradeClick(biz)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/30 bg-muted/10 px-3.5 text-xs font-bold text-primary transition hover:bg-muted/20 shadow-sm"
-          >
-            <ArrowUpCircle className="h-4 w-4" /> Améliorer ({upgrades.productionSpeedLvl + upgrades.stockSizeLvl + upgrades.queueLvl}/8)
-          </button>
-          <button
-            type="button"
-            data-tutorial-id="actions-manage-button"
-            onClick={() => onManage(biz.id)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/40 bg-background/60 px-3.5 text-xs font-bold text-muted-foreground transition hover:text-foreground shadow-sm"
-          >
-            <Settings2 className="h-4 w-4" /> Gérer
-          </button>
-        </div>
-      </div>
+  const specialization = (() => {
+    if (biz.typeKey !== 'juterie' || !biz.customData) return '';
+    try {
+      const d = JSON.parse(biz.customData) as { juiceSpecialization?: string };
+      const names: Record<string, string> = {
+        JUICE_ABRICOT: 'abricot', JUICE_GINGEMBRE: 'gingembre',
+        JUICE_PAPAYE: 'papaye', JUICE_MALAKOUKOU: 'malakoukou', JUICE_GOYAVE: 'goyave',
+      };
+      return d.juiceSpecialization ? ` · ${names[d.juiceSpecialization] ?? d.juiceSpecialization}` : '';
+    } catch { return ''; }
+  })();
 
-      {/* Actions / Construction */}
-      {biz.underConstruction && biz.constructionProject ? (
-        <ConstructionPanel
-          biz={biz}
-          project={biz.constructionProject}
-          sourceOptions={sourceOptions}
-          onDone={onReload ?? (() => {})}
-        />
-      ) : (
-        <div className="flex flex-col gap-4 border-t border-border/40 px-4 py-3">
-          {biz.actions.length === 0 ? (
-            <div className="py-4 text-center text-xs text-muted-foreground">
-              Aucune recette de production disponible.
-            </div>
-          ) : biz.actions.map((action) => (
+  return (
+    <Card data-tutorial-id="actions-business-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="size-4" />
+          {biz.name}
+        </CardTitle>
+        <CardDescription>
+          {biz.typeLabel}{specialization}{biz.underConstruction ? ' · chantier' : ''}
+        </CardDescription>
+        <CardAction className="flex flex-wrap items-center justify-end gap-2">
+          <Badge variant="warning" className="tabular-nums">
+            <Coins />{fmt(biz.treasuryMoney)}€
+          </Badge>
+          {biz.avgRating != null && (
+            <Badge variant="success">
+              <Star />{biz.avgRating.toFixed(1)}/5
+            </Badge>
+          )}
+          <Button type="button" size="sm" variant="outline" data-tutorial-id="actions-upgrade-button" onClick={() => onUpgradeClick(biz)}>
+            <ArrowUpCircle /> Améliorer ({upgrades.productionSpeedLvl + upgrades.stockSizeLvl + upgrades.queueLvl}/8)
+          </Button>
+          <Button type="button" size="sm" variant="outline" data-tutorial-id="actions-manage-button" onClick={() => onManage(biz.id)}>
+            <Settings2 /> Gérer
+          </Button>
+        </CardAction>
+      </CardHeader>
+
+      <CardContent className="flex flex-col gap-4">
+        {biz.underConstruction && biz.constructionProject ? (
+          <ConstructionPanel
+            biz={biz}
+            project={biz.constructionProject}
+            sourceOptions={sourceOptions}
+            onDone={onReload ?? (() => {})}
+          />
+        ) : biz.actions.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyDescription>Aucune recette de production disponible.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          biz.actions.map((action) => (
             <ActionPipeline
               key={action.key}
               biz={biz}
@@ -994,9 +770,9 @@ function BusinessCard({
               onReload={onReload}
               onToggleConstantProd={onToggleConstantProd}
             />
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </CardContent>
     </Card>
   );
 }
@@ -1035,33 +811,9 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
   const configKeys: ('productionSpeed' | 'stockSize' | 'queue')[] = ['productionSpeed', 'stockSize', 'queue'];
 
   const UPGRADE_DETAILS = {
-    productionSpeed: {
-      title: "Vitesse Production",
-      maxLevel: 2,
-      activeColor: "bg-warning",
-      badgeColor: "bg-warning/10 text-warning border border-warning/20",
-      iconBg: "bg-warning/15 border border-warning/20 text-warning",
-      btnBg: "bg-warning text-warning-foreground hover:bg-warning/90",
-      Icon: Zap,
-    },
-    stockSize: {
-      title: "Taille des Stocks",
-      maxLevel: 3,
-      activeColor: "bg-success",
-      badgeColor: "bg-success/10 text-success border border-success/20",
-      iconBg: "bg-success/15 border border-success/20 text-success",
-      btnBg: "bg-success text-success-foreground hover:bg-success/90",
-      Icon: Package,
-    },
-    queue: {
-      title: "File d'attente",
-      maxLevel: 3,
-      activeColor: "bg-primary",
-      badgeColor: "bg-muted/10 text-primary border border-border/20",
-      iconBg: "bg-muted/15 border border-border/20 text-primary",
-      btnBg: "bg-primary text-primary-foreground hover:bg-primary/90",
-      Icon: Layers,
-    },
+    productionSpeed: { title: 'Vitesse production', maxLevel: 2, Icon: Zap },
+    stockSize: { title: 'Taille des stocks', maxLevel: 3, Icon: Package },
+    queue: { title: "File d'attente", maxLevel: 3, Icon: Layers },
   };
 
   return (
@@ -1071,16 +823,14 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
         icon={<ArrowUpCircle />}
         title={`Améliorations · ${biz.name}`}
         subtitle={
-          <div className="flex items-center gap-2 mt-1">
-            <span>Booste l'efficacité et l'automatisation de tes lignes.</span>
-            <span className="inline-flex h-5 items-center rounded-full bg-primary/10 px-2 text-xs font-bold text-primary">
-              {totalLevels} / 8 Niveaux
-            </span>
-          </div>
+          <span className="flex items-center gap-2">
+            Booste l'efficacité et l'automatisation de tes lignes.
+            <Badge variant="secondary">{totalLevels} / 8 niveaux</Badge>
+          </span>
         }
       />
-      <AppModal.Body className="py-2">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+      <AppModal.Body>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {configKeys.map((type) => {
             const currentLevel = upgrades[`${type}Lvl` as keyof typeof upgrades] ?? 0;
             const details = UPGRADE_DETAILS[type];
@@ -1097,76 +847,51 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
             const nextStat = nextData ? getUpgradeStat(type, currentLevel + 1) : '';
 
             return (
-              <div
-                key={type}
-                className="bg-card/30 border border-border/30 rounded-xl p-4 flex flex-col justify-between transition hover:border-border/60"
-              >
-                <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg shrink-0", details.iconBg)}>
-                      <Icon className="h-4.5 w-4.5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-foreground leading-tight">
-                        {details.title}
-                      </h4>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        {Array.from({ length: maxLevel }).map((_, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              "h-1.5 w-4 rounded-full transition-colors",
-                              i < currentLevel ? details.activeColor : "bg-muted-foreground/20"
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-4 min-h-[34px]">
-                    {currentData?.desc}
-                  </p>
-                </div>
-
-                <div>
-                  <Item variant="muted" className="justify-between text-xs font-semibold mb-3">
+              <Card key={type}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Icon className="size-4" />
+                    {details.title}
+                  </CardTitle>
+                  <CardDescription>{currentData?.desc}</CardDescription>
+                  <CardAction>
+                    <Badge variant="outline" className="tabular-nums">{currentLevel}/{maxLevel}</Badge>
+                  </CardAction>
+                </CardHeader>
+                <CardContent>
+                  <Progress value={(currentLevel / maxLevel) * 100} />
+                  <div className="mt-3 flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Effet actuel</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-foreground">{currentStat}</span>
+                    <span className="flex items-center gap-1.5 font-medium">
+                      {currentStat}
                       {!isMax && (
                         <>
-                          <ArrowRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-                          <span className="text-success font-bold">{nextStat}</span>
+                          <ArrowRight className="size-3 text-muted-foreground" />
+                          <span className="text-success">{nextStat}</span>
                         </>
                       )}
-                    </div>
-                  </Item>
-
+                    </span>
+                  </div>
+                </CardContent>
+                <CardFooter>
                   {isMax ? (
-                    <Alert variant="success" className="w-full font-bold"><AlertDescription>
-                      Niveau Maximum
-                    </AlertDescription></Alert>
+                    <Badge variant="success" className="w-full justify-center">Niveau maximum</Badge>
                   ) : (
-                    <Button
-                      size="sm"
-                      className={cn("w-full h-9 text-xs font-bold text-white transition hover:brightness-110", details.btnBg)}
-                      onClick={() => onBuyUpgrade(biz.id, type, currentLevel + 1)}
-                    >
+                    <Button className="w-full" onClick={() => onBuyUpgrade(biz.id, type, currentLevel + 1)}>
                       Améliorer · {fmt(nextData?.cost ?? 0)}€
                     </Button>
                   )}
-                </div>
-              </div>
+                </CardFooter>
+              </Card>
             );
           })}
         </div>
       </AppModal.Body>
       <AppModal.Footer left={
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Building2 className="h-4 w-4" />
-          <span>Trésorerie dispo : <strong className="text-foreground">{fmt(biz.treasuryMoney)}€</strong></span>
-        </div>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Building2 className="size-4" />
+          Trésorerie dispo : <strong className="text-foreground">{fmt(biz.treasuryMoney)}€</strong>
+        </span>
       }>
         <AppModal.Button variant="ghost" onClick={onClose}>Fermer</AppModal.Button>
       </AppModal.Footer>
@@ -1280,63 +1005,56 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
   if (loading && !state) {
     return (
       <div className="flex min-h-[360px] items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Chargement des actions…
+        <Spinner /> Chargement des actions…
       </div>
     );
   }
 
+  const pendingOffers = data.jobOffers.filter((o) => o.needsViewerAcceptance);
+
   return (
-    <div className="space-y-4 pb-8">
-      {/* Header */}
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Actions</h2>
-          <p className="text-xs text-muted-foreground">
-            {businesses.length} business{businesses.length > 1 ? 'es' : ''} · chaîne de production
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || mutatingKey !== null}>
-            {loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}
-            Actualiser
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          {businesses.length} business{businesses.length > 1 ? 'es' : ''} · chaîne de production
+        </p>
+        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || mutatingKey !== null}>
+          {loading ? <Spinner /> : <RefreshCw />}
+          Actualiser
+        </Button>
       </div>
 
-      {/* Job offers */}
-      {data.jobOffers.length > 0 && (
+      {pendingOffers.length > 0 && (
         <Card>
-          <CardContent className="px-4 py-3">
-            <p className="mb-2 text-xs font-bold text-muted-foreground">
-              Contrats en attente ({data.jobOffers.length})
-            </p>
-            <div className="space-y-2">
-              {data.jobOffers.filter((o) => o.needsViewerAcceptance).map((offer) => (
-                <Card key={offer.id} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">{offer.business.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {offer.initiatedByRole === 'EMPLOYER' ? offer.employer.username : offer.employee.username} · {offer.salary.toLocaleString('fr-FR')}€/j
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <Button size="sm" className="h-7 text-xs" onClick={async () => { await youApi.respondToBusinessInvitation(offer.id, 'accept'); onReload?.(); }}>Accepter</Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => { await youApi.respondToBusinessInvitation(offer.id, 'reject'); onReload?.(); }}>Refuser</Button>
-                  </div>
-                </CardContent></Card>
-              ))}
-            </div>
+          <CardHeader>
+            <CardTitle>Contrats en attente ({pendingOffers.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {pendingOffers.map((offer) => (
+              <Item key={offer.id} variant="outline" size="sm">
+                <ItemContent>
+                  <ItemTitle>{offer.business.name}</ItemTitle>
+                  <ItemDescription>
+                    {offer.initiatedByRole === 'EMPLOYER' ? offer.employer.username : offer.employee.username} · {offer.salary.toLocaleString('fr-FR')}€/j
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Button size="sm" onClick={async () => { await youApi.respondToBusinessInvitation(offer.id, 'accept'); onReload?.(); }}>Accepter</Button>
+                  <Button size="sm" variant="outline" onClick={async () => { await youApi.respondToBusinessInvitation(offer.id, 'reject'); onReload?.(); }}>Refuser</Button>
+                </ItemActions>
+              </Item>
+            ))}
           </CardContent>
         </Card>
       )}
 
       {/* Business pipeline cards */}
       {businesses.length === 0 ? (
-        <Card>
-          <CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">
-            Aucun business disponible. Créez votre première entreprise avec le bouton ci-dessus.
-          </CardContent>
-        </Card>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyDescription>Aucun business disponible. Crée ta première entreprise depuis l'onglet Carte.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         businesses.map((biz) => (
           <BusinessCard
