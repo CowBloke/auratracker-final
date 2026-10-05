@@ -22,6 +22,8 @@ import {
   Loader2, Plus, Calendar,
   CheckCircle2, XCircle, Pencil, Trash2, Eye,
   Check, X,
+  List,
+  LayoutGrid,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,7 +41,7 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from 'sonner';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 // ─── Option helpers ───────────────────────────────────────────────────────────
 
@@ -804,7 +806,14 @@ export default function Polymarket() {
                 </Select>
               )}
               {(activeTab === 'events' || activeTab === 'admin') && (
-                <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
+                <ToggleGroup type="single" variant="outline" value={viewMode} onValueChange={(value) => value && setViewMode(value as PolymarketViewMode)}>
+                  <ToggleGroupItem value="list" aria-label="Vue liste">
+                    <List />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="grid" aria-label="Vue grille">
+                    <LayoutGrid />
+                  </ToggleGroupItem>
+                </ToggleGroup>
               )}
               <Button className="h-11 px-5" onClick={() => setSuggestionDialogOpen(true)}>
                 <Plus className="h-5 w-5 mr-2" />
