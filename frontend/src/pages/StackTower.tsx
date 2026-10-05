@@ -10,6 +10,7 @@ import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
 import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
 
 const GAME_TYPE = 'stack_tower';
 const STAGE_WIDTH = 900;
@@ -688,7 +689,7 @@ export default function StackTower() {
       <div className="flex items-start justify-center gap-4">
         <div className="flex w-full max-w-[900px] flex-col">
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={STAGE_WIDTH} baseHeight={STAGE_HEIGHT}>
-            <div id="container" className={cn('relative h-full w-full overflow-hidden rounded-xl border border-border bg-background')}>
+            <Card id="container" className="gap-0 py-0 shadow-none relative h-full w-full overflow-hidden"><CardContent className="p-0">
               <div id="game" className="absolute inset-0" />
 
               <div className={cn('pointer-events-none absolute left-4 top-4 rounded-md bg-black/35 px-3 py-1.5 text-sm text-white', state === 'playing' ? 'opacity-100' : 'opacity-0')}>
@@ -731,7 +732,7 @@ export default function StackTower() {
                   </div>
                 </div>
               )}
-            </div>
+            </CardContent></Card>
           </GameFullscreenStage>
         </div>
 

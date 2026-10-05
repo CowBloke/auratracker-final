@@ -311,15 +311,13 @@ function MiniGameModal({
         </div>
         <div className="p-5">
           {result ? (
-            <div className={cn('flex flex-col items-center gap-3 rounded-xl border py-8',
-              result.success ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'
-            )}>
+            <Card className={cn("gap-0 py-0 shadow-none", result.success ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5')}><CardContent className="py-8 flex flex-col items-center gap-3">
               <span className="text-4xl">{result.success ? '✅' : '⚡'}</span>
               <p className={cn('text-lg font-bold', result.success ? 'text-success' : 'text-warning')}>
                 {result.success ? 'Succès !' : 'Effort partiel'}
               </p>
               <p className="text-sm text-muted-foreground">Travail enregistré</p>
-            </div>
+            </CardContent></Card>
           ) : (
             gameType === 'TIMING' ? <TimingGame onResult={handleResult} /> :
             gameType === 'FINANCE' ? <FinanceGame onResult={handleResult} /> :

@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface VoteButtonsProps {
   score: number;
@@ -12,7 +13,7 @@ interface VoteButtonsProps {
 /** Vote pour/contre avec score, partagé par les posts et commentaires du forum. */
 export function VoteButtons({ score, userVote, onVote, orientation = 'horizontal' }: VoteButtonsProps) {
   return (
-    <div className={cn('inline-flex items-center rounded-md border', orientation === 'vertical' && 'flex-col')}>
+    <Card className={cn("gap-0 py-0 shadow-none", orientation === 'vertical' && 'flex-col')}><CardContent className="p-0 inline-flex items-center">
       <Button
         variant={userVote === 1 ? 'secondary' : 'ghost'}
         size="icon-sm"
@@ -40,6 +41,6 @@ export function VoteButtons({ score, userVote, onVote, orientation = 'horizontal
       >
         <ChevronDown />
       </Button>
-    </div>
+    </CardContent></Card>
   );
 }

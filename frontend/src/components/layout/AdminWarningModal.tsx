@@ -5,6 +5,7 @@ import { usersApi, UserPendingWarning } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface SocketWarning {
   id: string;
@@ -195,9 +196,9 @@ export default function AdminWarningModal() {
             </div>
           ) : null}
 
-          <div className={cn('rounded-lg border p-4', config.borderColor, config.bgColor)}>
+          <Card className={cn("gap-0 py-0 shadow-none", config.borderColor, config.bgColor)}><CardContent className="p-4">
             <p className="whitespace-pre-wrap text-sm text-foreground">{currentWarning.message}</p>
-          </div>
+          </CardContent></Card>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Envoyé par {currentWarning.issuedBy.username}</span>

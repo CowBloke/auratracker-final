@@ -2183,14 +2183,14 @@ export default function Clans() {
                                 const isOwnMessage = entry.user?.id === user?.id;
                                 return (
                                   <div key={entry.id} className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}>
-                                    <div className={cn('max-w-[85%] rounded-lg border px-3 py-2', isOwnMessage ? 'bg-secondary' : 'bg-card')}>
+                                    <Card className={cn("gap-0 py-0 shadow-none max-w-[85%]", isOwnMessage ? 'bg-secondary' : 'bg-card')}><CardContent className="px-3 py-2">
                                       <div className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                                         <UsernameDisplay username={entry.user?.username ?? 'Inconnu'} usernameColor={entry.user?.usernameColor ?? null} />
                                         <span>•</span>
                                         <span>{formatDate(entry.createdAt)}</span>
                                       </div>
                                       <p className="whitespace-pre-wrap break-words text-sm">{entry.message}</p>
-                                    </div>
+                                    </CardContent></Card>
                                   </div>
                                 );
                               })

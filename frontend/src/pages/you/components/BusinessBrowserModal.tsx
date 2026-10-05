@@ -295,12 +295,12 @@ function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () 
             <p className="text-xs text-muted-foreground/70">Rev. mensuel</p>
             <p className="mt-1 text-sm font-bold tabular-nums text-success">{fmt(business.monthlyRevenue)}</p>
           </Alert>
-          <div className={cn('rounded-xl border px-3 py-3', net >= 0 ? 'bg-success/8 border-success/20' : 'bg-destructive/8 border-destructive/20')}>
+          <Card className={cn("gap-0 py-0 shadow-none", net >= 0 ? 'bg-success/8 border-success/20' : 'bg-destructive/8 border-destructive/20')}><CardContent className="px-3 py-3">
             <p className="text-xs text-muted-foreground/70">Net / mois</p>
             <p className={cn('mt-1 text-sm font-bold tabular-nums', net >= 0 ? 'text-success' : 'text-destructive')}>
               {net >= 0 ? '+' : ''}{fmt(net)}
             </p>
-          </div>
+          </CardContent></Card>
         </div>
       </div>
       </AppModal.Body>

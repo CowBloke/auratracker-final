@@ -142,10 +142,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                     <p className="text-sm text-muted-foreground">Aucun message pour ce jour.</p>
                   ) : (
                     chatHistoryMessages.map((msg: any) => (
-                      <div
-                        key={msg.id}
-                        className={cn('rounded-lg border px-3 py-2', msg.deletedAt ? 'border-destructive/30 bg-destructive/5' : 'border-border/60 bg-background')}
-                      >
+                      <Card key={msg.id} className={cn("gap-0 py-0 shadow-none", msg.deletedAt ? 'border-destructive/30 bg-destructive/5' : 'border-border/60 bg-background')}><CardContent className="px-3 py-2">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -185,7 +182,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                             </Button>
                           )}
                         </div>
-                      </div>
+                      </CardContent></Card>
                     ))
                   )}
                 </div>

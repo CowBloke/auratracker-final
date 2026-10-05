@@ -642,7 +642,7 @@ export const CarteTab = forwardRef<
                   const meta = getYouNotificationMeta(notification);
                   const ItemIcon = meta.icon;
                   return (
-                    <div key={notification.id} className={cn('rounded-lg border px-3 py-2', meta.tone)}>
+                    <Card key={notification.id} className={cn("gap-0 py-0 shadow-none", meta.tone)}><CardContent className="px-3 py-2">
                       <div className="flex items-start gap-2.5">
                         <div className="mt-0.5 rounded-md bg-background/35 p-1.5">
                           <ItemIcon className="size-3.5" />
@@ -655,7 +655,7 @@ export const CarteTab = forwardRef<
                           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{notification.body}</p>
                         </div>
                       </div>
-                    </div>
+                    </CardContent></Card>
                   );
                 })}
               </div>
