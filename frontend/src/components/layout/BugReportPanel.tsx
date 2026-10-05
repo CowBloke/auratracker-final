@@ -12,7 +12,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -198,15 +197,15 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
             </SheetHeader>
 
             <div className="flex-1 overflow-y-auto px-6 py-4">
-              <form onSubmit={handleSubmit} className={SPACING.SECTION_SPACING}>
+              <form onSubmit={handleSubmit} className="space-y-6">
                 {error ? (
-                  <div className={cn('border border-border/30 px-4 py-3', TYPOGRAPHY.SMALL)}>
+                  <div className={cn('border border-border/30 px-4 py-3', 'text-sm')}>
                     {error}
                   </div>
                 ) : null}
 
-                <div className={SPACING.CARD_SPACING}>
-                  <label className={TYPOGRAPHY.SMALL}>{t('bug_report_label_title')}</label>
+                <div className="space-y-4">
+                  <label className="text-sm">{t('bug_report_label_title')}</label>
                   <Input
                     type="text"
                     value={title}
@@ -215,11 +214,11 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                     maxLength={100}
                     disabled={submitting}
                   />
-                  <p className={cn(TYPOGRAPHY.XS, 'text-right')}>{title.length}/100</p>
+                  <p className={cn('text-xs', 'text-right')}>{title.length}/100</p>
                 </div>
 
-                <div className={SPACING.CARD_SPACING}>
-                  <label className={TYPOGRAPHY.SMALL}>{t('bug_report_label_description')}</label>
+                <div className="space-y-4">
+                  <label className="text-sm">{t('bug_report_label_description')}</label>
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -228,11 +227,11 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                     maxLength={2000}
                     disabled={submitting}
                   />
-                  <p className={cn(TYPOGRAPHY.XS, 'text-right')}>{description.length}/2000</p>
+                  <p className={cn('text-xs', 'text-right')}>{description.length}/2000</p>
                 </div>
 
-                <div className={SPACING.CARD_SPACING}>
-                  <label className={TYPOGRAPHY.SMALL}>{t('bug_report_label_images_optional')}</label>
+                <div className="space-y-4">
+                  <label className="text-sm">{t('bug_report_label_images_optional')}</label>
                   <div className="flex gap-2 items-center">
                     <Button
                       type="button"

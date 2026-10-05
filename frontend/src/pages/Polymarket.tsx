@@ -40,7 +40,6 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from 'sonner';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 // ─── Option helpers ───────────────────────────────────────────────────────────
@@ -829,7 +828,7 @@ export default function Polymarket() {
           </div>
 
           {/* ── Events tab ── */}
-          <TabsContent value="events" className={SPACING.SECTION_SPACING}>
+          <TabsContent value="events" className="space-y-6">
             {openEvents.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
@@ -995,7 +994,7 @@ export default function Polymarket() {
           </TabsContent>
 
           {/* ── Resolved events tab ── */}
-          <TabsContent value="resolved" className={SPACING.SECTION_SPACING}>
+          <TabsContent value="resolved" className="space-y-6">
             {resolvedEvents.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
@@ -1050,7 +1049,7 @@ export default function Polymarket() {
           </TabsContent>
 
           {/* ── History tab ── */}
-          <TabsContent value="history" className={SPACING.SECTION_SPACING}>
+          <TabsContent value="history" className="space-y-6">
             <Tabs value={betHistoryTab} onValueChange={(v) => setBetHistoryTab(v as 'my' | 'all' | 'summary')}>
               <TabsList>
                 <TabsTrigger value="my">Mes paris</TabsTrigger>
@@ -1393,11 +1392,11 @@ export default function Polymarket() {
 
           {/* ── Admin tab ── */}
           {user?.isAdmin && (
-            <TabsContent value="admin" className={SPACING.SECTION_SPACING}>
-              <div className={SPACING.SECTION_SPACING}>
+            <TabsContent value="admin" className="space-y-6">
+              <div className="space-y-6">
                 {/* Pending suggestions */}
                 <div>
-                  <h3 className={TYPOGRAPHY.H4}>Suggestions en attente</h3>
+                  <h3 className="text-lg font-semibold tracking-tight">Suggestions en attente</h3>
                   {pendingSuggestions.length === 0 ? (
                     <Card>
                       <CardContent className="py-8 text-center text-muted-foreground">Aucune suggestion en attente</CardContent>
@@ -1487,7 +1486,7 @@ export default function Polymarket() {
 
                 {/* Events list */}
                 <div>
-                  <h3 className={TYPOGRAPHY.H4}>Événements</h3>
+                  <h3 className="text-lg font-semibold tracking-tight">Événements</h3>
                   {events.length === 0 ? (
                     <Card>
                       <CardContent className="py-8 text-center text-muted-foreground">Aucun événement disponible</CardContent>

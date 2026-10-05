@@ -8,7 +8,6 @@ import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Gamepad2, Coins, Users, Shield, Gavel, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2, Clock } from 'lucide-react';
 
@@ -4767,12 +4766,12 @@ export default function Admin() {
   return (
     <>
     <PageShell>
-      <div className={SPACING.PAGE_CONTENT}>
+      <div className="space-y-6">
         {/* Tabs */}
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as AdminTab)}
-          className={SPACING.SECTION_SPACING}
+          className="space-y-6"
         >
           {/* ── Custom admin navigation with grouped dropdowns ── */}
           {(() => {
@@ -4826,12 +4825,12 @@ export default function Admin() {
 
                 {/* Logs — visible to all */}
                 {navBtn('logs', 'Logs', <Activity className="w-4 h-4 shrink-0" />, () => setActiveTab('logs'),
-                  logStats ? <span className={TYPOGRAPHY.XS}>{logStats.total.toLocaleString()}</span> : undefined
+                  logStats ? <span className="text-xs">{logStats.total.toLocaleString()}</span> : undefined
                 )}
 
                 {/* Sanctions — admin only */}
                 {!isFiscalOnly && navBtn('bans', 'Sanctions', <Gavel className="w-4 h-4 shrink-0" />, () => setActiveTab('bans'),
-                  (bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length) > 0 ? <span className={TYPOGRAPHY.XS}>{bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length}</span> : undefined
+                  (bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length) > 0 ? <span className="text-xs">{bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length}</span> : undefined
                 )}
 
                 {/* Contenu dropdown — admin only */}
@@ -4887,7 +4886,7 @@ export default function Admin() {
                   )}>
                     <TrendingUp className="w-4 h-4 shrink-0" />
                     Statistiques
-                    {onlineStats && <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>}
+                    {onlineStats && <span className="text-xs">{onlineStats.current} en ligne</span>}
                     <ChevronDown className="w-3 h-3 shrink-0" />
                   </button>
                   <div className={dropdownOuter}>

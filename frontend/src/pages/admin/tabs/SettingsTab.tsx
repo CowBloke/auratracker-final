@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/dialog';
 import { DashboardUpdatesManagerDialog } from '@/features/dashboard-updates/DashboardUpdatesManagerDialog';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
-import { SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Download, Gamepad2, Loader2, LogIn, MessageCircle, Save, Sparkles, Terminal, Trash2, Trophy, Search, ShieldAlert, Sparkle, Ban } from 'lucide-react';
 import { ANNOUNCEMENT_MAX_LENGTH, CHAT_BLOCK_MESSAGE_MAX_LENGTH, CHAT_BLOCK_TIMEZONE } from '../constants';
@@ -184,7 +183,7 @@ export function SettingsTab(props: SettingsTabProps) {
   const showDanger = matchesSearch(['danger', 'zone de danger', 'vider le chat', 'purger toutes les entreprises', 'reinitialiser les niveaux', 'purger la marketplace', 'purger le marche de ressources', 'cancel listings', 'delete offers', 'delete listings']);
 
   return (
-    <TabsContent value="settings" className={cn(SPACING.SECTION_SPACING, "space-y-6")}>
+    <TabsContent value="settings" className={cn('space-y-6', "space-y-6")}>
       {/* Dynamic Search Bar */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

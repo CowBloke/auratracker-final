@@ -9,7 +9,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
 type CryptoTradingTerminalProps = {
@@ -259,31 +258,31 @@ export function CryptoTradingTerminal({
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
       <Card>
-        <CardContent className={`p-6 ${SPACING.SECTION_SPACING}`}>
+        <CardContent className={`p-6 space-y-6`}>
           <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>Solde Money</p>
-                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${moneyBalance.toLocaleString()}</p>
+                <p className={cn('text-xs', "text-muted-foreground")}>Solde Money</p>
+                <p className={cn('text-2xl font-semibold tracking-tight sm:text-3xl', "tabular-nums")}>${moneyBalance.toLocaleString()}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>Solde {coinLabel}</p>
-                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{coinBalance.toFixed(4)} {coinUnit}</p>
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
+                <p className={cn('text-xs', "text-muted-foreground")}>Solde {coinLabel}</p>
+                <p className={cn('text-2xl font-semibold tracking-tight sm:text-3xl', "tabular-nums")}>{coinBalance.toFixed(4)} {coinUnit}</p>
+                <p className={cn('text-xs', "text-muted-foreground tabular-nums")}>
                   ≈ ${(coinBalance * currentPrice).toFixed(2)}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>Prix Actuel</p>
+                <p className={cn('text-xs', "text-muted-foreground")}>Prix Actuel</p>
                 <div className="flex items-center gap-2">
-                  <span className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${currentPrice.toFixed(2)}</span>
+                  <span className={cn('text-2xl font-semibold tracking-tight sm:text-3xl', "tabular-nums")}>${currentPrice.toFixed(2)}</span>
                   <span className={cn(
                     "flex items-center",
-                    TYPOGRAPHY.XS,
+                    'text-xs',
                     priceChange >= 0 ? "text-success" : "text-destructive"
                   )}>
                     {priceChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -297,7 +296,7 @@ export function CryptoTradingTerminal({
           <Card>
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>
+                <span className={cn('text-sm', "text-muted-foreground")}>
                   Cours {timePeriod === 'hour' ? '1h' : timePeriod === 'day' ? '24h' : timePeriod === 'week' ? '7j' : '30j'}
                 </span>
                 <div className="flex gap-1 border border-border/30 rounded-md">
@@ -335,13 +334,13 @@ export function CryptoTradingTerminal({
             <TabsContent value="spot" className="mt-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <Card>
-                  <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
+                  <CardContent className={`p-6 space-y-4`}>
                     <div className="flex items-center gap-2">
                       <ArrowUpRight className="w-4 h-4 text-success" />
-                      <h2 className={TYPOGRAPHY.H6}>Acheter</h2>
+                      <h2 className="text-sm font-semibold tracking-tight">Acheter</h2>
                     </div>
                     <div>
-                      <label className={TYPOGRAPHY.XS}>Montant ($)</label>
+                      <label className="text-xs">Montant ($)</label>
                       <div className="flex items-center gap-2 mt-1">
                         <Input type="number" value={buyAmount} onChange={(e) => setBuyAmount(e.target.value)} placeholder="0" className="flex-1 tabular-nums" />
                         <Button type="button" onClick={() => setBuyAmount(moneyBalance.toString())} disabled={loading || moneyBalance <= 0} variant="outline" size="sm" className="text-xs whitespace-nowrap border-success/60 text-success hover:bg-success hover:text-background">Max</Button>
@@ -349,7 +348,7 @@ export function CryptoTradingTerminal({
                       </div>
                     </div>
                     {buyMoneyAmount > 0 && (
-                      <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
+                      <div className={cn('text-xs', "text-muted-foreground space-y-1 pt-1")}>
                         <div className="flex justify-between"><span>Frais ({(feePercentage * 100).toFixed(0)}%)</span><span className="tabular-nums">-${buyFee}</span></div>
                         <div className="flex justify-between"><span>Vous recevrez</span><span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} {coinUnit}</span></div>
                       </div>
@@ -358,13 +357,13 @@ export function CryptoTradingTerminal({
                 </Card>
 
                 <Card>
-                  <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
+                  <CardContent className={`p-6 space-y-4`}>
                     <div className="flex items-center gap-2">
                       <ArrowDownRight className="w-4 h-4 text-destructive" />
-                      <h2 className={TYPOGRAPHY.H6}>Vendre</h2>
+                      <h2 className="text-sm font-semibold tracking-tight">Vendre</h2>
                     </div>
                     <div>
-                      <label className={TYPOGRAPHY.XS}>Quantité ({coinUnit})</label>
+                      <label className="text-xs">Quantité ({coinUnit})</label>
                       <div className="flex items-center gap-2 mt-1">
                         <Input type="number" value={sellAmount} onChange={(e) => setSellAmount(e.target.value)} placeholder="0" step="0.0001" className="flex-1 tabular-nums" />
                         <Button type="button" onClick={() => setSellAmount(coinBalance.toFixed(4))} disabled={loading || coinBalance <= 0} variant="outline" size="sm" className="text-xs whitespace-nowrap border-destructive/60 text-destructive hover:bg-destructive hover:text-background">Max</Button>
@@ -372,7 +371,7 @@ export function CryptoTradingTerminal({
                       </div>
                     </div>
                     {sellCoinAmount > 0 && (
-                      <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
+                      <div className={cn('text-xs', "text-muted-foreground space-y-1 pt-1")}>
                         <div className="flex justify-between"><span>Valeur brute</span><span className="tabular-nums">${sellGrossAmount}</span></div>
                         <div className="flex justify-between"><span>Frais ({(feePercentage * 100).toFixed(0)}%)</span><span className="tabular-nums">-${sellFee}</span></div>
                         <div className="flex justify-between"><span>Vous recevrez</span><span className="tabular-nums text-foreground">${sellNetAmount}</span></div>
@@ -384,20 +383,20 @@ export function CryptoTradingTerminal({
             </TabsContent>
 
             <TabsContent value="leverage" className="mt-4">
-              <div className={SPACING.CARD_SPACING}>
+              <div className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <Card>
-                    <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
-                      <h2 className={TYPOGRAPHY.H6}>Ouvrir une Position</h2>
+                    <CardContent className={`p-6 space-y-4`}>
+                      <h2 className="text-sm font-semibold tracking-tight">Ouvrir une Position</h2>
                       <div>
-                        <label className={TYPOGRAPHY.XS}>Type de Position</label>
+                        <label className="text-xs">Type de Position</label>
                         <div className="flex gap-2 mt-1">
                           <Button type="button" onClick={() => setPositionType('LONG')} variant={positionType === 'LONG' ? 'default' : 'outline'} className="flex-1">LONG</Button>
                           <Button type="button" onClick={() => setPositionType('SHORT')} variant={positionType === 'SHORT' ? 'default' : 'outline'} className="flex-1">SHORT</Button>
                         </div>
                       </div>
                       <div>
-                        <label className={TYPOGRAPHY.XS}>Effet de Levier</label>
+                        <label className="text-xs">Effet de Levier</label>
                         <div className="flex gap-1 mt-1 flex-wrap">
                           {[1, 2, 3, 5, 10].map((lev) => (
                             <Button key={lev} type="button" onClick={() => setLeverage(lev)} variant={leverage === lev ? 'default' : 'outline'} size="sm" className="text-xs">{lev}x</Button>
@@ -405,14 +404,14 @@ export function CryptoTradingTerminal({
                         </div>
                       </div>
                       <div>
-                        <label className={TYPOGRAPHY.XS}>Marge ($)</label>
+                        <label className="text-xs">Marge ($)</label>
                         <div className="flex items-center gap-2 mt-1">
                           <Input type="number" value={marginAmount} onChange={(e) => setMarginAmount(e.target.value)} placeholder="0" className="flex-1 tabular-nums" />
                           <Button type="button" onClick={() => setMarginAmount(moneyBalance.toString())} disabled={loading || moneyBalance <= 0} variant="outline" size="sm" className="text-xs whitespace-nowrap">Max</Button>
                         </div>
                       </div>
                       {marginAmountNum > 0 && (
-                        <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
+                        <div className={cn('text-xs', "text-muted-foreground space-y-1 pt-1")}>
                           <div className="flex justify-between"><span>Valeur notionnelle</span><span className="tabular-nums text-foreground">${notionalValue.toFixed(2)}</span></div>
                           <div className="flex justify-between"><span>Quantité ({coinUnit})</span><span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} {coinUnit}</span></div>
                           <div className="flex justify-between"><span>Prix d'entrée</span><span className="tabular-nums">${currentPrice.toFixed(2)}</span></div>
@@ -425,20 +424,20 @@ export function CryptoTradingTerminal({
                   </Card>
 
                   <Card>
-                    <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
-                      <h2 className={TYPOGRAPHY.H6}>Positions Ouvertes</h2>
+                    <CardContent className={`p-6 space-y-4`}>
+                      <h2 className="text-sm font-semibold tracking-tight">Positions Ouvertes</h2>
                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
                         {openPositions.length === 0 ? (
-                          <p className={cn(TYPOGRAPHY.MUTED, "text-center py-4")}>Aucune position ouverte</p>
+                          <p className={cn('text-sm text-muted-foreground', "text-center py-4")}>Aucune position ouverte</p>
                         ) : (
                           openPositions.map((pos) => (
                             <Card key={pos.id} className={cn("p-3", pos.type === 'LONG' ? "border-success/30" : "border-destructive/30")}>
                               <CardContent className="p-0 space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className={cn(TYPOGRAPHY.XS, "font-medium", pos.type === 'LONG' ? "text-success" : "text-destructive")}>{pos.type} {pos.leverage}x</span>
+                                  <span className={cn('text-xs', "font-medium", pos.type === 'LONG' ? "text-success" : "text-destructive")}>{pos.type} {pos.leverage}x</span>
                                   <Button onClick={() => handleClosePosition(pos.id)} disabled={loading} variant="ghost" size="icon" className="h-6 w-6"><X className="w-3 h-3" /></Button>
                                 </div>
-                                <div className={cn(TYPOGRAPHY.XS, "space-y-1")}>
+                                <div className={cn('text-xs', "space-y-1")}>
                                   <div className="flex justify-between"><span className="text-muted-foreground">Prix d'entrée</span><span className="tabular-nums">${pos.entryPrice.toFixed(2)}</span></div>
                                   <div className="flex justify-between"><span className="text-muted-foreground">Prix actuel</span><span className="tabular-nums">${pos.currentPrice?.toFixed(2) || currentPrice.toFixed(2)}</span></div>
                                   <div className="flex justify-between"><span className="text-muted-foreground">Marge</span><span className="tabular-nums">${pos.marginAmount}</span></div>
@@ -466,13 +465,13 @@ export function CryptoTradingTerminal({
       {error && (
         <Card className="border-destructive/50">
           <CardContent className="p-4">
-            <p className={cn(TYPOGRAPHY.SMALL, "text-center text-destructive")}>{error}</p>
+            <p className={cn('text-sm', "text-center text-destructive")}>{error}</p>
           </CardContent>
         </Card>
       )}
 
       <Card>
-        <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
+        <CardContent className={`p-6 space-y-4`}>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
             <TabsList>
               <TabsTrigger value="my">Mes Transactions</TabsTrigger>
@@ -481,7 +480,7 @@ export function CryptoTradingTerminal({
             <TabsContent value={activeTab} className="mt-4">
               <div className="space-y-1 max-h-[300px] overflow-y-auto">
                 {transactions.length === 0 ? (
-                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-6")}>Aucune transaction</p>
+                  <p className={cn('text-sm text-muted-foreground', "text-center py-6")}>Aucune transaction</p>
                 ) : (
                   transactions.map((tx) => (
                     <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border/10">
@@ -492,7 +491,7 @@ export function CryptoTradingTerminal({
                         <div>
                           <div className="flex items-center gap-2">
                             {activeTab === 'all' && (
-                              <UsernameDisplay username={tx.user.username} usernameColor={tx.user.usernameColor} className={TYPOGRAPHY.XS} />
+                              <UsernameDisplay username={tx.user.username} usernameColor={tx.user.usernameColor} className="text-xs" />
                             )}
                             <span className={cn("text-xs", tx.type === 'BUY' ? "text-success" : "text-destructive")}>
                               {tx.type === 'BUY' ? 'Achat' : 'Vente'}
@@ -502,7 +501,7 @@ export function CryptoTradingTerminal({
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={cn(TYPOGRAPHY.XS, "tabular-nums")}>{tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coinUnit}</p>
+                        <p className={cn('text-xs', "tabular-nums")}>{tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coinUnit}</p>
                         <p className="text-xs text-muted-foreground tabular-nums">@ ${tx.price.toFixed(2)} • Frais: ${tx.fee}</p>
                       </div>
                     </div>

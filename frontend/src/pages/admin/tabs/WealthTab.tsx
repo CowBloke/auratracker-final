@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Cell } from 'recharts';
 import { Download, TrendingUp, Coins, DollarSign, Wallet } from 'lucide-react';
@@ -24,7 +23,7 @@ const BRACKET_COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#c084fc', '#d946ef', '
 
 const MetricRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex items-center justify-between py-1.5 border-b border-border/30 last:border-0">
-    <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>{label}</span>
+    <span className={cn('text-sm', 'text-muted-foreground')}>{label}</span>
     <span className="text-sm font-semibold tabular-nums">{value}</span>
   </div>
 );
@@ -67,10 +66,10 @@ const StatBlock = ({
 
 export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: WealthTabProps) {
   return (
-    <TabsContent value="wealth" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="wealth" className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+          <p className={cn('text-sm', 'text-muted-foreground')}>
             {wealthStats
               ? `${wealthStats.userCount.toLocaleString('fr-FR')} joueurs analysés · Prix AuraCoin : $${wealthStats.auraCoinPrice.toFixed(2)}`
               : 'Statistiques de richesse du serveur'}
@@ -93,7 +92,7 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
           <div className="w-1 h-8 bg-foreground/20" />
         </div>
       ) : !wealthStats ? (
-        <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>Impossible de charger les statistiques.</p>
+        <p className={cn('text-sm text-muted-foreground', 'text-center py-12')}>Impossible de charger les statistiques.</p>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

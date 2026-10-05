@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SPACING } from '@/lib/design-system';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { format } from 'date-fns';
 
@@ -246,7 +245,7 @@ export default function AuraCoin() {
   const chartColor = priceChange >= 0 ? '#22c55e' : '#ef4444';
 
   return (
-    <div className={cn(SPACING.PAGE_PADDING, 'space-y-4 max-w-7xl mx-auto pb-8')}>
+    <div className={cn('px-4 py-6 lg:px-6 lg:py-8', 'space-y-4 max-w-7xl mx-auto pb-8')}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

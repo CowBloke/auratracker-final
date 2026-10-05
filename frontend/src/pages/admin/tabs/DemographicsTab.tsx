@@ -1,6 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Cell, Legend } from 'recharts';
 import { Trophy, UserCog, Users, Wallet } from 'lucide-react';
@@ -53,7 +52,7 @@ export function DemographicsTab({
   formatBigNumber,
 }: DemographicsTabProps) {
   return (
-    <TabsContent value="demographics" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="demographics" className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="border-border/40">
           <CardHeader className="pb-2">
@@ -64,7 +63,7 @@ export function DemographicsTab({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold tabular-nums">{totalDemographicUsers.toLocaleString('fr-FR')}</p>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Hors super admin.</p>
+            <p className={cn('text-xs', 'text-muted-foreground')}>Hors super admin.</p>
           </CardContent>
         </Card>
         <Card className="border-border/40">
@@ -73,7 +72,7 @@ export function DemographicsTab({
           </CardHeader>
           <CardContent>
                 <p className="text-2xl font-bold tabular-nums">{levelDistributionData.length.toLocaleString('fr-FR')}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Seconde, Première, Terminale, etc.</p>
+                <p className={cn('text-xs', 'text-muted-foreground')}>Seconde, Première, Terminale, etc.</p>
           </CardContent>
         </Card>
         <Card className="border-border/40">
@@ -82,7 +81,7 @@ export function DemographicsTab({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold tabular-nums">{classDistributionData.length.toLocaleString('fr-FR')}</p>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Combinaisons niveau + lettre.</p>
+            <p className={cn('text-xs', 'text-muted-foreground')}>Combinaisons niveau + lettre.</p>
           </CardContent>
         </Card>
       </div>
@@ -177,7 +176,7 @@ export function DemographicsTab({
                   {classAveragesData.slice(0, 4).map((entry) => (
                     <div key={entry.label} className="rounded-lg border border-border/40 bg-muted/10 p-3">
                       <p className="text-sm font-medium truncate">{entry.label}</p>
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>n = {entry.count}</p>
+                      <p className={cn('text-xs', 'text-muted-foreground')}>n = {entry.count}</p>
                       <p className="text-sm mt-1">Aura moy: <span className="font-semibold tabular-nums">{Math.round(entry.avgAura).toLocaleString('fr-FR')}</span></p>
                       <p className="text-sm">Argent moy: <span className="font-semibold tabular-nums">{Math.round(entry.avgMoney).toLocaleString('fr-FR')}</span></p>
                     </div>
@@ -205,7 +204,7 @@ export function DemographicsTab({
               <div key={entry.level} className="rounded-lg border border-border/40 bg-muted/10 p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold">{entry.level}</p>
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>{entry.users.length} affichés</p>
+                    <p className={cn('text-xs', 'text-muted-foreground')}>{entry.users.length} affichés</p>
                 </div>
                 <div className="space-y-1.5">
                   {entry.users.map((member, index) => (
@@ -245,7 +244,7 @@ export function DemographicsTab({
                 <div key={entry.classLabel} className="rounded-lg border border-border/40 bg-muted/10 overflow-hidden">
                   <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
                     <p className="text-sm font-semibold truncate">{entry.classLabel}</p>
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>{entry.users.length} utilisateur{entry.users.length > 1 ? 's' : ''}</p>
+                    <p className={cn('text-xs', 'text-muted-foreground')}>{entry.users.length} utilisateur{entry.users.length > 1 ? 's' : ''}</p>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
                     <table className="w-full text-xs">

@@ -7,7 +7,6 @@ import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { SPACING } from '@/lib/design-system';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { ChevronDown, Clock, Download, Gamepad2, Loader2, ScrollText, Search } from 'lucide-react';
 
@@ -97,7 +96,7 @@ export function LogsTab(props: LogsTabProps) {
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
 
   return (
-    <TabsContent value="logs" className={SPACING.CARD_SPACING}>
+    <TabsContent value="logs" className="space-y-4">
       {logStats && (
         <TooltipProvider delayDuration={150}>
           <ToggleGroup

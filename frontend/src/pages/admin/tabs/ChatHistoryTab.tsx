@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { Download, Loader2, RefreshCw, Trash2 } from 'lucide-react';
@@ -30,14 +29,14 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
   } = props as any;
 
   return (
-    <TabsContent value="chat-history" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="chat-history" className="space-y-6">
       <div className="space-y-4">
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h3 className={TYPOGRAPHY.H4}>Historique chat global</h3>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                <h3 className="text-lg font-semibold tracking-tight">Historique chat global</h3>
+                <p className={cn('text-xs', 'text-muted-foreground')}>
                   Tous les messages de tous les temps, classes par jour (00:00 a 00:00 heure de Paris).
                 </p>
               </div>

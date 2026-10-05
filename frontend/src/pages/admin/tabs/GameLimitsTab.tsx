@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TabsContent } from '@/components/ui/tabs';
 import { Loader2, Save, Search, Gamepad2, Coins, Sparkles, FilterX } from 'lucide-react';
-import { SPACING } from '@/lib/design-system';
 import { adminApi } from '@/services/api';
 import { toast } from 'sonner';
 import { GAME_TYPES } from '../adminPageModels';
@@ -61,7 +60,7 @@ export function GameLimitsTab() {
   }
 
   return (
-    <TabsContent value="game-limits" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="game-limits" className="space-y-6">
       <div className="space-y-6">
         {/* Global Defaults Section */}
         <div className="space-y-3">

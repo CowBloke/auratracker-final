@@ -13,7 +13,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { TabsContent } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
   Archive,
@@ -165,7 +164,7 @@ export function InboxTab(props: InboxTabProps) {
   }, [bugMessages, selectedInboxItem]);
 
   return (
-    <TabsContent value="inbox" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="inbox" className="space-y-6">
       {(() => {
         const registrationItems = pendingUsers.map(u => ({
           id: `reg-${u.id}`, type: 'registration' as const, date: new Date(u.createdAt), data: u,
@@ -255,7 +254,7 @@ export function InboxTab(props: InboxTabProps) {
                     Importer {legacyArchivedRegistrationsCount} archive{legacyArchivedRegistrationsCount > 1 ? 's' : ''} locale{legacyArchivedRegistrationsCount > 1 ? 's' : ''}
                   </Button>
                 )}
-                <div className={cn('flex items-center gap-2', TYPOGRAPHY.SMALL)}>
+                <div className={cn('flex items-center gap-2', 'text-sm')}>
                   <Inbox className="h-4 w-4" />
                   <span>{allPending} en attente</span>
                 </div>
@@ -296,7 +295,7 @@ export function InboxTab(props: InboxTabProps) {
                     {inboxFilter === 'archived'
                       ? <Archive className="h-8 w-8 mx-auto text-muted-foreground/50" />
                       : <Inbox className="h-8 w-8 mx-auto text-muted-foreground/50" />}
-                    <p className={TYPOGRAPHY.MUTED}>
+                    <p className="text-sm text-muted-foreground">
                       {inboxFilter === 'archived' ? 'Aucun élément archivé' : 'Boîte de réception vide'}
                     </p>
                   </div>

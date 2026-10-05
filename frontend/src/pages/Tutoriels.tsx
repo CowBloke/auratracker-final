@@ -6,7 +6,6 @@ import { TUTORIAL_FLOWS, TUTORIAL_FLOW_ORDER } from '@/lib/tutorials';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { PageShell } from '@/components/layout/PageShell';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { infoApi } from '@/services/api';
 import {
@@ -58,10 +57,10 @@ function TaxBracketsSection() {
           <Landmark className="h-4 w-4 text-muted-foreground" />
           <CardDescription>Fiscalité</CardDescription>
         </div>
-        <CardTitle className={TYPOGRAPHY.H2}>Impôts journaliers</CardTitle>
+        <CardTitle className="text-2xl font-semibold tracking-tight sm:text-3xl">Impôts journaliers</CardTitle>
       </CardHeader>
-      <CardContent className={SPACING.SECTION_SPACING}>
-        <p className={TYPOGRAPHY.SMALL}>
+      <CardContent className="space-y-6">
+        <p className="text-sm">
           Chaque jour à minuit (heure de Paris), un impôt est automatiquement prélevé sur les comptes
           dépassant un certain seuil de richesse. Le taux appliqué correspond au palier le plus élevé
           atteint par le solde du joueur. Les paliers sont configurés par les administrateurs et peuvent
@@ -69,7 +68,7 @@ function TaxBracketsSection() {
         </p>
 
         <section className="space-y-3">
-          <h3 className={TYPOGRAPHY.MUTED}>Paliers actuels</h3>
+          <h3 className="text-sm text-muted-foreground">Paliers actuels</h3>
 
           {loading ? (
             <div className="divide-y divide-border/30">
@@ -88,10 +87,10 @@ function TaxBracketsSection() {
                   className="flex items-center justify-between py-4 gap-4"
                 >
                   <div className="flex items-center gap-3">
-                    <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+                    <span className={cn('text-sm', 'text-muted-foreground')}>
                       À partir de
                     </span>
-                    <span className={cn(TYPOGRAPHY.SMALL, 'font-semibold tabular-nums')}>
+                    <span className={cn('text-sm', 'font-semibold tabular-nums')}>
                       {bracket.threshold.toLocaleString('fr-FR')} $
                     </span>
                   </div>
@@ -104,14 +103,14 @@ function TaxBracketsSection() {
           )}
 
           {isDefault && !loading && (
-            <p className={cn(TYPOGRAPHY.MUTED, 'text-xs italic')}>
+            <p className={cn('text-sm text-muted-foreground', 'text-xs italic')}>
               Palier par défaut — aucune configuration personnalisée en vigueur.
             </p>
           )}
         </section>
 
         <section className="space-y-3 border-t border-border/30 pt-6">
-          <h3 className={TYPOGRAPHY.MUTED}>Comment fonctionne le calcul ?</h3>
+          <h3 className="text-sm text-muted-foreground">Comment fonctionne le calcul ?</h3>
           <div className="divide-y divide-border/30">
             {[
               {
@@ -132,10 +131,10 @@ function TaxBracketsSection() {
               },
             ].map(({ step, text }) => (
               <div key={step} className="grid grid-cols-[auto_1fr] items-start gap-x-3 py-4">
-                <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums leading-5')}>
+                <span className={cn('text-sm', 'text-muted-foreground tabular-nums leading-5')}>
                   {step}.
                 </span>
-                <p className={cn(TYPOGRAPHY.SMALL, 'leading-5')}>{text}</p>
+                <p className={cn('text-sm', 'leading-5')}>{text}</p>
               </div>
             ))}
           </div>
@@ -143,7 +142,7 @@ function TaxBracketsSection() {
 
         <section className="flex items-start gap-3 border-t border-border/30 pt-6">
           <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-          <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+          <p className={cn('text-sm', 'text-muted-foreground')}>
             Les paliers affichés ci-dessus sont mis à jour en temps réel depuis le tableau de bord
             administrateur. Toute modification est effective dès le prochain prélèvement de minuit.
           </p>
@@ -204,7 +203,7 @@ const SKILLS_DATA = [
 function GuideSection({ title, children }: { title: string; children: import('react').ReactNode }) {
   return (
     <div className="space-y-3">
-      <h3 className={TYPOGRAPHY.MUTED}>{title}</h3>
+      <h3 className="text-sm text-muted-foreground">{title}</h3>
       {children}
     </div>
   );
@@ -213,8 +212,8 @@ function GuideSection({ title, children }: { title: string; children: import('re
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2.5 border-b border-border/20 last:border-0">
-      <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>{label}</span>
-      <span className={cn(TYPOGRAPHY.SMALL, 'font-medium tabular-nums text-right')}>{value}</span>
+      <span className={cn('text-sm', 'text-muted-foreground')}>{label}</span>
+      <span className={cn('text-sm', 'font-medium tabular-nums text-right')}>{value}</span>
     </div>
   );
 }
@@ -227,7 +226,7 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: 'Présentation',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           <strong>You</strong> est une simulation économique multijoueur intégrée à AuraTracker.
           Tu y construis un empire d'entreprises, investis dans celles des autres joueurs, formes des alliances,
           crées des relations — et tentes de t'enrichir sans te faire imposer toute ta fortune.
@@ -262,7 +261,7 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: 'Premiers pas — créer son business',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Au départ tu disposes d'<strong>1 slot business</strong>. Ce slot te permet de posséder une entreprise.
           Pour en débloquer d'autres, tu dois monter le skill <strong>Affaires</strong> (1 slot supplémentaire par niveau).
         </p>
@@ -276,7 +275,7 @@ const youGuideSubsections: TutorialSubsection[] = [
               { n: '5', t: "Dépose de l'argent en trésorerie", d: "La trésorerie est le compte de l'entreprise. Déposer ou retirer n'affecte que toi (propriétaire)." },
             ].map(({ n, t, d }) => (
               <div key={n} className="grid grid-cols-[auto_1fr] items-start gap-x-3 py-3">
-                <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums leading-5 pt-0.5')}>{n}.</span>
+                <span className={cn('text-sm', 'text-muted-foreground tabular-nums leading-5 pt-0.5')}>{n}.</span>
                 <div>
                   <p className="text-sm font-medium">{t}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{d}</p>
@@ -286,13 +285,13 @@ const youGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Slots business et compétence Affaires">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Le nombre de slots dépend directement de ton niveau de compétence <strong>Affaires</strong> :
             niveau 1 = 1 slot, niveau 2 = 2 slots, etc. jusqu'au niveau 10 maximum.
             Chaque session d'entraînement Affaires coûte <strong>2 500 $</strong> et rapporte 25 XP.
             Il faut 100 XP pour passer un niveau. Tu gagnes aussi de l'XP Affaires automatiquement en faisant tourner tes entreprises.
           </p>
-          <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+          <p className={cn('text-sm', 'text-muted-foreground')}>
             Note : les entreprises où tu es employé(e) ne comptent pas dans ton quota de slots.
           </p>
         </GuideSection>
@@ -304,13 +303,13 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: "Types d'entreprises",
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Les entreprises sont réparties en <strong>3 niveaux</strong>. Pour débloquer un niveau supérieur,
           tu dois d'abord avoir possédé (ou posséder) une entreprise du niveau précédent — et ton niveau de
           compétence Affaires doit correspondre.
         </p>
         <GuideSection title="Niveau 1 — Commerce de base">
-          <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground mb-2')}>
+          <p className={cn('text-sm', 'text-muted-foreground mb-2')}>
             Accessibles dès le départ. Génèrent des recettes NPC collectables toutes les 6 heures.
           </p>
           <div className="space-y-2">
@@ -330,7 +329,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Niveau 2 — Entreprises intermédiaires">
-          <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground mb-2')}>
+          <p className={cn('text-sm', 'text-muted-foreground mb-2')}>
             Nécessitent d'avoir déjà un business de niveau 1 et un capital minimum en trésorerie.
           </p>
           <div className="space-y-2">
@@ -369,7 +368,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Spécial — Startup Tech">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             La Startup est unique : elle ne génère aucun revenu mensuel de base. Pour gagner de l'argent,
             il faut <strong>lancer des recherches</strong> (R&D) sur chacun des 3 produits disponibles,
             puis les <strong>déployer</strong>. Chaque déploiement augmente le niveau du produit et donc son revenu quotidien.
@@ -385,14 +384,14 @@ const youGuideSubsections: TutorialSubsection[] = [
     content: (
       <div className="space-y-5">
         <GuideSection title="Revenu mensuel → quotidien">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Chaque entreprise a un revenu mensuel défini. Ce revenu est <strong>divisé par 30</strong> pour
             calculer le revenu journalier (minimum 1 $), qui est automatiquement versé dans la trésorerie chaque jour à minuit.
             Il apparaît dans le journal de transactions comme <em>Revenu quotidien</em>.
           </p>
         </GuideSection>
         <GuideSection title="Collecte NPC (clients virtuels)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Certaines entreprises — Limonade, Épicerie, Restaurant, Chaîne YouTube — ont des clients NPC
             qui paient directement. Tu dois <strong>collecter manuellement</strong> ces recettes depuis l'onglet
             de gestion de ton business. Le cooldown est de <strong>6 heures</strong> entre deux collectes.
@@ -408,14 +407,14 @@ const youGuideSubsections: TutorialSubsection[] = [
           </p>
         </GuideSection>
         <GuideSection title="Ventes d'articles (items)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Les Épiceries, Restaurants, Limonades et Cabinets de médecins peuvent aussi vendre des articles
             spécifiques (boissons, plats, soins…). Ces articles apparaissent dans le panneau de l'entreprise
             depuis Explorer. Chaque vente est enregistrée dans le journal de transactions.
           </p>
         </GuideSection>
         <GuideSection title="Trésorerie">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Tous les revenus (collectes NPC, revenu quotidien, ventes, remboursements de prêts) arrivent dans
             la <strong>trésorerie</strong> de l'entreprise — pas directement dans ton argent personnel.
             Pour récupérer l'argent, tu dois faire un <strong>retrait</strong> depuis le panneau de gestion.
@@ -430,7 +429,7 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: 'Compétences (Skills)',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Il existe <strong>6 compétences</strong>, chacune allant de niveau 1 à 10.
           Chaque compétence se monte de deux façons : en jouant naturellement (XP automatique selon les actions)
           ou en payant une session d'entraînement manuel (coût en $ par session, +25 XP).
@@ -457,7 +456,7 @@ const youGuideSubsections: TutorialSubsection[] = [
             </div>
           ))}
         </div>
-        <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+        <p className={cn('text-sm', 'text-muted-foreground')}>
           La compétence <strong>Illégalité</strong> se gagne uniquement via des actions spécifiques dans le jeu.
           Elle n'est pas entraînable manuellement et donne accès à des mécaniques risquées.
         </p>
@@ -469,12 +468,12 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: 'Investir et Explorer',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           L'onglet <strong>Explorer</strong> liste tous les businesses de tous les joueurs. Tu peux cliquer
           sur n'importe lequel pour interagir — même si tu n'en es pas propriétaire.
         </p>
         <GuideSection title="Investir dans un business">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Tu peux investir une somme dans le business d'un autre joueur. Le propriétaire choisit un
             <strong> niveau de risque</strong> (faible, moyen, élevé), ce qui détermine le rendement possible :
           </p>
@@ -489,7 +488,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           </p>
         </GuideSection>
         <GuideSection title="Demander un prêt (banques)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Depuis une <strong>Banque</strong> en Explorer, tu peux envoyer une demande de prêt au propriétaire.
             Si accepté, le montant est versé directement sur ton argent personnel.
             Le taux d'emprunt est affiché sur la fiche de chaque banque.
@@ -498,28 +497,28 @@ const youGuideSubsections: TutorialSubsection[] = [
           </p>
         </GuideSection>
         <GuideSection title="Transfert d'argent (Service de transfert)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Pour envoyer de l'argent à un autre joueur, tu dois passer par un <strong>Service de transfert</strong>.
             Le propriétaire du service applique des frais (taux visible sur la fiche). Le montant net arrive dans
             l'argent personnel du destinataire, et les frais restent dans la trésorerie du service.
           </p>
         </GuideSection>
         <GuideSection title="Formations (Centre de formation)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Acheter une formation dans un <strong>Centre de formation</strong> t'offre de l'XP en compétence
             <strong> Intelligence</strong>. Le prix de chaque formation est défini par le propriétaire du centre.
             Si tu possèdes toi-même un centre, tu peux y créer des produits de formation et percevoir ces revenus.
           </p>
         </GuideSection>
         <GuideSection title="Postuler comme employé">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Depuis la fiche d'un business en Explorer, si le recrutement est ouvert, tu peux envoyer une candidature.
             L'employeur peut aussi t'envoyer une offre directement. Si acceptée, tu reçois un <strong>salaire journalier</strong>
             versé automatiquement dans ton argent personnel.
           </p>
         </GuideSection>
         <GuideSection title="Rachat et actionnariat">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Tu peux proposer de <strong>racheter</strong> entièrement un business à son propriétaire, ou lui
             soumettre une <strong>proposition d'actionnariat</strong> (tu prends un % du business en échange
             d'un investissement). Ces transactions sont négociées entre joueurs et les parts actionnaires sont
@@ -534,7 +533,7 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: 'Banques et épargne',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Les banques sont des entreprises de <strong>niveau 3</strong> créées par des joueurs.
           Elles proposent deux types de comptes, accessibles depuis l'onglet Banques ou depuis Explorer.
         </p>
@@ -551,12 +550,12 @@ const youGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Intérêts et prêts">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Chaque banque affiche son taux d'emprunt. Ce taux s'applique aux prêts que le propriétaire accorde.
             Les intérêts sur les prêts accordés sont la principale source de revenus d'une banque —
             raison pour laquelle les banques affichent un revenu mensuel de base nul.
           </p>
-          <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+          <p className={cn('text-sm', 'text-muted-foreground')}>
             Monter la compétence <strong>Finance</strong> en déposant de l'argent en banque ouvre des
             optimisations financières futures.
           </p>
@@ -569,7 +568,7 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: 'Relations sociales',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           L'onglet <strong>Social</strong> te permet de tisser des liens avec d'autres joueurs.
           Les relations évoluent et ouvrent des fonctionnalités progressives.
         </p>
@@ -582,14 +581,14 @@ const youGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Mariage et compte commun">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Lorsque deux joueurs se marient, un <strong>compte commun</strong> est créé. Chaque conjoint peut
             y déposer ou retirer librement. En cas de <strong>divorce</strong>, le solde du compte commun
             est divisé en deux parts égales, chacune reversée à son propriétaire.
           </p>
         </GuideSection>
         <GuideSection title="Liaison et suspicion de tricherie">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Un joueur marié peut initier une <strong>liaison</strong> avec un tiers. C'est risqué :
             le/la conjoint(e) peut activer une <strong>suspicion de tricherie</strong>.
           </p>
@@ -607,7 +606,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Procès en justice">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Si tu es accusé(e) de tricherie à tort, tu reçois une notification de dossier judiciaire.
             Tu as deux options : <strong>aller en justice</strong> (et potentiellement récupérer tout l'argent
             de l'accusateur) ou <strong>ignorer</strong> (la situation se résout sans conséquences financières).
@@ -623,7 +622,7 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: 'Emplois et contrats',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           En dehors de tes propres businesses, tu peux être <strong>employé(e)</strong> dans ceux d'autres
           joueurs. Ces postes sont distincts de tes slots business.
         </p>
@@ -650,7 +649,7 @@ const youGuideSubsections: TutorialSubsection[] = [
     title: 'La carte de la ville',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           L'onglet <strong>Carte</strong> affiche une vue de la ville divisée en quartiers.
           Chaque quartier regroupe les businesses d'un secteur. Tu peux cliquer sur les épingles
           pour accéder directement à la fiche d'une entreprise.
@@ -677,7 +676,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     title: 'Bienvenue sur AuraTracker',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           AuraTracker est une plateforme communautaire centrée autour d'un système de <strong>double monnaie</strong> :
           l'<strong>Aura</strong> (prestige, notoriété) et l'<strong>Argent $</strong> (économie in-game).
           La plateforme intègre des jeux, une simulation économique multijoueur (You), un système social complet, des boutiques, des clans et bien plus.
@@ -701,7 +700,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Comment s'inscrire et être approuvé ?">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             La plateforme est réservée à une communauté restreinte. Après inscription, ton compte doit être
             <strong> approuvé par un administrateur</strong> avant de pouvoir accéder à toutes les fonctionnalités.
             Tant qu'il ne l'est pas, certaines pages et actions restent bloquées.
@@ -715,7 +714,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     title: "Gagner de l'argent ($)",
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           L'argent s'obtient via plusieurs sources. Certaines ont un <strong>plafond journalier de 1 000 $</strong> (jeux + quêtes combinés).
         </p>
         <GuideSection title="Sources de revenus">
@@ -748,7 +747,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     title: "L'Aura — prestige et réputation",
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           L'Aura est la mesure de ton prestige sur la plateforme. Contrairement à l'argent, elle ne sert pas à acheter directement des
           choses dans la boutique — elle reflète ta notoriété et débloque des avantages passifs (ex. : la compétence Charisme dans You).
         </p>
@@ -768,7 +767,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Donner de l'Aura">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Depuis le profil d'un autre joueur, tu peux lui envoyer de l'Aura avec un message optionnel.
             Tu peux donner au maximum <strong>100 Aura par jour</strong>, répartis comme tu le souhaites entre plusieurs joueurs.
             Ce compteur se remet à zéro chaque nuit à minuit (heure de Paris).
@@ -783,7 +782,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     content: (
       <div className="space-y-5">
         <GuideSection title="Quêtes (3 par jour)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Chaque jour, <strong>3 quêtes</strong> sont automatiquement assignées depuis un pool de missions disponibles.
             Elles peuvent porter sur les jeux, la vie sociale, l'économie, etc.
             Une fois les 3 complétées, c'est terminé pour la journée — elles se renouvellent à minuit.
@@ -791,7 +790,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           </p>
         </GuideSection>
         <GuideSection title="Pass journalier">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Le <strong>Pass</strong> te permet de réclamer une récompense une fois par jour. Plus tu maintiens ton
             <strong> streak</strong> (jours consécutifs), plus les récompenses sont bonnes.
           </p>
@@ -813,7 +812,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     title: 'Les jeux',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           La plateforme propose plus de 30 jeux accessibles depuis la sidebar. Certains rapportent de l'argent et/ou de l'Aura,
           d'autres sont purement récréatifs. Deux plafonds journaliers s'appliquent aux gains via les jeux :
         </p>
@@ -850,26 +849,26 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     content: (
       <div className="space-y-5">
         <GuideSection title="Groupe (Party)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Tu peux rejoindre ou créer un <strong>groupe</strong> avec d'autres joueurs. Le groupe permet de
             coordonner des activités communes, notamment pour les jeux multijoueurs comme Bomb Party, Poker ou Bataille Navale.
           </p>
         </GuideSection>
         <GuideSection title="Clans">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Les <strong>clans</strong> sont des organisations permanentes avec un nom, une hiérarchie et des
             membres. Rejoindre un clan te permet de participer à des guerres inter-clans et de bénéficier
             d'éventuels boosts achetés par le clan (ex. : bonus d'argent dans les jeux).
           </p>
         </GuideSection>
         <GuideSection title="Messages">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Tu peux envoyer des messages privés à n'importe quel autre joueur approuvé.
             Les conversations sont accessibles depuis le header (icône message).
           </p>
         </GuideSection>
         <GuideSection title="Profil et personnalisation">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Ton profil affiche ton Aura, ton argent, ton rang, et ta bio. Tu peux le personnaliser avec des items
             achetés en boutique : couleur de pseudo, photo de profil, bannière, etc.
           </p>
@@ -883,7 +882,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     content: (
       <div className="space-y-5">
         <GuideSection title="Boutique (Market)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             La boutique officielle vend des items cosmétiques et des boosts, achetables en argent $ ou en Aura.
           </p>
           <div className="divide-y divide-border/20 rounded-xl border border-border/40 overflow-hidden mt-2">
@@ -905,7 +904,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Marketplace (joueur à joueur)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             La <strong>Marketplace</strong> permet aux joueurs de vendre ou acheter des items entre eux.
             Tu peux y proposer un item de ton inventaire à un prix librement fixé. Les transactions sont directes et en $.
           </p>
@@ -918,7 +917,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     title: 'Le jeu You — simulation économique',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           <strong>You</strong> est le cœur économique d'AuraTracker. C'est une simulation où tu crées et gères
           des entreprises, investis dans celles des autres, embauches, empruntes, te maries, et bien plus.
           C'est la principale façon de gagner des sommes importantes en $.
@@ -932,7 +931,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
               { n: '4', t: 'Monte tes compétences', d: '6 compétences évolutives. La plus utile au départ : Affaires (déblocage de slots supplémentaires).' },
             ].map(({ n, t, d }) => (
               <div key={n} className="grid grid-cols-[auto_1fr] items-start gap-x-3 py-3">
-                <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums leading-5 pt-0.5')}>{n}.</span>
+                <span className={cn('text-sm', 'text-muted-foreground tabular-nums leading-5 pt-0.5')}>{n}.</span>
                 <div>
                   <p className="text-sm font-medium">{t}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{d}</p>
@@ -941,7 +940,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
             ))}
           </div>
         </GuideSection>
-        <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+        <p className={cn('text-sm', 'text-muted-foreground')}>
           Pour les détails complets (entreprises, investissements, banques, mariage, emploi…), consulte le <strong className="text-foreground">Guide du jeu You</strong> dans cet onglet Tutoriels.
         </p>
       </div>
@@ -987,7 +986,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
     title: 'Présentation',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Un <strong>clan</strong> est un groupe permanent de joueurs qui partagent une identité commune,
           coopèrent lors de guerres et d'événements, et gèrent ensemble une banque de clan et une Nation.
           Rejoindre ou créer un clan est l'une des façons les plus efficaces de progresser et de peser dans l'économie de la plateforme.
@@ -1019,7 +1018,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
     title: 'Créer un clan',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           N'importe quel joueur approuvé, sans clan actuel, peut créer le sien. La création coûte <strong>100 $</strong>.
         </p>
         <div className="rounded-xl border border-border/40 overflow-hidden">
@@ -1041,7 +1040,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
             </div>
           </div>
         </GuideSection>
-        <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+        <p className={cn('text-sm', 'text-muted-foreground')}>
           Un joueur ne peut appartenir qu'à <strong className="text-foreground">un seul clan à la fois</strong>. Quitter un clan est définitif — tu perds l'accès au chat, à la banque et aux guerres en cours.
         </p>
       </div>
@@ -1060,7 +1059,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
               { n: '3', t: 'Accès aux fonctionnalités', d: "Une fois membre, tu accèdes au chat, à la banque de clan, aux guerres et aux événements." },
             ].map(({ n, t, d }) => (
               <div key={n} className="grid grid-cols-[auto_1fr] items-start gap-x-3 py-3">
-                <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums leading-5 pt-0.5')}>{n}.</span>
+                <span className={cn('text-sm', 'text-muted-foreground tabular-nums leading-5 pt-0.5')}>{n}.</span>
                 <div>
                   <p className="text-sm font-medium">{t}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{d}</p>
@@ -1096,7 +1095,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
             <p className="text-xs text-muted-foreground">Participer aux guerres, aux événements, déposer dans la banque, utiliser le chat, utiliser les items de clan.</p>
           </div>
         </div>
-        <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
+        <p className={cn('text-sm', 'text-muted-foreground')}>
           Le chef peut transférer son rôle à un autre membre à tout moment depuis la fiche du clan. L'ancien chef devient un membre ordinaire.
         </p>
       </div>
@@ -1107,7 +1106,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
     title: 'Banque de clan',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           La <strong>banque de clan</strong> est une caisse collective alimentée par les dépôts volontaires des membres.
           Elle sert à financer les boosts Nation (achat de boost hebdomadaire, marché noir) et peut contribuer aux ressources de guerre.
         </p>
@@ -1133,7 +1132,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
     title: 'Guerres de clans',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Une guerre oppose deux clans sur <strong>7 jours</strong>. Le clan qui accumule le plus de points de combat remporte la victoire.
           Tous les membres reçoivent une récompense en argent et en Aura à la fin, gagnants comme perdants.
         </p>
@@ -1189,7 +1188,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
           </p>
         </GuideSection>
         <GuideSection title="Trophées et récompenses">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Chaque clan démarre avec <strong>1 000 trophées</strong>. Victoire → le gagnant en gagne, le perdant en perd (barème basé sur l'écart de score et de trophées).
             En cas d'égalité parfaite et d'écart de trophées faible, aucun échange. Tous les membres reçoivent argent $ et Aura à la fin de la guerre,
             indépendamment du résultat.
@@ -1203,7 +1202,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
     title: 'Nation',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Chaque clan possède une <strong>Nation</strong> : une entité géopolitique fictive avec un territoire sur la carte mondiale,
           des stats d'influence, un drapeau personnalisé, des alliances et un marché noir d'armes.
         </p>
@@ -1215,14 +1214,14 @@ const clanGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Territoires">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Plus de 30 villes réparties dans le monde (Paris, Tokyo, New York, Dubaï…). Chaque territoire a un bonus thématique
             (ex. Paris → «&nbsp;Influence commerciale&nbsp;», Tokyo → «&nbsp;Puissance technologique&nbsp;»).
             Un seul clan peut occuper un territoire à la fois. Le chef choisit le territoire depuis l'onglet Tag/Nation.
           </p>
         </GuideSection>
         <GuideSection title="Alliances">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Le chef peut envoyer des demandes d'alliance à d'autres clans. Une alliance active empêche les deux clans de se déclarer la guerre.
             Il est possible de <strong>trahir</strong> une alliance (l'autre clan en est notifié, statut passe à «&nbsp;Rompue&nbsp;»).
           </p>
@@ -1239,7 +1238,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
           </p>
         </GuideSection>
         <GuideSection title="Boost hebdomadaire">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Le chef peut activer un <strong>boost hebdomadaire</strong> depuis la Nation (coût : <strong>150 000 $</strong> depuis la banque de clan).
             Ce boost ajoute des points bonus au score de la prochaine guerre de la semaine.
           </p>
@@ -1252,7 +1251,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
     title: 'Événements de clan',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Des <strong>événements</strong> ponctuels peuvent être activés par les administrateurs sur un ou plusieurs clans.
           Chaque événement a des objectifs précis et un classement interne. Les membres participent en accomplissant des activités
           ou en jouant à des mini-jeux exclusifs.
@@ -1285,13 +1284,13 @@ const clanGuideSubsections: TutorialSubsection[] = [
     content: (
       <div className="space-y-5">
         <GuideSection title="Chat de clan">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Le <strong>chat</strong> est un canal privé accessible uniquement aux membres. Les messages s'affichent en temps réel (actualisation toutes les 10 secondes).
             Les 60 derniers messages sont visibles. Un joueur non-membre ne peut pas lire ni envoyer de messages.
           </p>
         </GuideSection>
         <GuideSection title="Messages d'encouragement (pump-up)">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <p className={cn('text-sm', 'leading-relaxed')}>
             Le chef peut créer des <strong>messages d'encouragement</strong> colorés (pump-up messages) affichés en haut du chat.
             Ils servent à motiver les membres avant ou pendant une guerre. Le chef peut en ajouter, modifier ou supprimer à tout moment.
           </p>
@@ -1304,7 +1303,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
     title: 'Items et effets de clan',
     content: (
       <div className="space-y-5">
-        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+        <p className={cn('text-sm', 'leading-relaxed')}>
           Certains items achetés à la boutique ont un effet collectif sur l'ensemble du clan.
           Le chef ou les membres autorisés peuvent les activer depuis l'onglet Inventaire du clan.
         </p>
@@ -1379,7 +1378,7 @@ function GuideDetail({ guide, subsectionId }: { guide: TutorialGuide; subsection
   return (
     <Card className="border-border/60 bg-card shadow-sm">
       <CardHeader className="border-b border-border/30 pb-4">
-        <CardTitle className={TYPOGRAPHY.H2}>{subsection?.title ?? guide.title}</CardTitle>
+        <CardTitle className="text-2xl font-semibold tracking-tight sm:text-3xl">{subsection?.title ?? guide.title}</CardTitle>
       </CardHeader>
       <CardContent className="px-6 py-6">
         {subsection ? (
@@ -1423,9 +1422,9 @@ function TutorialsTab() {
     <div>
       <div className="mb-3 flex items-center gap-2">
         <BookOpen className="h-4 w-4 text-muted-foreground" />
-        <h2 className={TYPOGRAPHY.H2}>Tutoriels interactifs</h2>
+        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Tutoriels interactifs</h2>
       </div>
-      <p className={cn(TYPOGRAPHY.SMALL, 'mb-4 text-muted-foreground')}>
+      <p className={cn('text-sm', 'mb-4 text-muted-foreground')}>
         Des guides pas à pas directement dans l'interface — les explications s'affichent sur les éléments concernés.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

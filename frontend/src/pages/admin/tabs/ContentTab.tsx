@@ -14,7 +14,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { AlertTriangle, Download, Edit2, Gamepad2, Loader2, Package, Plus, Trash2, Upload, X } from 'lucide-react';
@@ -217,7 +216,7 @@ export function ContentTab(props: ContentTabProps) {
                 <div className="w-1 h-8 bg-foreground/20" />
               </div>
             ) : items.length === 0 ? (
-              <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>Aucun objet cree</p>
+              <p className={cn('text-sm text-muted-foreground', 'text-center py-12')}>Aucun objet cree</p>
             ) : (() => {
               const grouped = items.reduce((acc: Record<string, any[]>, item: any) => {
                 acc[item.type] = acc[item.type] || [];

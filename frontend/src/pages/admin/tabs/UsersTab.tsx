@@ -15,7 +15,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
   AlertTriangle,
@@ -102,7 +101,7 @@ export function UsersTab(props: UsersTabProps) {
   } = props;
 
   return (
-    <TabsContent value="users" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="users" className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -162,7 +161,7 @@ export function UsersTab(props: UsersTabProps) {
               <div className="w-1 h-8 bg-foreground/20" />
             </div>
           ) : filteredUsers.length === 0 ? (
-            <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>
+            <p className={cn('text-sm text-muted-foreground', 'text-center py-12')}>
               {userSearchQuery.trim() ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
             </p>
           ) : (

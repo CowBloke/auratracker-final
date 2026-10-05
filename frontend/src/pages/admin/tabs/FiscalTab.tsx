@@ -3,7 +3,6 @@ import { TabsContent } from '@/components/ui/tabs';
 import SanctionModal from '@/components/sanctions/SanctionModal';
 import { Loader2, Gavel } from 'lucide-react';
 import { sanctionsApi } from '@/services/api';
-import { SPACING } from '@/lib/design-system';
 
 export type FiscalTabProps = Record<string, unknown>;
 
@@ -23,7 +22,7 @@ export function FiscalTab(props: FiscalTabProps) {
   } = props as any;
 
   return (
-    <TabsContent value="fiscal" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="fiscal" className="space-y-6">
       <div className="space-y-6">
         <SanctionModal
           open={showFiscalSanctionModal}

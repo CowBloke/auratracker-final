@@ -19,7 +19,6 @@ import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Crown, Edit2, Loader2, Plus, Save, Search, Swords, Trash2 } from 'lucide-react';
 
@@ -111,7 +110,7 @@ export function ClubsTab(props: ClubsTabProps) {
   };
 
   return (
-    <TabsContent value="clubs" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="clubs" className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">

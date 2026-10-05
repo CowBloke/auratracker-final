@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { TabsContent } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { getPageMetaForPath } from '@/lib/page-meta';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
@@ -123,7 +122,7 @@ export function ActivityTab(props: ActivityTabProps) {
   } = props as any;
 
   return (
-        <TabsContent value="activity" className={SPACING.SECTION_SPACING}>
+        <TabsContent value="activity" className="space-y-6">
 
           {/* ── PLATFORM OVERVIEW ── */}
           <div>
@@ -147,34 +146,34 @@ export function ActivityTab(props: ActivityTabProps) {
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-primary" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Membres actifs</p>
+                    <p className={cn('text-xs', 'text-muted-foreground')}>Membres actifs</p>
                   </div>
                   <p className="text-2xl font-bold tabular-nums text-primary">{platformStats?.overview.approvedUsers ?? '—'}</p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{platformStats?.overview.totalUsers ?? '—'} inscrits</p>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>{platformStats?.overview.totalUsers ?? '—'} inscrits</p>
                 </CardContent>
               </Card>
               <Card className="border-border/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <Gamepad2 className="h-3.5 w-3.5 text-primary" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Parties jouées</p>
+                    <p className={cn('text-xs', 'text-muted-foreground')}>Parties jouées</p>
                   </div>
                   <p className="text-2xl font-bold tabular-nums text-primary">
                     {platformStats ? formatBigNumber(platformStats.overview.totalGamesPlayed) : '—'}
                   </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous les temps</p>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>tous les temps</p>
                 </CardContent>
               </Card>
               <Card className="border-success/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <Trophy className="h-3.5 w-3.5 text-success" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Victoires</p>
+                    <p className={cn('text-xs', 'text-muted-foreground')}>Victoires</p>
                   </div>
                   <p className="text-2xl font-bold tabular-nums text-success">
                     {platformStats ? formatBigNumber(platformStats.overview.totalWins) : '—'}
                   </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>
                     {platformStats && platformStats.overview.totalGamesPlayed > 0
                       ? `${Math.round(platformStats.overview.totalWins / platformStats.overview.totalGamesPlayed * 100)}% win rate`
                       : 'win rate'}
@@ -185,36 +184,36 @@ export function ActivityTab(props: ActivityTabProps) {
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <CurrencyIcon type="aura" className="h-3.5 w-3.5" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Aura totale</p>
+                    <p className={cn('text-xs', 'text-muted-foreground')}>Aura totale</p>
                   </div>
                   <p className="text-2xl font-bold tabular-nums text-warning">
                     {platformStats ? formatBigNumber(parseInt(platformStats.overview.totalAura)) : '—'}
                   </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>en circulation</p>
                 </CardContent>
               </Card>
               <Card className="border-warning/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <CurrencyIcon type="money" className="h-3.5 w-3.5" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Argent total</p>
+                    <p className={cn('text-xs', 'text-muted-foreground')}>Argent total</p>
                   </div>
                   <p className="text-2xl font-bold tabular-nums text-warning">
                     {platformStats ? formatBigNumber(platformStats.overview.totalMoney) : '—'}
                   </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>en circulation</p>
                 </CardContent>
               </Card>
               <Card className="border-border/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Transferts</p>
+                    <p className={cn('text-xs', 'text-muted-foreground')}>Transferts</p>
                   </div>
                   <p className="text-2xl font-bold tabular-nums text-primary">
                     {platformStats ? formatBigNumber(platformStats.overview.totalTransfers) : '—'}
                   </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>
                     {platformStats ? `${formatBigNumber(platformStats.overview.totalAuraTransferred)} aura` : 'échangée'}
                   </p>
                 </CardContent>
@@ -227,34 +226,34 @@ export function ActivityTab(props: ActivityTabProps) {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Card className="border-border/40">
                 <CardContent className="p-4 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Argent échangé</p>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>Argent échangé</p>
                   <p className="text-xl font-semibold tabular-nums">{formatBigNumber(platformStats.overview.totalMoneyTransferred)}</p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>via transferts</p>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>via transferts</p>
                 </CardContent>
               </Card>
               <Card className="border-border/40">
                 <CardContent className="p-4 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Mots tapés (Bombe)</p>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>Mots tapés (Bombe)</p>
                   <p className="text-xl font-semibold tabular-nums">{formatBigNumber(platformStats.overview.totalWordsTyped)}</p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous les temps</p>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>tous les temps</p>
                 </CardContent>
               </Card>
               <Card className="border-border/40">
                 <CardContent className="p-4 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Parties (30j)</p>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>Parties (30j)</p>
                   <p className="text-xl font-semibold tabular-nums">
                     {formatBigNumber(platformStats.activityChart.reduce((s: number, d: { count: number }) => s + d.count, 0))}
                   </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>sur les 30 derniers jours</p>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>sur les 30 derniers jours</p>
                 </CardContent>
               </Card>
               <Card className="border-border/40">
                 <CardContent className="p-4 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Moy. / jour (30j)</p>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>Moy. / jour (30j)</p>
                   <p className="text-xl font-semibold tabular-nums">
                     {(platformStats.activityChart.reduce((s: number, d: { count: number }) => s + d.count, 0) / 30).toFixed(1)}
                   </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>parties par jour</p>
+                  <p className={cn('text-xs', 'text-muted-foreground/60')}>parties par jour</p>
                 </CardContent>
               </Card>
             </div>
@@ -276,44 +275,44 @@ export function ActivityTab(props: ActivityTabProps) {
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                     <Card className="border-success/20 bg-success/5">
                       <CardContent className="p-4 space-y-1">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Médiane argent</p>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>Médiane argent</p>
                         <p className="text-xl font-semibold tabular-nums text-success">
                           {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.median)) : '—'}
                         </p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                        <p className={cn('text-xs', 'text-muted-foreground/60')}>
                           moyenne {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.average)) : '—'}
                         </p>
                       </CardContent>
                     </Card>
                     <Card className="border-border/20 bg-muted/5">
                       <CardContent className="p-4 space-y-1">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Médiane aura</p>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>Médiane aura</p>
                         <p className="text-xl font-semibold tabular-nums text-primary">
                           {auraDistribution ? formatBigNumber(Math.round(auraDistribution.median)) : '—'}
                         </p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                        <p className={cn('text-xs', 'text-muted-foreground/60')}>
                           moyenne {auraDistribution ? formatBigNumber(Math.round(auraDistribution.average)) : '—'}
                         </p>
                       </CardContent>
                     </Card>
                     <Card className="border-warning/20 bg-warning/5">
                       <CardContent className="p-4 space-y-1">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inégalité argent</p>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>Inégalité argent</p>
                         <p className="text-xl font-semibold tabular-nums text-warning">
                           {moneyDistribution ? formatPercent(moneyDistribution.gini) : '—'}
                         </p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                        <p className={cn('text-xs', 'text-muted-foreground/60')}>
                           top 10%: {moneyDistribution ? formatPercent(moneyDistribution.top10Share) : '—'}
                         </p>
                       </CardContent>
                     </Card>
                     <Card className="border-border/20 bg-muted/5">
                       <CardContent className="p-4 space-y-1">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inégalité aura</p>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>Inégalité aura</p>
                         <p className="text-xl font-semibold tabular-nums text-primary">
                           {auraDistribution ? formatPercent(auraDistribution.gini) : '—'}
                         </p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                        <p className={cn('text-xs', 'text-muted-foreground/60')}>
                           top 10%: {auraDistribution ? formatPercent(auraDistribution.top10Share) : '—'}
                         </p>
                       </CardContent>
@@ -325,9 +324,9 @@ export function ActivityTab(props: ActivityTabProps) {
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium">Argent par décile</p>
-                          <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Qui détient quoi dans l’économie.</p>
+                          <p className={cn('text-xs', 'text-muted-foreground')}>Qui détient quoi dans l’économie.</p>
                         </div>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-right text-muted-foreground')}>
+                        <p className={cn('text-xs', 'text-right text-muted-foreground')}>
                           Top 1%: {moneyDistribution ? formatPercent(moneyDistribution.top1Share) : '—'}
                         </p>
                       </div>
@@ -355,9 +354,9 @@ export function ActivityTab(props: ActivityTabProps) {
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium">Aura par décile</p>
-                          <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Distribution sociale et prestige accumulé.</p>
+                          <p className={cn('text-xs', 'text-muted-foreground')}>Distribution sociale et prestige accumulé.</p>
                         </div>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-right text-muted-foreground')}>
+                        <p className={cn('text-xs', 'text-right text-muted-foreground')}>
                           Top 1%: {auraDistribution ? formatPercent(auraDistribution.top1Share) : '—'}
                         </p>
                       </div>
@@ -399,7 +398,7 @@ export function ActivityTab(props: ActivityTabProps) {
                     <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-medium">Argent</p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>
                           p10 {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.p10)) : '—'} · p90 {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.p90)) : '—'}
                         </p>
                       </div>
@@ -414,10 +413,10 @@ export function ActivityTab(props: ActivityTabProps) {
                           </div>
                         </div>
                       ))}
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                      <p className={cn('text-xs', 'text-muted-foreground')}>
                         Plus riche: <span className="font-medium text-foreground">{moneyDistribution?.richestUser?.username ?? '—'}</span> · {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.max)) : '—'}
                       </p>
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                      <p className={cn('text-xs', 'text-muted-foreground')}>
                         Comptes à 0 ou moins: {moneyDistribution?.zeroCount.toLocaleString('fr-FR') ?? '—'}
                       </p>
                     </div>
@@ -425,7 +424,7 @@ export function ActivityTab(props: ActivityTabProps) {
                     <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-medium">Aura</p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>
                           p10 {auraDistribution ? formatBigNumber(Math.round(auraDistribution.p10)) : '—'} · p90 {auraDistribution ? formatBigNumber(Math.round(auraDistribution.p90)) : '—'}
                         </p>
                       </div>
@@ -440,10 +439,10 @@ export function ActivityTab(props: ActivityTabProps) {
                           </div>
                         </div>
                       ))}
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                      <p className={cn('text-xs', 'text-muted-foreground')}>
                         Plus riche: <span className="font-medium text-foreground">{auraDistribution?.richestUser?.username ?? '—'}</span> · {auraDistribution ? formatBigNumber(Math.round(auraDistribution.max)) : '—'}
                       </p>
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                      <p className={cn('text-xs', 'text-muted-foreground')}>
                         Comptes à 0 ou moins: {auraDistribution?.zeroCount.toLocaleString('fr-FR') ?? '—'}
                       </p>
                     </div>
@@ -624,9 +623,9 @@ export function ActivityTab(props: ActivityTabProps) {
                   <Trophy className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="min-w-0 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Record absolu</p>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>Record absolu</p>
                   <p className="text-2xl font-semibold tabular-nums">{onlineStats?.allTimeRecord ?? '—'}</p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>
                     {onlineStats?.allTimeRecordAt
                       ? new Date(onlineStats.allTimeRecordAt).toLocaleString('fr-FR', {
                           day: '2-digit',
@@ -643,21 +642,21 @@ export function ActivityTab(props: ActivityTabProps) {
 
             <Card className="border-border/40">
               <CardContent className="space-y-1 p-4">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>En ligne</p>
+                <p className={cn('text-xs', 'text-muted-foreground')}>En ligne</p>
                 <p className="text-2xl font-semibold tabular-nums">{onlineStats?.current ?? '—'}</p>
               </CardContent>
             </Card>
 
             <Card className="border-border/40">
               <CardContent className="space-y-1 p-4">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic 24h</p>
+                <p className={cn('text-xs', 'text-muted-foreground')}>Pic 24h</p>
                 <p className="text-2xl font-semibold tabular-nums">{onlineStats?.peak1d ?? '—'}</p>
               </CardContent>
             </Card>
 
             <Card className="border-border/40">
               <CardContent className="space-y-1 p-4">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic 7 jours</p>
+                <p className={cn('text-xs', 'text-muted-foreground')}>Pic 7 jours</p>
                 <p className="text-2xl font-semibold tabular-nums">{onlineStats?.peak7d ?? '—'}</p>
               </CardContent>
             </Card>
@@ -792,13 +791,13 @@ export function ActivityTab(props: ActivityTabProps) {
                     <div className="mb-4 flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Trophy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic sur la période</span>
+                        <span className={cn('text-xs', 'text-muted-foreground')}>Pic sur la période</span>
                       </div>
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-lg font-semibold tabular-nums">
                           {activityHistory.peak}
                         </span>
-                        <span className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                        <span className={cn('text-xs', 'text-muted-foreground')}>
                           {activityHistory.peakAt
                             ? new Date(activityHistory.peakAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                             : 'joueurs'}
@@ -810,9 +809,9 @@ export function ActivityTab(props: ActivityTabProps) {
                   <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
                     <Card className="border-border/40">
                       <CardContent className="space-y-1 p-4">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Connectés au moins une fois</p>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>Connectés au moins une fois</p>
                         <p className="text-2xl font-semibold tabular-nums">{(activityHistory.insights?.uniqueConnectedUsers ?? 0).toLocaleString('fr-FR')}</p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
+                        <p className={cn('text-xs', 'text-muted-foreground/70')}>
                           Utilisateurs vus en snapshot ou en connexion sur la période
                         </p>
                       </CardContent>
@@ -820,11 +819,11 @@ export function ActivityTab(props: ActivityTabProps) {
 
                     <Card className="border-border/40">
                       <CardContent className="space-y-1 p-4">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Jour le plus joué</p>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>Jour le plus joué</p>
                         {activityHistory.insights?.busiestWeekday ? (
                           <>
                             <p className="text-2xl font-semibold capitalize">{activityHistory.insights.busiestWeekday.label}</p>
-                            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
+                            <p className={cn('text-xs', 'text-muted-foreground/70')}>
                               {activityHistory.insights.busiestWeekday.totalGames.toLocaleString('fr-FR')} parties loggées, {activityHistory.insights.busiestWeekday.uniquePlayers.toLocaleString('fr-FR')} joueur{activityHistory.insights.busiestWeekday.uniquePlayers > 1 ? 's' : ''} actifs
                             </p>
                           </>
@@ -836,13 +835,13 @@ export function ActivityTab(props: ActivityTabProps) {
 
                     <Card className="border-border/40">
                       <CardContent className="space-y-1 p-4">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Heures de pointe</p>
+                        <p className={cn('text-xs', 'text-muted-foreground')}>Heures de pointe</p>
                         {(activityHistory.insights?.peakHours?.length ?? 0) > 0 ? (
                           <>
                             <p className="text-lg font-semibold">
                               {activityHistory.insights!.peakHours.map((entry: { label: string }) => entry.label).join(' • ')}
                             </p>
-                            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
+                            <p className={cn('text-xs', 'text-muted-foreground/70')}>
                               Moyenne de {activityHistory.insights!.peakHours[0]?.averageOnline.toLocaleString('fr-FR')} joueurs en ligne sur le créneau n°1
                             </p>
                           </>
@@ -1157,8 +1156,8 @@ export function ActivityTab(props: ActivityTabProps) {
                     <Activity className="h-6 w-6 opacity-40" />
                   </div>
                   <div className="text-center">
-                    <p className={TYPOGRAPHY.SMALL}>Aucune donnée pour cette période</p>
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés automatiquement</p>
+                    <p className="text-sm">Aucune donnée pour cette période</p>
+                    <p className={cn('text-xs', 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés automatiquement</p>
                   </div>
                 </div>
               )}
@@ -1729,7 +1728,7 @@ export function ActivityTab(props: ActivityTabProps) {
                     </table>
                   </div>
                   {playtimeLeaderboard.totalEntries > playtimeLeaderboard.limit && (
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 text-center mt-3')}>
+                    <p className={cn('text-xs', 'text-muted-foreground/60 text-center mt-3')}>
                       Affichage des {playtimeLeaderboard.limit} premiers sur {playtimeLeaderboard.totalEntries} joueurs
                     </p>
                   )}

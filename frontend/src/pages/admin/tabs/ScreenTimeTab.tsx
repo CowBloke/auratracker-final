@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { TabsContent } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import type { ScreenTimeLeaderboardEntry } from '@/services/api';
 import { Loader2, Clock, Search, RefreshCw, Users, Gauge, CalendarRange } from 'lucide-react';
@@ -76,7 +75,7 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
   const topSeconds = entries[0]?.totalSeconds ?? 0;
 
   return (
-    <TabsContent value="screen-time" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="screen-time" className="space-y-6">
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -161,30 +160,30 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5 text-primary" />
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Utilisateurs actifs</p>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>Utilisateurs actifs</p>
                 </div>
                 <p className="text-2xl font-bold tabular-nums text-primary">{totals.count.toLocaleString('fr-FR')}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>vus en ligne sur la période</p>
+                <p className={cn('text-xs', 'text-muted-foreground/60')}>vus en ligne sur la période</p>
               </CardContent>
             </Card>
             <Card className="border-border/20 ">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-primary" />
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Temps cumulé</p>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>Temps cumulé</p>
                 </div>
                 <p className="text-2xl font-bold tabular-nums text-primary">{formatScreenTime(totals.totalSeconds)}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous utilisateurs confondus</p>
+                <p className={cn('text-xs', 'text-muted-foreground/60')}>tous utilisateurs confondus</p>
               </CardContent>
             </Card>
             <Card className="border-success/20 ">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <Gauge className="h-3.5 w-3.5 text-success" />
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Moyenne / utilisateur</p>
+                  <p className={cn('text-xs', 'text-muted-foreground')}>Moyenne / utilisateur</p>
                 </div>
                 <p className="text-2xl font-bold tabular-nums text-success">{formatScreenTime(totals.averageSeconds)}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>temps d'écran moyen</p>
+                <p className={cn('text-xs', 'text-muted-foreground/60')}>temps d'écran moyen</p>
               </CardContent>
             </Card>
           </div>
@@ -246,12 +245,12 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
                 </table>
               </div>
               {screenTimeSearch.trim() && (
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 text-center mt-2')}>
+                <p className={cn('text-xs', 'text-muted-foreground/60 text-center mt-2')}>
                   {filteredEntries.length} résultat{filteredEntries.length > 1 ? 's' : ''} pour « {screenTimeSearch.trim()} »
                 </p>
               )}
               {screenTimeLeaderboard && screenTimeLeaderboard.totalEntries > screenTimeLeaderboard.limit && (
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 text-center')}>
+                <p className={cn('text-xs', 'text-muted-foreground/60 text-center')}>
                   Affichage des {screenTimeLeaderboard.limit} premiers sur {screenTimeLeaderboard.totalEntries} utilisateurs
                 </p>
               )}

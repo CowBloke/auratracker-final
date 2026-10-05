@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Ban as BanIcon, Loader2, Send, ShieldOff, Trash2 } from 'lucide-react';
 import type { AdminUser, AdminWarning, Ban } from '../../../services/api';
@@ -96,12 +95,12 @@ export function BansTab(props: BansTabProps) {
   };
 
   return (
-    <TabsContent value="bans" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="bans" className="space-y-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardDescription>Gestion des bannissements</CardDescription>
-            <div className={cn('flex items-center gap-2', TYPOGRAPHY.SMALL)}>
+            <div className={cn('flex items-center gap-2', 'text-sm')}>
               <BanIcon className="h-4 w-4" />
               <span>{bans.filter((b) => b.isActive).length} actifs</span>
             </div>
@@ -113,7 +112,7 @@ export function BansTab(props: BansTabProps) {
               <div className="w-1 h-8 bg-foreground/20" />
             </div>
           ) : bans.length === 0 ? (
-            <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>
+            <p className={cn('text-sm text-muted-foreground', 'text-center py-12')}>
               Aucun bannissement
             </p>
           ) : (
@@ -224,7 +223,7 @@ export function BansTab(props: BansTabProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardDescription>Gestion des mutes chat</CardDescription>
-            <div className={cn('flex items-center gap-2', TYPOGRAPHY.SMALL)}>
+            <div className={cn('flex items-center gap-2', 'text-sm')}>
               <ShieldOff className="h-4 w-4" />
               <span>{chatMutes.length} actif{chatMutes.length > 1 ? 's' : ''}</span>
             </div>
@@ -232,7 +231,7 @@ export function BansTab(props: BansTabProps) {
         </CardHeader>
         <CardContent>
           {chatMutes.length === 0 ? (
-            <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>
+            <p className={cn('text-sm text-muted-foreground', 'text-center py-12')}>
               Aucun mute chat actif
             </p>
           ) : (
@@ -344,7 +343,7 @@ export function BansTab(props: BansTabProps) {
           <div className="flex items-center justify-between">
             <CardDescription>Avertissements admin</CardDescription>
             <div className="flex items-center gap-4">
-              <div className={cn('flex items-center gap-2', TYPOGRAPHY.SMALL)}>
+              <div className={cn('flex items-center gap-2', 'text-sm')}>
                 <AlertTriangle className="h-4 w-4" />
                 <span>{warnings.filter((w) => !w.isAcknowledged).length} non lus</span>
               </div>
@@ -365,7 +364,7 @@ export function BansTab(props: BansTabProps) {
               <div className="w-1 h-8 bg-foreground/20" />
             </div>
           ) : warnings.length === 0 ? (
-            <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>
+            <p className={cn('text-sm text-muted-foreground', 'text-center py-12')}>
               Aucun avertissement envoyé
             </p>
           ) : (

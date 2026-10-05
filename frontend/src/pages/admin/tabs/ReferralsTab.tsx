@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Loader2, RefreshCw } from 'lucide-react';
 
@@ -44,7 +43,7 @@ export function ReferralsTab({
   fetchReferralStats,
 }: ReferralsTabProps) {
   return (
-    <TabsContent value="referrals" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="referrals" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold">Statistiques de parrainage</h2>
@@ -59,46 +58,46 @@ export function ReferralsTab({
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
         <Card className="border-border/40">
           <CardContent className="p-4 space-y-1">
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Système</p>
+            <p className={cn('text-xs', 'text-muted-foreground')}>Système</p>
             <p className="text-xl font-semibold tabular-nums">
               {referralStats?.overview.referralEnabled ? 'Actif' : 'Désactivé'}
             </p>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>état global</p>
+            <p className={cn('text-xs', 'text-muted-foreground/60')}>état global</p>
           </CardContent>
         </Card>
         <Card className="border-border/40">
           <CardContent className="p-4 space-y-1">
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Comptes avec code</p>
+            <p className={cn('text-xs', 'text-muted-foreground')}>Comptes avec code</p>
             <p className="text-xl font-semibold tabular-nums">{referralStats?.overview.totalUsersWithCode.toLocaleString('fr-FR') ?? '—'}</p>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>parrains potentiels</p>
+            <p className={cn('text-xs', 'text-muted-foreground/60')}>parrains potentiels</p>
           </CardContent>
         </Card>
         <Card className="border-border/40">
           <CardContent className="p-4 space-y-1">
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inscrits via parrainage</p>
+            <p className={cn('text-xs', 'text-muted-foreground')}>Inscrits via parrainage</p>
             <p className="text-xl font-semibold tabular-nums">{referralStats?.overview.totalReferredUsers.toLocaleString('fr-FR') ?? '—'}</p>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>total filleuls</p>
+            <p className={cn('text-xs', 'text-muted-foreground/60')}>total filleuls</p>
           </CardContent>
         </Card>
         <Card className="border-border/40">
           <CardContent className="p-4 space-y-1">
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Validés</p>
+            <p className={cn('text-xs', 'text-muted-foreground')}>Validés</p>
             <p className="text-xl font-semibold tabular-nums">{referralStats?.overview.approvedReferredUsers.toLocaleString('fr-FR') ?? '—'}</p>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{referralStats ? `${referralStats.overview.conversionRate}% conversion` : 'conversion'}</p>
+            <p className={cn('text-xs', 'text-muted-foreground/60')}>{referralStats ? `${referralStats.overview.conversionRate}% conversion` : 'conversion'}</p>
           </CardContent>
         </Card>
         <Card className="border-border/40">
           <CardContent className="p-4 space-y-1">
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>En attente</p>
+            <p className={cn('text-xs', 'text-muted-foreground')}>En attente</p>
             <p className="text-xl font-semibold tabular-nums">{referralStats?.overview.pendingReferredUsers.toLocaleString('fr-FR') ?? '—'}</p>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{referralStats ? `${referralStats.overview.pendingRate}% du flux` : 'du flux'}</p>
+            <p className={cn('text-xs', 'text-muted-foreground/60')}>{referralStats ? `${referralStats.overview.pendingRate}% du flux` : 'du flux'}</p>
           </CardContent>
         </Card>
         <Card className="border-border/40">
           <CardContent className="p-4 space-y-1">
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Coût total</p>
+            <p className={cn('text-xs', 'text-muted-foreground')}>Coût total</p>
             <p className="text-xl font-semibold tabular-nums">{referralStats ? referralStats.overview.rewardPayoutTotal.toLocaleString('fr-FR') : '—'}</p>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+            <p className={cn('text-xs', 'text-muted-foreground/60')}>
               {referralStats ? `${referralStats.overview.rewardAmount.toLocaleString('fr-FR')} / validation` : 'récompenses'}
             </p>
           </CardContent>
@@ -112,7 +111,7 @@ export function ReferralsTab({
             <p className="text-2xl font-semibold tabular-nums">{referralStats?.overview.rewardedReferrals.toLocaleString('fr-FR') ?? '—'}</p>
           </CardHeader>
           <CardContent>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+            <p className={cn('text-xs', 'text-muted-foreground')}>
               Nombre de filleuls déjà approuvés ayant déclenché le versement.
             </p>
           </CardContent>
@@ -123,7 +122,7 @@ export function ReferralsTab({
             <p className="text-2xl font-semibold tabular-nums">{referralStats?.overview.stalePendingOlderThan7Days.toLocaleString('fr-FR') ?? '—'}</p>
           </CardHeader>
           <CardContent>
-            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+            <p className={cn('text-xs', 'text-muted-foreground')}>
               Comptes parrainés toujours non validés après une semaine.
             </p>
           </CardContent>

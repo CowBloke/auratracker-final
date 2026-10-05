@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { Eye, Loader2, Trash2 } from 'lucide-react';
 
@@ -20,13 +19,13 @@ export function AdsTab(props: AdsTabProps) {
   } = props as any;
 
   return (
-    <TabsContent value="ads" className={SPACING.SECTION_SPACING}>
+    <TabsContent value="ads" className="space-y-6">
       <div className="space-y-8">
         {pendingAds.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">A valider</h2>
-              <span className={TYPOGRAPHY.XS}>{pendingAds.length} en attente</span>
+              <span className="text-xs">{pendingAds.length} en attente</span>
             </div>
             <div className="space-y-3">
               {pendingAdsLoading ? (
@@ -92,7 +91,7 @@ export function AdsTab(props: AdsTabProps) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold">Toutes les publicites</h2>
-            <span className={TYPOGRAPHY.XS}>{allAds.length} au total</span>
+            <span className="text-xs">{allAds.length} au total</span>
           </div>
           {allAdsLoading ? (
             <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement...</CardContent></Card>
