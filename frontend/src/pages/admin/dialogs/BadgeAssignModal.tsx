@@ -87,7 +87,7 @@ export function BadgeAssignModal({
           >
             Annuler
           </Button>
-          <Button onClick={onAward} disabled={!badgeModalBadgeId} className="bg-violet-600 hover:bg-violet-700">
+          <Button onClick={onAward} disabled={!badgeModalBadgeId} className="bg-primary hover:bg-primary">
             <Award className="h-4 w-4 mr-2" />
             Attribuer
           </Button>

@@ -1,33 +1,35 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Award, Camera, LayoutGrid, List, Package, Palette, Search, ShoppingBag, Tag } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { type Ad, type BusinessPurchasedItem, adsApi, marketplaceApi, uploadUserImage, youApi } from '../services/api';
 import { AdCard } from '@/components/ads/AdCard';
 import { AdBanner } from '@/components/ads/AdBanner';
-import { ImagePicker } from '@/components/ui/image-picker';
-import { Loader2, Palette, Camera, Package, ShoppingBag, Tag, Award } from 'lucide-react';
-import { cn, humanizeUiLabel } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
-import { Card, CardContent } from '@/components/ui/card';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { ImagePicker } from '@/components/ui/image-picker';
+import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from '@/components/ui/item';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { PageShell } from '@/components/layout/PageShell';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
-import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
-import { GridSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
 
 interface UserItem {
   id: string;
@@ -467,235 +469,291 @@ export default function Inventory() {
       .filter((section) => section.items.length > 0);
   }, [availableTypes, filteredItems, filterType, sortMode]);
 
+  const canUse = (userItem: UserItem) => {
+    const effect = parseEffect(userItem.item.effect);
+    return (
+      userItem.item.type === 'CONSUMABLE' ||
+      (userItem.item.type === 'COSMETIC' && effect?.type !== 'DOODLE_JUMP_SKIN') ||
+      userItem.item.type === 'UPGRADE' ||
+      effect?.type === 'CLAN_TAG_UNLOCK'
+    );
+  };
+
+  const renderUseAction = (userItem: UserItem, fullWidth = false) => {
+    const effect = parseEffect(userItem.item.effect);
+    if (canUse(userItem)) {
+      return (
+        <Button
+          onClick={() => handleUseItem(userItem)}
+          disabled={using === userItem.id}
+          variant="outline"
+          size="sm"
+          className={fullWidth ? 'w-full' : undefined}
+        >
+          {using === userItem.id ? <Spinner /> : 'Utiliser'}
+        </Button>
+      );
+    }
+    if (effect?.type === 'DOODLE_JUMP_SKIN') {
+      return <span className="text-xs text-muted-foreground">Sélectionnable dans Doodle Jump</span>;
+    }
+    return null;
+  };
+
+  const getPreviewUrl = (userItem: UserItem) => {
+    const effect = parseEffect(userItem.item.effect);
+    return effect?.type === 'DOODLE_JUMP_SKIN' && effect.skinImageUrl ? effect.skinImageUrl : userItem.item.imageUrl;
+  };
+
   const renderInventoryItem = (userItem: UserItem) => {
     const effect = parseEffect(userItem.item.effect);
     const effectIcon = getEffectIcon(effect);
     const effectLabel = getEffectLabel(effect);
-    const previewImageUrl = effect?.type === 'DOODLE_JUMP_SKIN' && effect.skinImageUrl
-      ? effect.skinImageUrl
-      : userItem.item.imageUrl;
-    const isDoodleJumpSkin = effect?.type === 'DOODLE_JUMP_SKIN';
+    const previewImageUrl = getPreviewUrl(userItem);
+
+    if (viewMode === 'list') {
+      return (
+        <Item key={userItem.id}>
+          <ItemMedia variant={previewImageUrl ? 'image' : 'icon'}>
+            {previewImageUrl ? <img src={resolveImageUrl(previewImageUrl)} alt={userItem.item.name} /> : <Package />}
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>
+              {userItem.item.name}
+              <Badge variant="secondary">{typeLabels[userItem.item.type]}</Badge>
+              <Badge variant="outline">×{userItem.quantity}</Badge>
+            </ItemTitle>
+            <ItemDescription>{userItem.item.description}</ItemDescription>
+            {effectLabel ? (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                {effectIcon}
+                {effectLabel}
+              </span>
+            ) : null}
+          </ItemContent>
+          <ItemActions>{renderUseAction(userItem)}</ItemActions>
+        </Item>
+      );
+    }
 
     return (
-      <div
-        key={userItem.id}
-        className={cn(
-          viewMode === 'list'
-            ? 'flex items-center justify-between py-6 px-6'
-            : 'flex h-full flex-col justify-between gap-3 rounded-lg border border-border/40 p-4'
-        )}
-      >
-        <div className={cn('flex gap-4 flex-1', viewMode === 'list' ? 'items-center' : 'items-start')}>
+      <Card key={userItem.id} className="gap-4 overflow-hidden pt-0">
+        <AspectRatio ratio={16 / 9} className="flex items-center justify-center bg-muted">
           {previewImageUrl ? (
-            <img
-              src={resolveImageUrl(previewImageUrl)}
-              alt={userItem.item.name}
-              className={cn('object-cover rounded shrink-0', viewMode === 'list' ? 'w-14 h-14' : 'w-16 h-16')}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
+            <img src={resolveImageUrl(previewImageUrl)} alt={userItem.item.name} className="size-full object-cover" />
           ) : (
-            <div className={cn('bg-muted/30 flex items-center justify-center rounded shrink-0', viewMode === 'list' ? 'w-14 h-14' : 'w-16 h-16')}>
-              <Package className="w-6 h-6 text-muted-foreground" />
-            </div>
+            <Package className="size-10 text-muted-foreground" />
           )}
-
-          <div className="space-y-1 flex-1 min-w-0">
-            <div className={cn('flex items-center gap-4', viewMode === 'grid' && 'flex-wrap gap-2')}>
-              <h2 className={cn(TYPOGRAPHY.H5, "truncate")}>{userItem.item.name}</h2>
-              <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground   shrink-0")}>
-                {typeLabels[userItem.item.type]}
-              </span>
-              <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground shrink-0")}>
-                ×{userItem.quantity}
-              </span>
-            </div>
-            <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground", viewMode === 'list' ? 'max-w-md truncate' : 'line-clamp-3')}>
-              {userItem.item.description}
-            </p>
-            {effectLabel && (
-              <div className={cn("flex items-center gap-2", TYPOGRAPHY.XS, "text-muted-foreground/80")}>
+        </AspectRatio>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span className="truncate">{userItem.item.name}</span>
+            <Badge variant="outline">×{userItem.quantity}</Badge>
+          </CardTitle>
+          <CardDescription className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{typeLabels[userItem.item.type]}</Badge>
+            {effectLabel ? (
+              <span className="flex items-center gap-1">
                 {effectIcon}
-                <span>{effectLabel}</span>
-              </div>
-            )}
-          </div>
-        </div>
+                {effectLabel}
+              </span>
+            ) : null}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="line-clamp-3 text-sm text-muted-foreground">{userItem.item.description}</p>
+        </CardContent>
+        <CardFooter>{renderUseAction(userItem, true)}</CardFooter>
+      </Card>
+    );
+  };
 
-        {(userItem.item.type === 'CONSUMABLE' || (userItem.item.type === 'COSMETIC' && !isDoodleJumpSkin) || userItem.item.type === 'UPGRADE' || effect?.type === 'CLAN_TAG_UNLOCK') ? (
-          <Button
-            onClick={() => handleUseItem(userItem)}
-            disabled={using === userItem.id}
-            variant="outline"
-            size="sm"
-            className={cn('shrink-0', viewMode === 'list' ? 'ml-4' : 'w-full')}
-          >
-            {using === userItem.id ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Utiliser'
-            )}
-          </Button>
-        ) : isDoodleJumpSkin ? (
-          <span className={cn(TYPOGRAPHY.XS, "shrink-0 text-muted-foreground", viewMode === 'list' ? 'ml-4' : '')}>
-            Sélectionnable dans Doodle Jump
-          </span>
-        ) : null}
+  const renderItems = (list: UserItem[], adKeyPrefix: string) => {
+    if (viewMode === 'list') {
+      return (
+        <Card className="py-2">
+          <ItemGroup>
+            {list.map((userItem, index) => (
+              <div key={userItem.id}>
+                {index > 0 ? <ItemSeparator /> : null}
+                {renderInventoryItem(userItem)}
+              </div>
+            ))}
+          </ItemGroup>
+        </Card>
+      );
+    }
+
+    const showAds = cardAds.length > 0 && !user?.hasAdblock;
+    return (
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {showAds
+          ? list.flatMap((item, i) => {
+              const el = renderInventoryItem(item);
+              return (i + 1) % 6 === 0
+                ? [el, <AdCard key={`${adKeyPrefix}-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />]
+                : [el];
+            })
+          : list.map(renderInventoryItem)}
       </div>
     );
   };
 
+  const swatchButton = (color: string, selected: boolean, onClick: () => void, label: string) => (
+    <button
+      key={color}
+      type="button"
+      aria-label={label}
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn('size-6 rounded-full border-2 transition-transform hover:scale-110', selected ? 'border-foreground' : 'border-transparent')}
+      style={{ backgroundColor: color }}
+    />
+  );
+
   if (loading) {
     return (
-      <div className="w-full space-y-8 px-4 pb-6 lg:px-6 lg:pb-8">
-        <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
-          <GridSkeleton cards={3} columns="sm:grid-cols-3" />
+      <PageShell>
+        <PageHeader title="Inventaire" description="Vos objets, cosmétiques et achats." />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, index) => (
+            <Skeleton key={index} className="h-40" />
+          ))}
         </div>
-        <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
-          <ListSkeleton rows={6} />
-        </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
     <PageShell>
-      <div className={SPACING.PAGE_CONTENT}>
-      <div className={SPACING.SECTION_SPACING}>
+      <PageHeader title="Inventaire" description="Vos objets, cosmétiques et achats." />
 
-        {/* Main tab: Inventaire / Achats */}
-        <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'inventory' | 'purchases')}>
-          <TabsList className="border-border/60 bg-muted/20">
-            <TabsTrigger value="inventory" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-              Inventaire
-            </TabsTrigger>
-            <TabsTrigger value="purchases" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-              Achats
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as 'inventory' | 'purchases')}>
+        <TabsList>
+          <TabsTrigger value="inventory">Inventaire</TabsTrigger>
+          <TabsTrigger value="purchases">Achats</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-        {mainTab === 'purchases' ? (
-          purchasesLoading ? (
-            <ListSkeleton />
-          ) : purchases.length === 0 ? (
-            <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>Aucun achat en boutique pour l'instant</p>
-          ) : (
-            <Card>
-              <CardContent className="p-0 divide-y divide-border/30">
-                {purchases.map((p) => (
-                  <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/30 text-xl overflow-hidden">
-                      {p.itemImageUrl
-                        ? <img src={p.itemImageUrl} className="h-10 w-10 object-cover" alt={p.itemLabel} />
-                        : (p.itemEmoji ?? <ShoppingBag className="h-5 w-5 text-muted-foreground" />)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{p.itemLabel}</p>
-                      <p className="text-xs text-muted-foreground">{p.businessName} · {p.price.toLocaleString('fr-FR')} money</p>
-                    </div>
-                    {p.quantity > 1 && (
-                      <span className="text-xs font-semibold text-muted-foreground bg-muted/40 rounded-full px-2 py-0.5">×{p.quantity}</span>
-                    )}
-                    <span className="text-xs text-muted-foreground shrink-0">
-                      {new Date(p.acquiredAt).toLocaleDateString('fr-FR')}
-                    </span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )
+      {mainTab === 'purchases' ? (
+        purchasesLoading ? (
+          <Skeleton className="h-64 w-full" />
+        ) : purchases.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ShoppingBag />
+              </EmptyMedia>
+              <EmptyTitle>Aucun achat</EmptyTitle>
+              <EmptyDescription>Aucun achat en boutique pour l&apos;instant.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
-          <>
-
-        {availableTypes.length > 1 && (
-          <Tabs value={filterType} onValueChange={setFilterType}>
-            <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
-              <TabsTrigger value="ALL" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-                Tous
-              </TabsTrigger>
-              {availableTypes.map((t) => (
-                <TabsTrigger key={t} value={t} className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-                  {typeLabels[t]}
-                </TabsTrigger>
+          <Card className="py-2">
+            <ItemGroup>
+              {purchases.map((purchase, index) => (
+                <div key={purchase.id}>
+                  {index > 0 ? <ItemSeparator /> : null}
+                  <Item size="sm">
+                    <ItemMedia variant={purchase.itemImageUrl ? 'image' : 'icon'}>
+                      {purchase.itemImageUrl ? (
+                        <img src={purchase.itemImageUrl} alt={purchase.itemLabel} />
+                      ) : (
+                        purchase.itemEmoji ?? <ShoppingBag />
+                      )}
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>
+                        {purchase.itemLabel}
+                        {purchase.quantity > 1 ? <Badge variant="outline">×{purchase.quantity}</Badge> : null}
+                      </ItemTitle>
+                      <ItemDescription>
+                        {purchase.businessName} · {purchase.price.toLocaleString('fr-FR')} money
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <span className="text-xs text-muted-foreground">{new Date(purchase.acquiredAt).toLocaleDateString('fr-FR')}</span>
+                    </ItemActions>
+                  </Item>
+                </div>
               ))}
-            </TabsList>
-          </Tabs>
-        )}
-
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="w-full md:max-w-sm">
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher un objet..."
-              className="bg-transparent"
-            />
-          </div>
-
-          <div className="flex w-full items-center justify-end gap-2 md:w-auto">
-            <Select value={sortMode} onValueChange={(value) => setSortMode(value as InventorySortMode)}>
-              <SelectTrigger className="w-full md:w-[210px]">
-                <SelectValue placeholder="Trier" />
-              </SelectTrigger>
-              <SelectContent>
-                {INVENTORY_SORT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
+            </ItemGroup>
+          </Card>
+        )
+      ) : (
+        <>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            {availableTypes.length > 1 ? (
+              <ToggleGroup type="single" variant="outline" value={filterType} onValueChange={(value) => value && setFilterType(value)} className="flex-wrap">
+                <ToggleGroupItem value="ALL">Tous</ToggleGroupItem>
+                {availableTypes.map((type) => (
+                  <ToggleGroupItem key={type} value={type}>
+                    {typeLabels[type]}
+                  </ToggleGroupItem>
                 ))}
-              </SelectContent>
-            </Select>
-
-            <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
+              </ToggleGroup>
+            ) : (
+              <span />
+            )}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <InputGroup className="sm:w-64">
+                <InputGroupAddon>
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Rechercher un objet…" />
+              </InputGroup>
+              <Select value={sortMode} onValueChange={(value) => setSortMode(value as InventorySortMode)}>
+                <SelectTrigger className="w-full sm:w-52">
+                  <SelectValue placeholder="Trier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INVENTORY_SORT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <ToggleGroup type="single" variant="outline" value={viewMode} onValueChange={(value) => value && setViewMode(value as InventoryViewMode)}>
+                <ToggleGroupItem value="list" aria-label="Vue liste">
+                  <List />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="grid" aria-label="Vue grille">
+                  <LayoutGrid />
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
-        </div>
 
-        {/* Items */}
-        {items.length === 0 ? (
-          <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-            Inventaire vide
-          </p>
-        ) : displayedItems.length === 0 ? (
-          <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-            Aucun objet ne correspond à votre recherche
-          </p>
-        ) : (
-          filterType === 'ALL' ? (
-            <div className="space-y-8">
+          {items.length === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Package />
+                </EmptyMedia>
+                <EmptyTitle>Inventaire vide</EmptyTitle>
+                <EmptyDescription>Achetez des objets en boutique pour les retrouver ici.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : displayedItems.length === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>Aucun résultat</EmptyTitle>
+                <EmptyDescription>Aucun objet ne correspond à votre recherche.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : filterType === 'ALL' ? (
+            <div className="flex flex-col gap-8">
               {groupedDisplayedItems.flatMap((section, sectionIdx) => {
                 const sectionEl = (
-                  <div key={section.type} className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
-                        {section.label}
-                      </h2>
-                      <div className="h-px flex-1 bg-border/70" />
-                      <span className="text-xs text-muted-foreground">
-                        {section.items.length}
-                      </span>
+                  <section key={section.type} className="flex flex-col gap-4">
+                    <div className="flex items-center gap-4">
+                      <h2 className="text-lg font-semibold tracking-tight">{section.label}</h2>
+                      <Separator className="flex-1" />
+                      <Badge variant="secondary">{section.items.length}</Badge>
                     </div>
-
-                    <Card>
-                      <CardContent className="p-0">
-                        <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
-                          <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
-                            {viewMode === 'grid' && cardAds.length > 0 && !user?.hasAdblock
-                              ? section.items.flatMap((item, i) => {
-                                  const el = renderInventoryItem(item);
-                                  if ((i + 1) % 6 === 0) {
-                                    return [el, <AdCard key={`inv-ad-${sectionIdx}-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />];
-                                  }
-                                  return [el];
-                                })
-                              : section.items.map(renderInventoryItem)
-                            }
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                    {renderItems(section.items, `inv-ad-${sectionIdx}`)}
+                  </section>
                 );
                 if (sectionIdx === 0 && bannerAd && !bannerDismissed && !user?.hasAdblock) {
                   return [sectionEl, <AdBanner key="inv-banner" ad={bannerAd} onDismiss={() => setBannerDismissed(true)} />];
@@ -704,150 +762,97 @@ export default function Inventory() {
               })}
             </div>
           ) : (
-            <Card>
-              <CardContent className="p-0">
-                <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
-                  <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
-                    {displayedItems.map(renderInventoryItem)}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        )}
+            renderItems(displayedItems, 'inv-ad-filtered')
+          )}
         </>
-        )}
-      </div>
+      )}
 
-      {/* Color Picker Dialog */}
+      {/* Couleur de pseudo */}
       <Dialog open={colorDialogOpen} onOpenChange={setColorDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
-              <Palette className="w-5 h-5" />
-              Choisir une couleur
-            </DialogTitle>
-            <DialogDescription>
-              Sélectionnez la couleur de votre pseudo dans le chat.
-            </DialogDescription>
+            <DialogTitle>Choisir une couleur</DialogTitle>
+            <DialogDescription>Sélectionnez la couleur de votre pseudo dans le chat.</DialogDescription>
           </DialogHeader>
-
-          <div className="py-4 space-y-4">
-            {/* Color preview */}
-            <div className="flex items-center justify-center p-4 bg-muted/30 rounded">
-              <span 
-                className={TYPOGRAPHY.H5}
-                style={{ color: selectedColor }}
-              >
+          <FieldGroup>
+            <div className="flex items-center justify-center rounded-md border p-4">
+              <span className="text-lg font-semibold" style={{ color: selectedColor }}>
                 {user?.username}
               </span>
             </div>
-
-            {/* Preset colors */}
-            <div className="grid grid-cols-10 gap-2">
-              {PRESET_COLORS.map((color) => (
-                <Button
-                  key={color}
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
+            <Field>
+              <FieldLabel>Couleurs prédéfinies</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_COLORS.map((color) =>
+                  swatchButton(color, selectedColor === color, () => {
                     setSelectedColor(color);
                     setCustomColor(color);
+                  }, color)
+                )}
+              </div>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="custom-color-hex">Couleur personnalisée</FieldLabel>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="color"
+                  aria-label="Sélecteur de couleur"
+                  value={customColor}
+                  onChange={(event) => {
+                    setCustomColor(event.target.value);
+                    setSelectedColor(event.target.value);
                   }}
-                  className={cn(
-                    "w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 p-0",
-                    selectedColor === color ? 'border-foreground scale-110' : 'border-transparent'
-                  )}
-                  style={{ backgroundColor: color }}
+                  className="size-9 cursor-pointer p-1"
                 />
-              ))}
-            </div>
-
-            {/* Custom color input */}
-            <div className="flex items-center gap-2">
-              <Input
-                type="color"
-                value={customColor}
-                onChange={(e) => {
-                  setCustomColor(e.target.value);
-                  setSelectedColor(e.target.value);
-                }}
-                className="h-10 w-10 cursor-pointer p-1"
-              />
-              <Input
-                value={customColor}
-                onChange={(e) => {
-                  setCustomColor(e.target.value);
-                  if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
-                    setSelectedColor(e.target.value);
-                  }
-                }}
-                placeholder="#ffffff"
-                className="flex-1 bg-transparent font-mono"
-              />
-            </div>
-          </div>
-
+                <Input
+                  id="custom-color-hex"
+                  value={customColor}
+                  onChange={(event) => {
+                    setCustomColor(event.target.value);
+                    if (/^#[0-9A-Fa-f]{6}$/.test(event.target.value)) setSelectedColor(event.target.value);
+                  }}
+                  placeholder="#ffffff"
+                  className="flex-1 font-mono"
+                />
+              </div>
+            </Field>
+          </FieldGroup>
           <DialogFooter>
             <Button variant="outline" onClick={() => setColorDialogOpen(false)}>
               Annuler
             </Button>
-            <Button 
-              onClick={applyUsernameColor}
-              disabled={using !== null}
-            >
-              {using ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
+            <Button onClick={applyUsernameColor} disabled={using !== null}>
+              {using ? <Spinner /> : <Palette />}
               Appliquer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Profile Picture Dialog */}
+      {/* Photo / bannière de profil */}
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
-              <Camera className="w-5 h-5" />
-              {imageEffectType === 'PROFILE_BANNER' ? 'Banniere de profil' : 'Photo de profil'}
-            </DialogTitle>
+            <DialogTitle>{imageEffectType === 'PROFILE_BANNER' ? 'Bannière de profil' : 'Photo de profil'}</DialogTitle>
             <DialogDescription>
               {imageEffectType === 'PROFILE_BANNER'
-                ? 'Importez la banniere qui sera affichee en haut de votre profil joueur.'
-                : 'Importez votre photo de profil qui sera affichee dans le chat.'}
+                ? 'Importez la bannière qui sera affichée en haut de votre profil joueur.'
+                : 'Importez votre photo de profil qui sera affichée dans le chat.'}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="py-4 space-y-4">
-            {/* Preview */}
-            {imageUrl && (
-              <div className="flex justify-center">
-                <div className={cn(
-                  "overflow-hidden border-2 border-border bg-muted/20",
-                  imageEffectType === 'PROFILE_BANNER' ? "h-24 w-full rounded-2xl" : "w-20 h-20 rounded-full"
-                )}>
-                  <img
-                    src={imageUrl}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <ImagePicker
-              value={imageUrl}
-              onChange={setImageUrl}
-              uploadFn={uploadProfileImageFile}
-              hidePreview
-            />
-          </div>
-
+          {imageUrl ? (
+            <div className={cn('overflow-hidden border bg-muted', imageEffectType === 'PROFILE_BANNER' ? 'h-24 w-full rounded-xl' : 'mx-auto size-20 rounded-full')}>
+              <img
+                src={imageUrl}
+                alt="Aperçu"
+                className="size-full object-cover"
+                onError={(event) => {
+                  (event.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          ) : null}
+          <ImagePicker value={imageUrl} onChange={setImageUrl} uploadFn={uploadProfileImageFile} hidePreview />
           <DialogFooter>
             <Button
               variant="outline"
@@ -860,195 +865,140 @@ export default function Inventory() {
             >
               Annuler
             </Button>
-            <Button 
-              onClick={applyProfilePicture}
-              disabled={
-                using !== null ||
-                !imageUrl.trim()
-              }
-            >
-              {using ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
+            <Button onClick={applyProfilePicture} disabled={using !== null || !imageUrl.trim()}>
+              {using ? <Spinner /> : <Camera />}
               Appliquer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Clan Tag Unlock Dialog */}
-      <Dialog open={clanTagDialogOpen} onOpenChange={(open) => {
-        setClanTagDialogOpen(open);
-        if (!open) { setClanTagItem(null); setClanTagError(null); }
-      }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
-              <Tag className="w-5 h-5" />
-              Débloquer le tag de clan
-            </DialogTitle>
-            <DialogDescription>
-              Cela débloquera le tag pour ton clan. Tu pourras ensuite le personnaliser dans les paramètres du clan. Action irréversible.
-            </DialogDescription>
-          </DialogHeader>
-          {clanTagError && (
-            <p className="text-sm text-destructive px-1">{clanTagError}</p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setClanTagDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={applyClanTagUnlock} disabled={using !== null}>
-              {using ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+      {/* Tag de clan */}
+      <AlertDialog
+        open={clanTagDialogOpen}
+        onOpenChange={(open) => {
+          setClanTagDialogOpen(open);
+          if (!open) {
+            setClanTagItem(null);
+            setClanTagError(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Débloquer le tag de clan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cela débloquera le tag pour votre clan. Vous pourrez ensuite le personnaliser dans les paramètres du clan. Action irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {clanTagError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{clanTagError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={using !== null}
+              onClick={(event) => {
+                event.preventDefault();
+                void applyClanTagUnlock();
+              }}
+            >
+              {using ? <Spinner /> : <Tag />}
               Débloquer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Custom Badge Dialog */}
-      <Dialog open={customBadgeDialogOpen} onOpenChange={(open) => {
-        setCustomBadgeDialogOpen(open);
-        if (!open) setCustomBadgeItem(null);
-      }}>
-        <DialogContent className="max-w-md">
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Badge personnalisé */}
+      <Dialog
+        open={customBadgeDialogOpen}
+        onOpenChange={(open) => {
+          setCustomBadgeDialogOpen(open);
+          if (!open) setCustomBadgeItem(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className={cn(TYPOGRAPHY.H5, "flex items-center gap-2")}>
-              <Award className="w-5 h-5" />
-              Créer un badge personnalisé
-            </DialogTitle>
-            <DialogDescription>
-              Conçois ton badge. Un admin le validera avant qu'il soit ajouté à ton profil.
-            </DialogDescription>
+            <DialogTitle>Créer un badge personnalisé</DialogTitle>
+            <DialogDescription>Concevez votre badge. Un admin le validera avant qu&apos;il soit ajouté à votre profil.</DialogDescription>
           </DialogHeader>
-
-          <div className="py-2 space-y-4">
-            {/* Live preview */}
+          <FieldGroup>
             <div className="flex justify-center py-2">
-              <BadgeIcon badge={{
-                id: 'preview',
-                name: customBadgeName || 'Nom du badge',
-                description: customBadgeDesc || '',
-                backgroundType: 'solid',
-                backgroundColor: customBadgeBg,
-                icon: customBadgeIcon,
-                iconColor: '#ffffff',
-                borderColor: customBadgeBorder,
-                category: 'custom',
-                rarity: customBadgeRarity,
-              }} size="lg" />
-            </div>
-
-            {/* Name */}
-            <div className="space-y-1.5">
-              <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Nom</label>
-              <Input
-                value={customBadgeName}
-                onChange={(e) => setCustomBadgeName(e.target.value)}
-                placeholder="Nom du badge"
-                maxLength={40}
+              <BadgeIcon
+                badge={{
+                  id: 'preview',
+                  name: customBadgeName || 'Nom du badge',
+                  description: customBadgeDesc || '',
+                  backgroundType: 'solid',
+                  backgroundColor: customBadgeBg,
+                  icon: customBadgeIcon,
+                  iconColor: '#ffffff',
+                  borderColor: customBadgeBorder,
+                  category: 'custom',
+                  rarity: customBadgeRarity,
+                }}
+                size="lg"
               />
             </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Description</label>
-              <Textarea
-                value={customBadgeDesc}
-                onChange={(e) => setCustomBadgeDesc(e.target.value)}
-                placeholder="Description du badge"
-                maxLength={120}
-                rows={2}
-              />
-            </div>
-
-            {/* Icon + Rarity row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Icône (emoji)</label>
-                <Input
-                  value={customBadgeIcon}
-                  onChange={(e) => setCustomBadgeIcon(e.target.value)}
-                  placeholder="⭐"
-                  maxLength={4}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Rareté</label>
+            <Field>
+              <FieldLabel htmlFor="badge-name">Nom</FieldLabel>
+              <Input id="badge-name" value={customBadgeName} onChange={(event) => setCustomBadgeName(event.target.value)} placeholder="Nom du badge" maxLength={40} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="badge-description">Description</FieldLabel>
+              <Textarea id="badge-description" value={customBadgeDesc} onChange={(event) => setCustomBadgeDesc(event.target.value)} placeholder="Description du badge" maxLength={120} rows={2} />
+            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel htmlFor="badge-icon">Icône (emoji)</FieldLabel>
+                <Input id="badge-icon" value={customBadgeIcon} onChange={(event) => setCustomBadgeIcon(event.target.value)} placeholder="⭐" maxLength={4} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="badge-rarity">Rareté</FieldLabel>
                 <Select value={customBadgeRarity} onValueChange={setCustomBadgeRarity}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="badge-rarity" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {RARITY_OPTIONS.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    {RARITY_OPTIONS.map((rarity) => (
+                      <SelectItem key={rarity.value} value={rarity.value}>
+                        {rarity.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
             </div>
-
-            {/* Background color */}
-            <div className="space-y-1.5">
-              <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Fond</label>
-              <div className="flex flex-wrap gap-2">
-                {BADGE_BG_PRESETS.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCustomBadgeBg(c)}
-                    className={cn(
-                      "w-6 h-6 rounded border-2 transition-transform hover:scale-110",
-                      customBadgeBg === c ? 'border-foreground scale-110' : 'border-transparent'
-                    )}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-                <Input
-                  type="color"
-                  value={customBadgeBg}
-                  onChange={(e) => setCustomBadgeBg(e.target.value)}
-                  className="w-8 h-6 p-0.5 cursor-pointer"
-                />
+            <Field>
+              <FieldLabel>Fond</FieldLabel>
+              <div className="flex flex-wrap items-center gap-2">
+                {BADGE_BG_PRESETS.map((color) => swatchButton(color, customBadgeBg === color, () => setCustomBadgeBg(color), color))}
+                <Input type="color" aria-label="Couleur de fond" value={customBadgeBg} onChange={(event) => setCustomBadgeBg(event.target.value)} className="h-7 w-9 cursor-pointer p-0.5" />
               </div>
-            </div>
-
-            {/* Border color */}
-            <div className="space-y-1.5">
-              <label className={cn(TYPOGRAPHY.XS, "text-muted-foreground uppercase tracking-wide")}>Bordure</label>
-              <div className="flex flex-wrap gap-2">
-                {BADGE_BORDER_PRESETS.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCustomBadgeBorder(c)}
-                    className={cn(
-                      "w-6 h-6 rounded border-2 transition-transform hover:scale-110",
-                      customBadgeBorder === c ? 'border-foreground scale-110' : 'border-transparent'
-                    )}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-                <Input
-                  type="color"
-                  value={customBadgeBorder}
-                  onChange={(e) => setCustomBadgeBorder(e.target.value)}
-                  className="w-8 h-6 p-0.5 cursor-pointer"
-                />
+            </Field>
+            <Field>
+              <FieldLabel>Bordure</FieldLabel>
+              <div className="flex flex-wrap items-center gap-2">
+                {BADGE_BORDER_PRESETS.map((color) => swatchButton(color, customBadgeBorder === color, () => setCustomBadgeBorder(color), color))}
+                <Input type="color" aria-label="Couleur de bordure" value={customBadgeBorder} onChange={(event) => setCustomBadgeBorder(event.target.value)} className="h-7 w-9 cursor-pointer p-0.5" />
               </div>
-            </div>
-          </div>
-
+              <FieldDescription>Les couleurs sont validées par un administrateur avec le reste du badge.</FieldDescription>
+            </Field>
+          </FieldGroup>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCustomBadgeDialogOpen(false)}>
               Annuler
             </Button>
-            <Button
-              onClick={submitCustomBadge}
-              disabled={using !== null || !customBadgeName.trim() || !customBadgeDesc.trim()}
-            >
-              {using ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            <Button onClick={submitCustomBadge} disabled={using !== null || !customBadgeName.trim() || !customBadgeDesc.trim()}>
+              {using ? <Spinner /> : <Award />}
               Envoyer la demande
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
     </PageShell>
   );
 }

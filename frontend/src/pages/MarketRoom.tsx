@@ -19,9 +19,9 @@ type CoinCardData = {
 };
 
 const personalities: Record<CoinCardData['personality'], { label: string; icon: typeof CandlestickChart; chipClass: string }> = {
-  BALANCED: { label: 'Equilibre', icon: CandlestickChart, chipClass: 'border-amber-500/30 bg-amber-500/10 text-amber-200' },
-  STABLE: { label: 'Stable', icon: ShieldCheck, chipClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' },
-  VOLATILE: { label: 'Tres instable', icon: Zap, chipClass: 'border-rose-500/30 bg-rose-500/10 text-rose-200' },
+  BALANCED: { label: 'Equilibre', icon: CandlestickChart, chipClass: 'border-warning/30 bg-warning/10 text-warning' },
+  STABLE: { label: 'Stable', icon: ShieldCheck, chipClass: 'border-success/30 bg-success/10 text-success' },
+  VOLATILE: { label: 'Tres instable', icon: Zap, chipClass: 'border-destructive/30 bg-destructive/10 text-destructive' },
 };
 
 export default function MarketRoom() {
@@ -126,7 +126,7 @@ export default function MarketRoom() {
                           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Prix</p>
                           <p className="mt-1 text-3xl font-semibold tabular-nums">${coin.price.toFixed(2)}</p>
                         </div>
-                        <div className={cn('rounded-full px-3 py-1 text-sm font-semibold', coin.change >= 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600')}>
+                        <div className={cn('rounded-full px-3 py-1 text-sm font-semibold', coin.change >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>
                           {coin.change >= 0 ? '+' : ''}{coin.change.toFixed(2)}%
                         </div>
                       </div>

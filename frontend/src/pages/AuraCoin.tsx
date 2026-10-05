@@ -46,11 +46,11 @@ const fmtMoneyExpanded = (n: number) => {
 
 const txTypeLabel = (type: string) => {
   switch (type) {
-    case 'BUY': return { label: 'Achat', color: 'text-green-400' };
-    case 'SELL': return { label: 'Vente', color: 'text-red-400' };
-    case 'MINE_REWARD': return { label: 'Minage', color: 'text-yellow-400' };
-    case 'GPU_PURCHASE': return { label: 'GPU', color: 'text-blue-400' };
-    case 'GPU_FEE': return { label: 'Frais GPU', color: 'text-orange-400' };
+    case 'BUY': return { label: 'Achat', color: 'text-success' };
+    case 'SELL': return { label: 'Vente', color: 'text-destructive' };
+    case 'MINE_REWARD': return { label: 'Minage', color: 'text-warning' };
+    case 'GPU_PURCHASE': return { label: 'GPU', color: 'text-primary' };
+    case 'GPU_FEE': return { label: 'Frais GPU', color: 'text-warning' };
     default: return { label: type, color: 'text-muted-foreground' };
   }
 };
@@ -251,17 +251,17 @@ export default function AuraCoin() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <span className="text-yellow-400">◈</span> AuraCoin
+            <span className="text-warning">◈</span> AuraCoin
           </h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             AMM décentralisé · Minage GPU · Anti-whale
           </p>
         </div>
         <div className="text-right">
-          <p className={cn('text-3xl font-bold tabular-nums', priceChange >= 0 ? 'text-green-400' : 'text-red-400')}>
+          <p className={cn('text-3xl font-bold tabular-nums', priceChange >= 0 ? 'text-success' : 'text-destructive')}>
             {fmtMoneyExpanded(currentPrice)}
           </p>
-          <p className={cn('text-sm font-medium', priceChange >= 0 ? 'text-green-400' : 'text-red-400')}>
+          <p className={cn('text-sm font-medium', priceChange >= 0 ? 'text-success' : 'text-destructive')}>
             {priceChange >= 0 ? <TrendingUp className="inline h-3 w-3 mr-0.5" /> : <TrendingDown className="inline h-3 w-3 mr-0.5" />}
             {priceChange >= 0 ? '+' : ''}{fmt(priceChange, 2)}%
           </p>
@@ -348,7 +348,7 @@ export default function AuraCoin() {
               <CardTitle className="text-sm">Trading AMM</CardTitle>
               <div className="flex gap-4 text-xs text-muted-foreground">
                 <span>Solde: <strong className="text-foreground">{fmtMoney(money)}</strong></span>
-                <span>AuraCoin: <strong className="text-yellow-400">{fmtCoin(auraCoin)}</strong></span>
+                <span>AuraCoin: <strong className="text-warning">{fmtCoin(auraCoin)}</strong></span>
                 <span>Frais: <strong className="text-foreground">2%</strong></span>
               </div>
             </CardHeader>
@@ -367,7 +367,7 @@ export default function AuraCoin() {
                     />
                     <Button
                       size="sm"
-                      className="h-8 bg-green-600 hover:bg-green-500"
+                      className="h-8 bg-success hover:bg-success"
                       onClick={handleBuy}
                       disabled={tradeLoading || !buyAmount}
                     >
@@ -424,7 +424,7 @@ export default function AuraCoin() {
                   )}
                 </div>
               </div>
-              {tradeError && <p className="text-red-400 text-xs">{tradeError}</p>}
+              {tradeError && <p className="text-destructive text-xs">{tradeError}</p>}
             </CardContent>
           </Card>
 
@@ -456,7 +456,7 @@ export default function AuraCoin() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
-                <Cpu className="h-4 w-4 text-blue-400" /> Minage GPU
+                <Cpu className="h-4 w-4 text-primary" /> Minage GPU
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -464,7 +464,7 @@ export default function AuraCoin() {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="bg-muted/30 rounded p-2">
                     <p className="text-muted-foreground">Récompense bloc</p>
-                    <p className="font-bold text-yellow-400">{fmtCoin(miningInfo.currentReward)} ◈</p>
+                    <p className="font-bold text-warning">{fmtCoin(miningInfo.currentReward)} ◈</p>
                   </div>
                   <div className="bg-muted/30 rounded p-2">
                     <p className="text-muted-foreground">Halvings</p>
@@ -508,15 +508,15 @@ export default function AuraCoin() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Part réseau</span>
-                      <span className="text-blue-400">{fmt(miner.share * 100, 2)}%</span>
+                      <span className="text-primary">{fmt(miner.share * 100, 2)}%</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total miné</span>
-                      <span className="text-yellow-400">{fmtCoin(miner.totalMined)} ◈</span>
+                      <span className="text-warning">{fmtCoin(miner.totalMined)} ◈</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Frais/jour</span>
-                      <span className="text-orange-400">{fmtMoney(miner.dailyFee)}</span>
+                      <span className="text-warning">{fmtMoney(miner.dailyFee)}</span>
                     </div>
                   </div>
                 ) : (
@@ -550,7 +550,7 @@ export default function AuraCoin() {
                     <Cpu className="h-3 w-3 mr-1" /> Acheter premier GPU
                   </Button>
                 )}
-                {miningError && <p className="text-red-400 text-xs">{miningError}</p>}
+                {miningError && <p className="text-destructive text-xs">{miningError}</p>}
               </div>
             </CardContent>
           </Card>
@@ -559,7 +559,7 @@ export default function AuraCoin() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
-                <Zap className="h-4 w-4 text-yellow-400" /> Blocs récents
+                <Zap className="h-4 w-4 text-warning" /> Blocs récents
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -571,7 +571,7 @@ export default function AuraCoin() {
                     <div key={b.blockNumber} className="flex items-center justify-between text-xs py-0.5">
                       <span className="text-muted-foreground">#{b.blockNumber}</span>
                       <span className="font-medium truncate max-w-[80px]">{b.minerName ?? '—'}</span>
-                      <span className="text-yellow-400">+{fmtCoin(b.reward)}</span>
+                      <span className="text-warning">+{fmtCoin(b.reward)}</span>
                     </div>
                   ))}
                 </div>
@@ -583,7 +583,7 @@ export default function AuraCoin() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-1.5">
-                <Award className="h-4 w-4 text-purple-400" /> Classements
+                <Award className="h-4 w-4 text-primary" /> Classements
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -598,7 +598,7 @@ export default function AuraCoin() {
                       <div key={u.id} className="flex items-center gap-2 text-xs">
                         <span className="text-muted-foreground w-4">{i + 1}.</span>
                         <UsernameDisplay username={u.username} usernameColor={u.usernameColor} className="flex-1 truncate text-xs" />
-                        <span className="text-yellow-400 tabular-nums">{fmtCoin(u.auraCoinBalance)}</span>
+                        <span className="text-warning tabular-nums">{fmtCoin(u.auraCoinBalance)}</span>
                       </div>
                     ))}
                   </div>
@@ -609,8 +609,8 @@ export default function AuraCoin() {
                       <div key={m.userId} className="flex items-center gap-2 text-xs">
                         <span className="text-muted-foreground w-4">{i + 1}.</span>
                         <UsernameDisplay username={m.username} usernameColor={m.usernameColor} className="flex-1 truncate text-xs" />
-                        <span className="text-blue-400">{m.gpuCount} GPU</span>
-                        <span className="text-yellow-400 tabular-nums">{fmtCoin(m.totalMined)}</span>
+                        <span className="text-primary">{m.gpuCount} GPU</span>
+                        <span className="text-warning tabular-nums">{fmtCoin(m.totalMined)}</span>
                       </div>
                     ))}
                   </div>
@@ -641,10 +641,10 @@ function TxList({ txs, showUser = false }: { txs: AuraCoinTransaction[]; showUse
               />
             )}
             {tx.coinAmount > 0 && (
-              <span className="text-yellow-400">{fmtCoin(tx.coinAmount)} ◈</span>
+              <span className="text-warning">{fmtCoin(tx.coinAmount)} ◈</span>
             )}
             {tx.moneyAmount !== 0 && (
-              <span className={tx.moneyAmount > 0 ? 'text-green-400' : 'text-red-400'}>
+              <span className={tx.moneyAmount > 0 ? 'text-success' : 'text-destructive'}>
                 {tx.moneyAmount > 0 ? '+' : ''}{fmtMoney(Math.abs(tx.moneyAmount))}
               </span>
             )}

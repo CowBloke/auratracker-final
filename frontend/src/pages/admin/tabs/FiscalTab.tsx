@@ -113,7 +113,7 @@ export function FiscalTab(props: FiscalTabProps) {
                         ? <span title={`Compte partage avec ${u.sharedMoney.partner.username}`}>{u.sharedMoney.coupleBalance.toLocaleString('fr-FR')}</span>
                         : <span className="text-muted-foreground/50">-</span>}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-amber-500">{u.aura.toLocaleString('fr-FR')}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-warning">{u.aura.toLocaleString('fr-FR')}</td>
                   </tr>
                 ))}
               </tbody>

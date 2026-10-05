@@ -19,10 +19,10 @@ const ICONS: Record<DefenseType, string> = {
 };
 
 const CARD_COLORS: Record<DefenseType, string> = {
-  FORTRESS: 'border-amber-500/60 bg-amber-500/15 text-amber-300',
-  ARMORY: 'border-rose-500/60 bg-rose-500/15 text-rose-300',
-  BANNER: 'border-sky-500/60 bg-sky-500/15 text-sky-300',
-  STAR: 'border-purple-500/60 bg-purple-500/15 text-purple-300',
+  FORTRESS: 'border-warning/60 bg-warning/15 text-warning',
+  ARMORY: 'border-destructive/60 bg-destructive/15 text-destructive',
+  BANNER: 'border-border/60 bg-muted/15 text-primary',
+  STAR: 'border-border/60 bg-muted/15 text-primary',
 };
 
 const PAIR_SEQUENCE: DefenseType[] = [
@@ -129,7 +129,7 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
       {/* Stats bar */}
       <div className="flex items-center justify-between rounded-xl border border-border/40 bg-muted/20 px-4 py-2 text-sm">
         <span className="text-muted-foreground">
-          ⏱ <span className={cn('font-mono font-semibold', timeLeft <= 15 && 'text-rose-400')}>{timeLeft}s</span>
+          ⏱ <span className={cn('font-mono font-semibold', timeLeft <= 15 && 'text-destructive')}>{timeLeft}s</span>
         </span>
         <div className="flex gap-3">
           {(['FORTRESS', 'ARMORY', 'BANNER'] as const).map((t) => (

@@ -1,7 +1,7 @@
-﻿import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { PageShell } from '@/components/layout/PageShell';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { t } from '@/lib/i18n';
 
 interface RuleSection {
@@ -77,78 +77,60 @@ const sanctions = [
 export default function Rules() {
   return (
     <PageShell>
-      <Card>
-        <CardHeader>
-          <CardDescription>{t('rules_regulation')}</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>{t('rules_principles')}</CardTitle>
-        </CardHeader>
-        <CardContent className={SPACING.SECTION_SPACING}>
-          {sections.map((section, index) => (
-            <section
-              key={index}
-              className={cn(
-                "space-y-3",
-                index > 0 && "border-t border-border/30 pt-6"
-              )}
-            >
-              <h3 className={TYPOGRAPHY.MUTED}>{section.title}</h3>
+      <PageHeader title={t('rules_principles')} description={t('rules_regulation')} />
 
-              <div className="divide-y divide-border/30">
-                {section.rules.map((rule, ruleIndex) => (
-                  <div
-                    key={ruleIndex}
-                    className="grid grid-cols-[auto_1fr] items-start gap-x-1 py-4"
-                  >
-                    <span
-                      className={cn(
-                        TYPOGRAPHY.SMALL,
-                        "text-muted-foreground tabular-nums leading-5"
-                      )}
-                    >
-                      {ruleIndex + 1}.
-                    </span>
-                    <p className={cn(TYPOGRAPHY.SMALL, "leading-5")}>{rule}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
+      <Card>
+        <CardContent>
+          <Accordion type="multiple" defaultValue={sections.map((_, index) => `section-${index}`)}>
+            {sections.map((section, index) => (
+              <AccordionItem key={section.title} value={`section-${index}`}>
+                <AccordionTrigger>{section.title}</AccordionTrigger>
+                <AccordionContent>
+                  <ol className="flex list-decimal flex-col gap-2 pl-5 text-sm">
+                    {section.rules.map((rule) => (
+                      <li key={rule}>{rule}</li>
+                    ))}
+                  </ol>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader>
           <CardDescription>{t('rules_moderation')}</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>{t('rules_sanctions')}</CardTitle>
+          <CardTitle>{t('rules_sanctions')}</CardTitle>
         </CardHeader>
-        <CardContent className={SPACING.CARD_SPACING}>
-          <p className={TYPOGRAPHY.SMALL}>
-            {t('rules_sanction_intro')}
-          </p>
-          
-          <div className="divide-y divide-border/30">
-            {sanctions.map((item, index) => (
-              <div
-                key={index}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4"
-              >
-                <span className={TYPOGRAPHY.SMALL}>{item.offense}</span>
-                <span className={cn(TYPOGRAPHY.SMALL, "sm:text-right")}>
-                  {item.sanction}
-                </span>
-              </div>
-            ))}
-          </div>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">{t('rules_sanction_intro')}</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Infraction</TableHead>
+                <TableHead>Sanction</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sanctions.map((item) => (
+                <TableRow key={item.offense}>
+                  <TableCell className="whitespace-normal">{item.offense}</TableCell>
+                  <TableCell className="whitespace-normal">{item.sanction}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader>
           <CardDescription>{t('rules_information')}</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>{t('rules_contact')}</CardTitle>
+          <CardTitle>{t('rules_contact')}</CardTitle>
         </CardHeader>
-        <CardContent className={SPACING.CARD_SPACING}>
-          <p className={TYPOGRAPHY.SMALL}>
-            {t('rules_contact_text')}
-          </p>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{t('rules_contact_text')}</p>
         </CardContent>
       </Card>
     </PageShell>

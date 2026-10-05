@@ -104,19 +104,19 @@ const COURT_ROLE_LABELS: Record<string, string> = {
 };
 
 const COURT_ROLE_COLORS: Record<string, { bubble: string; badge: string; sender: string }> = {
-  JUDGE: { bubble: 'bg-amber-500/10 border border-amber-500/30 text-foreground', badge: 'bg-amber-500/15 text-amber-500', sender: 'text-amber-500' },
-  PLAINTIFF: { bubble: 'bg-sky-500/10 border border-sky-500/30 text-foreground', badge: 'bg-sky-500/15 text-sky-500', sender: 'text-sky-500' },
-  DEFENDANT: { bubble: 'bg-red-500/10 border border-red-500/30 text-foreground', badge: 'bg-red-500/15 text-red-500', sender: 'text-red-500' },
-  LAWYER_PLAINTIFF: { bubble: 'bg-sky-500/10 border border-sky-500/25 text-foreground', badge: 'bg-sky-400/15 text-sky-400', sender: 'text-sky-400' },
-  LAWYER_DEFENDANT: { bubble: 'bg-red-500/10 border border-red-500/25 text-foreground', badge: 'bg-red-400/15 text-red-400', sender: 'text-red-400' },
-  PUBLIC_DEFENDER_PLAINTIFF: { bubble: 'bg-sky-400/10 border border-sky-400/25 text-foreground', badge: 'bg-sky-300/15 text-sky-300', sender: 'text-sky-300' },
-  PUBLIC_DEFENDER_DEFENDANT: { bubble: 'bg-red-400/10 border border-red-400/25 text-foreground', badge: 'bg-red-300/15 text-red-300', sender: 'text-red-300' },
+  JUDGE: { bubble: 'bg-warning/10 border border-warning/30 text-foreground', badge: 'bg-warning/15 text-warning', sender: 'text-warning' },
+  PLAINTIFF: { bubble: 'bg-muted/10 border border-border/30 text-foreground', badge: 'bg-muted/15 text-primary', sender: 'text-primary' },
+  DEFENDANT: { bubble: 'bg-destructive/10 border border-destructive/30 text-foreground', badge: 'bg-destructive/15 text-destructive', sender: 'text-destructive' },
+  LAWYER_PLAINTIFF: { bubble: 'bg-muted/10 border border-border/25 text-foreground', badge: 'bg-muted/15 text-primary', sender: 'text-primary' },
+  LAWYER_DEFENDANT: { bubble: 'bg-destructive/10 border border-destructive/25 text-foreground', badge: 'bg-destructive/15 text-destructive', sender: 'text-destructive' },
+  PUBLIC_DEFENDER_PLAINTIFF: { bubble: 'bg-muted/10 border border-border/25 text-foreground', badge: 'bg-muted/15 text-primary', sender: 'text-primary' },
+  PUBLIC_DEFENDER_DEFENDANT: { bubble: 'bg-destructive/10 border border-destructive/25 text-foreground', badge: 'bg-destructive/15 text-destructive', sender: 'text-destructive' },
 };
 
 const COURT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  OPEN: { label: 'En cours', color: 'text-sky-500' },
-  DELIBERATION: { label: 'Délibération', color: 'text-amber-500' },
-  VERDICT_GIVEN: { label: 'Verdict rendu', color: 'text-emerald-500' },
+  OPEN: { label: 'En cours', color: 'text-primary' },
+  DELIBERATION: { label: 'Délibération', color: 'text-warning' },
+  VERDICT_GIVEN: { label: 'Verdict rendu', color: 'text-success' },
   CLOSED: { label: 'Clôturé', color: 'text-muted-foreground' },
 };
 
@@ -125,7 +125,7 @@ COURT_ROLE_LABELS.LAWYER_PLAINTIFF = 'Avocat du plaignant';
 COURT_ROLE_LABELS.LAWYER_DEFENDANT = 'Avocat du coupable';
 COURT_ROLE_LABELS.PUBLIC_DEFENDER_PLAINTIFF = 'Defenseur public du plaignant';
 COURT_ROLE_LABELS.PUBLIC_DEFENDER_DEFENDANT = 'Defenseur public du coupable';
-COURT_STATUS_LABELS.DELIBERATION = { label: 'Deliberation', color: 'text-slate-500' };
+COURT_STATUS_LABELS.DELIBERATION = { label: 'Deliberation', color: 'text-muted-foreground' };
 
 const getCourtAnonymousSenderLabel = (role: string | null) => {
   if (role && COURT_ROLE_LABELS[role]) return COURT_ROLE_LABELS[role];
@@ -336,12 +336,12 @@ function ConversationAvatar({ conversation, size = 'md' }: { conversation: Messa
         </AvatarFallback>
       </Avatar>
       {conversation.type === 'SUPPORT' && (
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-500">
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary">
           <Shield className="h-2 w-2 text-white" />
         </span>
       )}
       {conversation.type === 'GROUP' && !hasImage && !hasIcon && (
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500">
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning">
           <Users className="h-2 w-2 text-white" />
         </span>
       )}
@@ -1582,7 +1582,7 @@ export default function MessagesPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertTriangle className="h-4 w-4 text-warning" />
               Avant d'utiliser la messagerie
             </DialogTitle>
             <DialogDescription>
@@ -1843,7 +1843,7 @@ export default function MessagesPage() {
                           <span className="flex-1 truncate text-sm font-medium" style={!shouldMaskCourtMember && entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}>
                             {memberDisplayName}
                           </span>
-                          {!isCourtMemberEntry && entry.role === 'OWNER' && <span className="text-[10px] font-medium text-amber-500">Owner</span>}
+                          {!isCourtMemberEntry && entry.role === 'OWNER' && <span className="text-[10px] font-medium text-warning">Owner</span>}
                           {!isMe && amOwner && (
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/70 hover:text-destructive" onClick={() => handleKickMember(entry.user.id)}>
                               <UserMinus className="h-3.5 w-3.5" />
@@ -1999,10 +1999,10 @@ export default function MessagesPage() {
               <p className="py-6 text-center text-sm text-muted-foreground">Aucun argument pour le moment.</p>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-3 rounded-xl border border-sky-500/25 bg-sky-500/5 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">Plaignant</p>
+                <div className="space-y-3 rounded-xl border border-border/25 bg-muted/5 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">Plaignant</p>
                   {courtArguments.filter((argument) => argument.side === 'PLAINTIFF').map((argument) => (
-                    <div key={argument.id} className="rounded-lg border border-sky-500/25 bg-background/70 p-3">
+                    <div key={argument.id} className="rounded-lg border border-border/25 bg-background/70 p-3">
                       <p className="text-[11px] text-muted-foreground">
                         {argument.author?.username ?? 'Anonyme'} · {format(new Date(argument.createdAt), 'dd MMM HH:mm', { locale: fr })}
                       </p>
@@ -2013,10 +2013,10 @@ export default function MessagesPage() {
                     <p className="text-xs text-muted-foreground">Aucun argument du plaignant.</p>
                   )}
                 </div>
-                <div className="space-y-3 rounded-xl border border-red-500/25 bg-red-500/5 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-red-600">Coupable</p>
+                <div className="space-y-3 rounded-xl border border-destructive/25 bg-destructive/5 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-destructive">Coupable</p>
                   {courtArguments.filter((argument) => argument.side === 'DEFENDANT').map((argument) => (
-                    <div key={argument.id} className="rounded-lg border border-red-500/25 bg-background/70 p-3">
+                    <div key={argument.id} className="rounded-lg border border-destructive/25 bg-background/70 p-3">
                       <p className="text-[11px] text-muted-foreground">
                         {argument.author?.username ?? 'Anonyme'} · {format(new Date(argument.createdAt), 'dd MMM HH:mm', { locale: fr })}
                       </p>
@@ -2060,7 +2060,7 @@ export default function MessagesPage() {
       <Dialog open={showVerdictPanel} onOpenChange={setShowVerdictPanel}>
         <DialogContent className="max-w-lg gap-0 p-0 overflow-hidden">
           <div className="border-b border-border/60 px-4 py-3 flex items-center gap-2">
-            <Gavel className="h-4 w-4 text-amber-400" />
+            <Gavel className="h-4 w-4 text-warning" />
             <DialogTitle className="text-sm font-semibold">Rendre le verdict</DialogTitle>
           </div>
           <div className="p-4 space-y-4">
@@ -2102,7 +2102,7 @@ export default function MessagesPage() {
                 onClick={() => setRepresentationType('PRIVATE_LAWYER')}
                 className={cn(
                   'rounded-xl border px-4 py-3 text-left transition-colors',
-                  representationType === 'PRIVATE_LAWYER' ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/40 bg-muted/10',
+                  representationType === 'PRIVATE_LAWYER' ? 'border-success/40 bg-success/10' : 'border-border/40 bg-muted/10',
                 )}
               >
                 <p className="text-sm font-semibold">Cabinet prive</p>
@@ -2113,7 +2113,7 @@ export default function MessagesPage() {
                 onClick={() => setRepresentationType('PUBLIC_DEFENDER')}
                 className={cn(
                   'rounded-xl border px-4 py-3 text-left transition-colors',
-                  representationType === 'PUBLIC_DEFENDER' ? 'border-sky-500/40 bg-sky-500/10' : 'border-border/40 bg-muted/10',
+                  representationType === 'PUBLIC_DEFENDER' ? 'border-border/40 bg-muted/10' : 'border-border/40 bg-muted/10',
                 )}
               >
                 <p className="text-sm font-semibold">Defenseur public</p>
@@ -2142,7 +2142,7 @@ export default function MessagesPage() {
                           onClick={() => setSelectedLawFirmId(firm.id)}
                           className={cn(
                             'w-full rounded-xl border px-4 py-3 text-left transition-colors',
-                            selectedLawFirmId === firm.id ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                            selectedLawFirmId === firm.id ? 'border-success/40 bg-success/10' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
                           )}
                         >
                           <div className="flex items-start gap-3">
@@ -2189,7 +2189,7 @@ export default function MessagesPage() {
                               onClick={() => setSelectedLawyerUserId(lawyer.userId)}
                               className={cn(
                                 'w-full rounded-xl border px-3 py-3 text-left transition-colors',
-                                selectedLawyerUserId === lawyer.userId ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/40 bg-background/70 hover:bg-muted/20',
+                                selectedLawyerUserId === lawyer.userId ? 'border-success/40 bg-success/10' : 'border-border/40 bg-background/70 hover:bg-muted/20',
                               )}
                             >
                               <div className="flex items-center justify-between gap-3">
@@ -2197,7 +2197,7 @@ export default function MessagesPage() {
                                   <p className="text-sm font-medium">{lawyer.user.username}</p>
                                   <p className="text-xs text-muted-foreground">{lawyer.specialty || 'Avocat generaliste'} · {lawyer.lawFirmName}</p>
                                 </div>
-                                {lawyer.isPrimaryLawyer ? <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">Principal</span> : null}
+                                {lawyer.isPrimaryLawyer ? <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning">Principal</span> : null}
                               </div>
                             </button>
                           ))}
@@ -2212,7 +2212,7 @@ export default function MessagesPage() {
                 </div>
               )
             ) : (
-              <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-4 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-border/20 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
                 Les administrateurs et juges disponibles pourront intervenir comme defenseurs publics sur ce dossier.
               </div>
             )}
@@ -2247,7 +2247,7 @@ export default function MessagesPage() {
             <div className="flex items-center justify-center gap-2">
               {[1, 2, 3, 4, 5].map((value) => (
                 <button key={value} type="button" onClick={() => setLawyerRating(value)} className="transition-transform hover:scale-110">
-                  <Star className={cn('h-8 w-8', lawyerRating >= value ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-muted-foreground/30')} />
+                  <Star className={cn('h-8 w-8', lawyerRating >= value ? 'fill-warning text-warning' : 'fill-transparent text-muted-foreground/30')} />
                 </button>
               ))}
             </div>
@@ -2257,7 +2257,7 @@ export default function MessagesPage() {
               rows={4}
               maxLength={500}
               placeholder="Decris ton experience avec cet avocat..."
-              className="w-full resize-none rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-amber-400/40"
+              className="w-full resize-none rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-warning/40"
             />
             <p className="text-[11px] text-muted-foreground/60">{lawyerRatingComment.trim().length}/500</p>
           </div>
@@ -2389,7 +2389,7 @@ export default function MessagesPage() {
                     {selectedConversation.type !== 'SUPPORT' && (
                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg"
                         onClick={() => handleToggleFavorite(selectedConversation.id)}>
-                        <Star className={cn('h-4 w-4', selectedConversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
+                        <Star className={cn('h-4 w-4', selectedConversation.isFavorite ? 'fill-warning text-warning' : 'text-muted-foreground')} />
                       </Button>
                     )}
                     {selectedConversation.type === 'GROUP' ? (
@@ -2426,9 +2426,9 @@ export default function MessagesPage() {
 
                 {/* Court banner */}
                 {isCourtConversation && courtCase && (
-                  <div className="border-b border-slate-300/40 bg-slate-500/5 px-3 py-2 flex items-center gap-3 flex-wrap">
+                  <div className="border-b border-border/40 bg-secondary/5 px-3 py-2 flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-1.5">
-                      <Scale className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                      <Scale className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <span className="text-[11px] font-mono font-semibold text-foreground">#{courtCase.caseNumber}</span>
                     </div>
                     <span className={cn('text-[10px] font-semibold uppercase tracking-wide', COURT_STATUS_LABELS[courtCase.status]?.color ?? 'text-muted-foreground')}>
@@ -2461,14 +2461,14 @@ export default function MessagesPage() {
                       </Popover>
                     )}
                     {courtCase.plaintif && (
-                      <span className="text-[10px] text-sky-500 font-medium">Plaignant</span>
+                      <span className="text-[10px] text-primary font-medium">Plaignant</span>
                     )}
                     {courtCase.defendant && (
-                      <span className="text-[10px] text-red-500 font-medium">Coupable</span>
+                      <span className="text-[10px] text-destructive font-medium">Coupable</span>
                     )}
                     {assignedLawyer ? (
-                      <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1">
-                        <Briefcase className="h-3 w-3 shrink-0 text-emerald-500" />
+                      <div className="flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1">
+                        <Briefcase className="h-3 w-3 shrink-0 text-success" />
                         <span className="text-[10px] font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Avocat du plaignant' : 'Avocat du coupable'}</span>
                         <span className="text-[10px] text-muted-foreground">
                           {(assignedLawyerProfile?.specialty ?? 'Avocat generaliste')} · {(assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet prive')}
@@ -2476,8 +2476,8 @@ export default function MessagesPage() {
                       </div>
                     ) : null}
                     {hasAssignedPublicDefender && !assignedLawyer ? (
-                      <div className="flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/10 px-2.5 py-1">
-                        <Shield className="h-3 w-3 shrink-0 text-teal-500" />
+                      <div className="flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1">
+                        <Shield className="h-3 w-3 shrink-0 text-success" />
                         <span className="text-[10px] font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Defenseur public du plaignant' : 'Defenseur public du coupable'}</span>
                       </div>
                     ) : null}
@@ -2505,13 +2505,13 @@ export default function MessagesPage() {
                         </Button>
                       ) : null}
                       {canRateAssignedLawyer ? (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" onClick={() => setShowLawyerRatingDialog(true)}>
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-success/40 text-success hover:bg-success/10" onClick={() => setShowLawyerRatingDialog(true)}>
                           <Star className="h-3 w-3" />
                           Noter l'avocat
                         </Button>
                       ) : null}
                       {isNonAdminJudge && courtCase && courtCase.status !== 'CLOSED' && (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => setShowSanctionModal(true)}>
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-warning/40 text-warning hover:bg-warning/10" onClick={() => setShowSanctionModal(true)}>
                           <Gavel className="h-3 w-3" />
                           Sanction
                         </Button>
@@ -2533,7 +2533,7 @@ export default function MessagesPage() {
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-slate-400/40 text-foreground hover:bg-muted/60"
+                          <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-border/40 text-foreground hover:bg-muted/60"
                             onClick={() => { setVerdictDraft(courtCase?.verdict ?? ''); setSentencingDraft(courtCase?.sentencing ?? ''); setShowVerdictPanel(true); }}>
                             <Gavel className="h-3 w-3" />
                             Verdict
@@ -2544,16 +2544,16 @@ export default function MessagesPage() {
                   </div>
                 )}
                 {isCourtConversation && courtCase?.verdict && (
-                  <div className="border-b border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
-                    <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-0.5">Verdict</p>
+                  <div className="border-b border-success/20 bg-success/5 px-3 py-2">
+                    <p className="text-[10px] font-semibold text-success uppercase tracking-wide mb-0.5">Verdict</p>
                     <p className="text-xs text-foreground">{courtCase.verdict}</p>
                     {courtCase.sentencing && <p className="text-[11px] text-muted-foreground mt-0.5">Sanction : {courtCase.sentencing}</p>}
                   </div>
                 )}
                 {conversationPinsEnabled && pinnedMessages.length > 0 && (
-                  <div className="border-b border-amber-500/20 bg-amber-500/5 px-3 py-2">
-                    <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
-                      <Pin className="h-3 w-3 fill-amber-500/20" />
+                  <div className="border-b border-warning/20 bg-warning/5 px-3 py-2">
+                    <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+                      <Pin className="h-3 w-3 fill-warning/20" />
                       Messages épinglés
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-0.5">
@@ -2562,7 +2562,7 @@ export default function MessagesPage() {
                           key={message.id}
                           type="button"
                           onClick={() => scrollToMessage(message.id)}
-                          className="min-w-44 max-w-64 rounded-lg border border-amber-500/20 bg-background/80 px-2.5 py-1.5 text-left text-xs shadow-sm transition-colors hover:bg-amber-500/10"
+                          className="min-w-44 max-w-64 rounded-lg border border-warning/20 bg-background/80 px-2.5 py-1.5 text-left text-xs shadow-sm transition-colors hover:bg-warning/10"
                         >
                           <p className="truncate font-medium text-foreground">
                             {message.sender?.username ?? 'Message'}
@@ -2601,7 +2601,7 @@ export default function MessagesPage() {
                             <div key={msg.id} className="flex justify-center py-2">
                               <div className={cn(
                                 'flex max-w-[92vw] flex-wrap items-center justify-center gap-1.5 rounded-full border bg-background px-3 py-1 text-[11px] font-medium text-foreground shadow-sm',
-                                msg.type === 'COURT_SYSTEM' ? 'border-slate-300/40' : 'border-border/60',
+                                msg.type === 'COURT_SYSTEM' ? 'border-border/40' : 'border-border/60',
                               )}>
                                 {msg.type === 'COURT_SYSTEM' ? <Scale className="h-3 w-3 shrink-0" /> : <Users className="h-3 w-3 shrink-0" />}
                                 <span>{witnessRequest?.body ?? msg.body}</span>
@@ -2670,7 +2670,7 @@ export default function MessagesPage() {
                             }}
                             className={cn(
                               'flex flex-col gap-2 rounded-xl transition-colors duration-300',
-                              highlightedMessageId === msg.id && 'bg-amber-500/10 ring-1 ring-amber-500/30',
+                              highlightedMessageId === msg.id && 'bg-warning/10 ring-1 ring-warning/30',
                             )}
                           >
                             {showDaySeparator && (
@@ -2682,11 +2682,11 @@ export default function MessagesPage() {
                             )}
                             {showUnreadSeparator && (
                               <div className="flex items-center gap-3 py-1">
-                                <div className="h-px flex-1 bg-emerald-500/30" />
-                                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600">
+                                <div className="h-px flex-1 bg-success/30" />
+                                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-success">
                                   Messages non lus
                                 </span>
-                                <div className="h-px flex-1 bg-emerald-500/30" />
+                                <div className="h-px flex-1 bg-success/30" />
                               </div>
                             )}
                             <div
@@ -2791,10 +2791,10 @@ export default function MessagesPage() {
                                           <button
                                             type="button"
                                             onClick={() => void handleToggleMessagePin(msg.id, !isPinnedMessage)}
-                                            className={cn('flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted/60', isPinnedMessage && 'bg-amber-500/10')}
+                                            className={cn('flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted/60', isPinnedMessage && 'bg-warning/10')}
                                             title={isPinnedMessage ? 'Désépingler' : 'Épingler'}
                                           >
-                                            <Pin className={cn('h-4 w-4', isPinnedMessage ? 'fill-amber-500/20 text-amber-600' : 'text-muted-foreground')} />
+                                            <Pin className={cn('h-4 w-4', isPinnedMessage ? 'fill-warning/20 text-warning' : 'text-muted-foreground')} />
                                           </button>
                                         )}
                                       </div>
@@ -2947,7 +2947,7 @@ export default function MessagesPage() {
                     </div>
                   )}
                   {isCourtChatLocked && (
-                    <div className="mb-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+                    <div className="mb-2 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2 text-[11px] text-warning">
                       Cette affaire n est pas en cours. Le chat est verrouille.
                     </div>
                   )}
@@ -3119,17 +3119,17 @@ function ConvRow({
               {conversation.displayName}
             </p>
             {conversation.type === 'SUPPORT' && (
-              <span className="shrink-0 rounded-full bg-sky-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sky-600">
+              <span className="shrink-0 rounded-full bg-muted/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
                 Support
               </span>
             )}
             {conversation.courtCaseId && (
-              <span className="shrink-0 rounded-full bg-amber-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-600 flex items-center gap-0.5">
+              <span className="shrink-0 rounded-full bg-warning/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-warning flex items-center gap-0.5">
                 <Scale className="h-2.5 w-2.5" />Tribunal
               </span>
             )}
             {conversation.tagType === 'Professionnel' && (
-              <span className="shrink-0 rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600">
+              <span className="shrink-0 rounded-full bg-success/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-success">
                 {conversation.tagLabel ?? 'Professionnel'}
               </span>
             )}
@@ -3141,7 +3141,7 @@ function ConvRow({
             <span
               className={cn(
                 'inline-flex shrink-0 items-center justify-center',
-                lastOutgoingMessageReadState === 'READ' ? 'text-sky-500' : 'text-muted-foreground/70',
+                lastOutgoingMessageReadState === 'READ' ? 'text-primary' : 'text-muted-foreground/70',
               )}
               title={lastOutgoingMessageReadState === 'READ' ? 'Lu' : 'Non lu'}
               aria-label={lastOutgoingMessageReadState === 'READ' ? 'Dernier message lu' : 'Dernier message non lu'}
@@ -3180,7 +3180,7 @@ function ConvRow({
             onClick={onToggleFavorite}
             className={cn('opacity-0 transition-opacity group-hover:opacity-100', conversation.isFavorite && 'opacity-100')}
             tabIndex={-1}>
-            <Star className={cn('h-3.5 w-3.5', conversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
+            <Star className={cn('h-3.5 w-3.5', conversation.isFavorite ? 'fill-warning text-warning' : 'text-muted-foreground')} />
           </button>
         </div>
       )}

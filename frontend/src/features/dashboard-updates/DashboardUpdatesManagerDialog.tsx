@@ -560,10 +560,10 @@ export function DashboardUpdatesManagerDialog({
                             ) : (
                               <div className={cn(
                                 'flex h-44 flex-col items-center justify-center gap-2 bg-gradient-to-br text-sm text-muted-foreground',
-                                form.feedCategory === 'GAME' && 'from-sky-500/20 via-sky-500/5 to-transparent',
-                                form.feedCategory === 'PATCH' && 'from-emerald-500/20 via-emerald-500/5 to-transparent',
-                                form.feedCategory === 'COMMUNITY' && 'from-fuchsia-500/20 via-fuchsia-500/5 to-transparent',
-                                form.feedCategory === 'DEV' && 'from-amber-500/20 via-amber-500/5 to-transparent',
+                                form.feedCategory === 'GAME' && 'from-muted via-muted to-transparent',
+                                form.feedCategory === 'PATCH' && 'from-success/20 via-success/5 to-transparent',
+                                form.feedCategory === 'COMMUNITY' && 'from-muted via-muted to-transparent',
+                                form.feedCategory === 'DEV' && 'from-warning/20 via-warning/5 to-transparent',
                               )}>
                                 <ImagePlus className="h-6 w-6" />
                                 Cliquer pour ajouter une image
@@ -772,7 +772,7 @@ export function DashboardUpdatesManagerDialog({
                           <Badge variant="outline">
                             {feedCategoryMeta[entry.feedCategory].shortLabel}
                           </Badge>
-                          <Badge variant="outline" className={entry.isPublished ? 'border-emerald-500/30 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300' : 'border-border/70 bg-muted text-muted-foreground'}>
+                          <Badge variant="outline" className={entry.isPublished ? 'border-success/30 bg-success/12 text-success' : 'border-border/70 bg-muted text-muted-foreground'}>
                             {entry.isPublished ? 'Publié' : 'Brouillon'}
                           </Badge>
                           {isEditing ? (

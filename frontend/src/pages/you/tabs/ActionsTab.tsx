@@ -171,7 +171,7 @@ function TotalPaymentCard({
           'p-0 rounded-xl border flex items-center overflow-hidden h-[58px] text-left w-full shadow-sm transition duration-200 mt-1',
           'focus:ring-1 focus:ring-primary/20 hover:bg-background/80',
           treasuryShort
-            ? 'border-red-500/30 bg-red-500/8'
+            ? 'border-destructive/30 bg-destructive/8'
             : 'border-border/40 bg-muted/20'
         )}
       >
@@ -179,7 +179,7 @@ function TotalPaymentCard({
         <div className={cn(
           "flex h-full w-12 shrink-0 items-center justify-center border-r transition",
           treasuryShort
-            ? "bg-red-500/15 border-red-500/20 text-red-500"
+            ? "bg-destructive/15 border-destructive/20 text-destructive"
             : "bg-muted/40 border-border/40 text-foreground"
         )}>
           <Coins className="h-5 w-5" />
@@ -193,7 +193,7 @@ function TotalPaymentCard({
             </span>
             <span className={cn(
               "text-[15px] font-black tabular-nums",
-              treasuryShort ? "text-red-500" : "text-foreground"
+              treasuryShort ? "text-destructive" : "text-foreground"
             )}>
               {totalCost > 0 ? `${fmt(totalCost)}€` : '0€'}
             </span>
@@ -203,7 +203,7 @@ function TotalPaymentCard({
               Source: {isPersonalPay ? 'Poche perso' : 'Trésorerie pro'}
             </span>
             {treasuryShort && (
-              <span className="shrink-0 text-[10px] font-bold text-red-500 animate-pulse">Insuffisant</span>
+              <span className="shrink-0 text-[10px] font-bold text-destructive animate-pulse">Insuffisant</span>
             )}
           </div>
         </div>
@@ -218,7 +218,7 @@ function TotalPaymentCard({
           <div className="flex items-center gap-2.5 min-w-0 py-0.5">
             <span className={cn(
               'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm',
-              biz.treasuryMoney >= totalCost ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-red-500/10 text-red-500'
+              biz.treasuryMoney >= totalCost ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'
             )}>
               <Building2 className="h-4 w-4" />
             </span>
@@ -231,7 +231,7 @@ function TotalPaymentCard({
                 {biz.treasuryMoney < totalCost && (
                   <>
                     <span>·</span>
-                    <span className="text-red-500 font-bold">faible</span>
+                    <span className="text-destructive font-bold">faible</span>
                   </>
                 )}
               </div>
@@ -244,7 +244,7 @@ function TotalPaymentCard({
           <div className="flex items-center gap-2.5 min-w-0 py-0.5">
             <span className={cn(
               'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm',
-              userMoney >= totalCost ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 text-red-500'
+              userMoney >= totalCost ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
             )}>
               <User className="h-4 w-4" />
             </span>
@@ -257,7 +257,7 @@ function TotalPaymentCard({
                 {userMoney < totalCost && (
                   <>
                     <span>·</span>
-                    <span className="text-red-500 font-bold">faible</span>
+                    <span className="text-destructive font-bold">faible</span>
                   </>
                 )}
               </div>
@@ -296,9 +296,9 @@ function IngredientCard({
     ? (BUSINESS_ICON_MAP[selected.businessTypeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2)
     : Building2;
 
-  const bgCls = noSource ? 'bg-red-500/8' : (meta?.bg ?? 'bg-muted/10');
+  const bgCls = noSource ? 'bg-destructive/8' : (meta?.bg ?? 'bg-muted/10');
   const borderCls = noSource
-    ? 'border-red-500/25'
+    ? 'border-destructive/25'
     : (meta?.bg ? meta.bg.replace('bg-', 'border-').replace('/15', '/25') : 'border-border/40');
 
   if (noSource) {
@@ -308,21 +308,21 @@ function IngredientCard({
         onClick={() => onBuyAtMarket(cost.resourceType)}
         className={cn(
           'rounded-xl border flex items-center overflow-hidden h-[58px] text-left w-full transition duration-200',
-          'border-red-500/30 bg-red-500/8 hover:bg-red-500/12'
+          'border-destructive/30 bg-destructive/8 hover:bg-destructive/12'
         )}
       >
         {/* Left: Full height Icon block */}
-        <div className="flex h-full w-12 shrink-0 items-center justify-center border-r bg-red-500/15 border-red-500/20 text-red-500">
+        <div className="flex h-full w-12 shrink-0 items-center justify-center border-r bg-destructive/15 border-destructive/20 text-destructive">
           <Icon className="h-5 w-5" />
         </div>
 
         {/* Right: Info block */}
         <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 text-left gap-1">
           <div className="flex items-baseline gap-1.5 w-full leading-none">
-            <span className="text-[15px] font-black text-red-500 tabular-nums mr-1">{cost.quantity}×</span>
+            <span className="text-[15px] font-black text-destructive tabular-nums mr-1">{cost.quantity}×</span>
             <span className="text-[13px] font-bold text-muted-foreground truncate">{resourceLabel(cost.resourceType)}</span>
           </div>
-          <div className="flex items-center justify-between gap-1 w-full text-[10.5px] text-red-500 leading-none">
+          <div className="flex items-center justify-between gap-1 w-full text-[10.5px] text-destructive leading-none">
             <span className="font-semibold flex items-center gap-1">
               <AlertCircle className="h-3 w-3 shrink-0" />
               Stock insuffisant
@@ -365,7 +365,7 @@ function IngredientCard({
             </div>
             <span className={cn(
               "text-[13px] font-bold shrink-0 tabular-nums",
-              extra > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
+              extra > 0 ? "text-warning" : "text-success"
             )}>
               {extra > 0 ? `${fmt(extra)}€` : 'Gratuit'}
             </span>
@@ -401,13 +401,13 @@ function IngredientCard({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <span className="truncate">{opt.businessName}</span>
-                    {own && <span className="shrink-0 rounded px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">interne</span>}
-                    {opt.kind === 'offer' && !opt.autoAccept && <span className="shrink-0 rounded px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-500">offre</span>}
+                    {own && <span className="shrink-0 rounded px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider bg-success/15 text-success">interne</span>}
+                    {opt.kind === 'offer' && !opt.autoAccept && <span className="shrink-0 rounded px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider bg-warning/15 text-warning">offre</span>}
                   </div>
                   <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                     <span className="font-semibold text-foreground/80">{opt.quantity} dispo</span>
                     <span>·</span>
-                    <span className={cn(own ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'font-semibold text-amber-600 dark:text-amber-400')}>
+                    <span className={cn(own ? 'text-success font-bold' : 'font-semibold text-warning')}>
                       {own ? 'gratuit' : `${fmt(opt.unitPrice)}€/unité`}
                     </span>
                     {!own && (
@@ -537,7 +537,7 @@ function ActionPipeline({
             {action.label}
           </span>
           {action.rewardMoney > 0 && (
-            <span className="text-[10.5px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/15">
+            <span className="text-[10.5px] font-extrabold text-success bg-success/10 px-2.5 py-0.5 rounded-full border border-success/15">
               +{fmt(action.rewardMoney)}€ à la fin
             </span>
           )}
@@ -550,7 +550,7 @@ function ActionPipeline({
               className={cn(
                 "h-6 px-2.5 text-[9px] font-bold rounded-full transition-all duration-200 shrink-0",
                 isConstantProdEnabled 
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-[0_0_8px_rgba(16,185,129,0.3)] border-transparent" 
+                  ? "bg-success hover:bg-success text-white shadow-[0_0_8px_rgba(16,185,129,0.3)] border-transparent" 
                   : "text-muted-foreground hover:text-foreground"
               )}
               onClick={() => onToggleConstantProd(biz.id, action.key, !isConstantProdEnabled)}
@@ -560,12 +560,12 @@ function ActionPipeline({
             </Button>
           )}
           {isCooldownActive && (
-            <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+            <span className="text-[10px] font-semibold text-warning bg-warning/10 px-2.5 py-0.5 rounded-full animate-pulse flex items-center gap-1">
               <Clock className="h-3 w-3 animate-spin" /> Action active — {timeLeft}s rest.
             </span>
           )}
           {queuedCount > 0 && (
-            <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+            <span className="text-[10px] font-semibold text-primary bg-muted/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
               <RefreshCw className="h-3 w-3" /> {queuedCount} en file
             </span>
           )}
@@ -579,8 +579,8 @@ function ActionPipeline({
 
           {/* Action Money Cost (if any) */}
           {action.moneyCost > 0 && (
-            <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 flex items-center overflow-hidden h-[58px] text-left w-full shadow-sm">
-              <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-amber-500/20 bg-amber-500/20 text-amber-600 dark:text-amber-400">
+            <div className="rounded-xl border border-warning/25 bg-warning/10 flex items-center overflow-hidden h-[58px] text-left w-full shadow-sm">
+              <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-warning/20 bg-warning/20 text-warning">
                 <Coins className="h-5 w-5" />
               </div>
               <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 relative text-left gap-1">
@@ -588,7 +588,7 @@ function ActionPipeline({
                   <div className="flex items-baseline gap-1.5 min-w-0">
                     <span className="text-[13px] font-bold text-muted-foreground truncate">Frais de production</span>
                   </div>
-                  <span className="text-[13px] font-bold shrink-0 tabular-nums text-amber-600 dark:text-amber-400">
+                  <span className="text-[13px] font-bold shrink-0 tabular-nums text-warning">
                     {fmt(action.moneyCost)}€
                   </span>
                 </div>
@@ -630,7 +630,7 @@ function ActionPipeline({
         {/* Middle: Produire button */}
         <div className="flex shrink-0 flex-col items-center justify-center gap-2 px-1" data-tutorial-id="actions-produce-button">
           {blockedReason && !running && (!isCooldownActive || isPlayDisabled) && (
-            <div className="flex items-center gap-1 rounded-lg border border-red-500/25 bg-red-500/8 px-2 py-1 text-[9px] font-semibold text-red-500 text-center max-w-[72px]">
+            <div className="flex items-center gap-1 rounded-lg border border-destructive/25 bg-destructive/8 px-2 py-1 text-[9px] font-semibold text-destructive text-center max-w-[72px]">
               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
               <span className="leading-tight">{blockedReason}</span>
             </div>
@@ -677,7 +677,7 @@ function ActionPipeline({
                 return (
                   <div key={o.resourceType} className="flex items-center gap-1.5 w-full">
                     <div className="flex-1 min-w-0 relative">
-                      <div className="absolute -top-1.5 -right-1.5 z-10 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] font-black tabular-nums text-white shadow-sm border border-emerald-600/50 leading-none">
+                      <div className="absolute -top-1.5 -right-1.5 z-10 rounded-full bg-success px-1.5 py-0.5 text-[9px] font-black tabular-nums text-white shadow-sm border border-success/50 leading-none">
                         +{o.quantity}
                       </div>
                       <StockCard inventory={inv} />
@@ -773,10 +773,10 @@ function ConstructionPanel({
 
   if (isDone) {
     return (
-      <div className="border-t border-border/40 bg-emerald-500/5 px-4 py-4 flex items-center gap-3">
-        <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+      <div className="border-t border-border/40 bg-success/5 px-4 py-4 flex items-center gap-3">
+        <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Chantier terminé !</p>
+          <p className="text-sm font-semibold text-success">Chantier terminé !</p>
           <p className="text-xs text-muted-foreground">Actualisez pour débloquer la production.</p>
         </div>
         <Button size="sm" variant="outline" onClick={onDone} className="shrink-0">
@@ -788,18 +788,18 @@ function ConstructionPanel({
 
   if (timerStarted) {
     return (
-      <div className="border-t border-border/40 bg-amber-500/5 px-4 py-4 space-y-3">
+      <div className="border-t border-border/40 bg-warning/5 px-4 py-4 space-y-3">
         <div className="flex items-center gap-2.5">
-          <Hammer className="h-4 w-4 text-amber-500 shrink-0 animate-pulse" />
+          <Hammer className="h-4 w-4 text-warning shrink-0 animate-pulse" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Chantier en cours</p>
+            <p className="text-sm font-semibold text-warning">Chantier en cours</p>
             <p className="text-xs text-muted-foreground">Terminé dans <span className="font-mono font-bold text-foreground">{countdown}</span></p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
           {project.materials.map((m) => (
             <div key={m.resourceType} className="flex items-center gap-1.5 rounded-md bg-background/60 border border-border/30 px-2 py-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
               <span className="text-xs text-muted-foreground truncate">
                 {RESOURCE_META[m.resourceType as ResourceType]?.label ?? m.resourceType} ×{m.requiredQuantity}
               </span>
@@ -811,10 +811,10 @@ function ConstructionPanel({
   }
 
   return (
-    <div className="border-t border-border/40 bg-amber-500/5 px-4 py-4 space-y-4">
+    <div className="border-t border-border/40 bg-warning/5 px-4 py-4 space-y-4">
       <div className="flex items-center gap-2">
-        <Hammer className="h-4 w-4 text-amber-500 shrink-0" />
-        <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Plan de construction</p>
+        <Hammer className="h-4 w-4 text-warning shrink-0" />
+        <p className="text-sm font-semibold text-warning">Plan de construction</p>
         <span className="ml-auto text-[10px] text-muted-foreground">Choisissez les sources</span>
       </div>
 
@@ -870,7 +870,7 @@ function ConstructionPanel({
         size="sm"
         disabled={!allSourcesSelected || submitting}
         onClick={handleLaunch}
-        className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+        className="w-full bg-warning hover:bg-warning text-white"
       >
         {submitting
           ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Lancement…</>
@@ -935,11 +935,11 @@ function BusinessCard({
           </div>
         </div>
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-          <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-amber-500/15 px-3.5 text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400 border border-amber-500/10 shadow-sm">
+          <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-warning/15 px-3.5 text-xs font-bold tabular-nums text-warning border border-warning/10 shadow-sm">
             <Coins className="h-4 w-4" />{fmt(biz.treasuryMoney)}€
           </span>
           {biz.avgRating != null && (
-            <span className="inline-flex h-8 items-center gap-1 px-3.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 rounded-full border border-emerald-500/10 shadow-sm">
+            <span className="inline-flex h-8 items-center gap-1 px-3.5 text-xs font-bold text-success bg-success/15 rounded-full border border-success/10 shadow-sm">
               ⭐ {biz.avgRating.toFixed(1)}/5
             </span>
           )}
@@ -947,7 +947,7 @@ function BusinessCard({
             type="button"
             data-tutorial-id="actions-upgrade-button"
             onClick={() => onUpgradeClick(biz)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 text-xs font-bold text-purple-600 dark:text-purple-400 transition hover:bg-purple-500/20 shadow-sm"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/30 bg-muted/10 px-3.5 text-xs font-bold text-primary transition hover:bg-muted/20 shadow-sm"
           >
             <ArrowUpCircle className="h-4 w-4" /> Améliorer ({upgrades.productionSpeedLvl + upgrades.stockSizeLvl + upgrades.queueLvl}/8)
           </button>
@@ -1036,28 +1036,28 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
     productionSpeed: {
       title: "Vitesse Production",
       maxLevel: 2,
-      activeColor: "bg-amber-500",
-      badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
-      iconBg: "bg-amber-500/15 border border-amber-500/20 text-amber-500",
-      btnBg: "bg-amber-600 hover:bg-amber-700 text-white",
+      activeColor: "bg-warning",
+      badgeColor: "bg-warning/10 text-warning border border-warning/20",
+      iconBg: "bg-warning/15 border border-warning/20 text-warning",
+      btnBg: "bg-warning hover:bg-warning text-white",
       Icon: Zap,
     },
     stockSize: {
       title: "Taille des Stocks",
       maxLevel: 3,
-      activeColor: "bg-emerald-500",
-      badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-      iconBg: "bg-emerald-500/15 border border-emerald-500/20 text-emerald-500",
-      btnBg: "bg-emerald-600 hover:bg-emerald-700 text-white",
+      activeColor: "bg-success",
+      badgeColor: "bg-success/10 text-success border border-success/20",
+      iconBg: "bg-success/15 border border-success/20 text-success",
+      btnBg: "bg-success hover:bg-success text-white",
       Icon: Package,
     },
     queue: {
       title: "File d'attente",
       maxLevel: 3,
-      activeColor: "bg-blue-500",
-      badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20",
-      iconBg: "bg-blue-500/15 border border-blue-500/20 text-blue-500",
-      btnBg: "bg-blue-600 hover:bg-blue-700 text-white",
+      activeColor: "bg-primary",
+      badgeColor: "bg-muted/10 text-primary border border-border/20",
+      iconBg: "bg-muted/15 border border-border/20 text-primary",
+      btnBg: "bg-primary hover:bg-primary text-white",
       Icon: Layers,
     },
   };
@@ -1135,14 +1135,14 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
                       {!isMax && (
                         <>
                           <ArrowRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-                          <span className="text-emerald-500 font-bold">{nextStat}</span>
+                          <span className="text-success font-bold">{nextStat}</span>
                         </>
                       )}
                     </div>
                   </div>
 
                   {isMax ? (
-                    <div className="w-full text-center text-xs font-bold text-emerald-500 bg-emerald-500/10 py-2.5 rounded-lg border border-emerald-500/20">
+                    <div className="w-full text-center text-xs font-bold text-success bg-success/10 py-2.5 rounded-lg border border-success/20">
                       Niveau Maximum
                     </div>
                   ) : (

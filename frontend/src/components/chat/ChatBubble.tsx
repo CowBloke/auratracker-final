@@ -16,7 +16,7 @@ export default function ChatBubble() {
     >
       <MessageCircle className="h-5 w-5" />
       {unreadCount > 0 && (
-        <span className="absolute -top-1.5 -right-1.5 min-w-6 h-6 px-1.5 flex items-center justify-center text-[11px] font-semibold tabular-nums rounded-full border-2 border-background bg-red-500 text-white shadow-sm">
+        <span className="absolute -top-1.5 -right-1.5 min-w-6 h-6 px-1.5 flex items-center justify-center text-[11px] font-semibold tabular-nums rounded-full border-2 border-background bg-destructive text-white shadow-sm">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}

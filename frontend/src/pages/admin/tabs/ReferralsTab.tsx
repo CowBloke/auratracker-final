@@ -164,7 +164,7 @@ export function ReferralsTab({
                     <tr key={entry.userId} className="border-b border-border/20">
                       <td className="py-2 pr-2">
                         <span className="font-medium">{entry.username}</span>
-                        {!entry.isApproved && <span className="ml-2 text-xs text-amber-400">(non validé)</span>}
+                        {!entry.isApproved && <span className="ml-2 text-xs text-warning">(non validé)</span>}
                       </td>
                       <td className="py-2 pr-2 font-mono text-xs">{entry.referralCode ?? '—'}</td>
                       <td className="py-2 pr-2 text-right tabular-nums">{entry.totalReferrals.toLocaleString('fr-FR')}</td>

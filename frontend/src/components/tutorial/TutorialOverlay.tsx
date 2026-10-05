@@ -90,15 +90,15 @@ function arrowStyle(placement: ResolvedPlacement): React.CSSProperties {
     borderStyle: 'solid',
   };
   if (placement === 'right') {
-    return { ...base, top: '50%', left: -size, transform: 'translateY(-50%)', borderWidth: `${size}px ${size}px ${size}px 0`, borderColor: `transparent hsl(var(--popover)) transparent transparent` };
+    return { ...base, top: '50%', left: -size, transform: 'translateY(-50%)', borderWidth: `${size}px ${size}px ${size}px 0`, borderColor: `transparent var(--popover) transparent transparent` };
   }
   if (placement === 'left') {
-    return { ...base, top: '50%', right: -size, transform: 'translateY(-50%)', borderWidth: `${size}px 0 ${size}px ${size}px`, borderColor: `transparent transparent transparent hsl(var(--popover))` };
+    return { ...base, top: '50%', right: -size, transform: 'translateY(-50%)', borderWidth: `${size}px 0 ${size}px ${size}px`, borderColor: `transparent transparent transparent var(--popover)` };
   }
   if (placement === 'bottom') {
-    return { ...base, top: -size, left: '50%', transform: 'translateX(-50%)', borderWidth: `0 ${size}px ${size}px ${size}px`, borderColor: `transparent transparent hsl(var(--popover)) transparent` };
+    return { ...base, top: -size, left: '50%', transform: 'translateX(-50%)', borderWidth: `0 ${size}px ${size}px ${size}px`, borderColor: `transparent transparent var(--popover) transparent` };
   }
-  return { ...base, bottom: -size, left: '50%', transform: 'translateX(-50%)', borderWidth: `${size}px ${size}px 0 ${size}px`, borderColor: `hsl(var(--popover)) transparent transparent transparent` };
+  return { ...base, bottom: -size, left: '50%', transform: 'translateX(-50%)', borderWidth: `${size}px ${size}px 0 ${size}px`, borderColor: `var(--popover) transparent transparent transparent` };
 }
 
 function waitForElement(targetId: string, maxMs = 3000): Promise<Element | null> {

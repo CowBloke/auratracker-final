@@ -30,7 +30,7 @@ export function AdCard({ ad }: { ad: Ad }) {
       <div
         className={cn(
           'relative isolate aspect-square overflow-hidden rounded-xl border border-white/10 transition hover:border-foreground/40 hover:shadow-md',
-          ad.business.verified ? 'ring-1 ring-amber-300/40' : ''
+          ad.business.verified ? 'ring-1 ring-warning/40' : ''
         )}
       >
         {cardImage ? (
@@ -41,7 +41,7 @@ export function AdCard({ ad }: { ad: Ad }) {
             loading="lazy"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-600/40 via-orange-500/30 to-rose-500/40" />
+          <div className="absolute inset-0 bg-gradient-to-br from-warning/40 via-warning/30 to-destructive/40" />
         )}
 
         <div className="absolute left-3 top-3 z-20 rounded-full border border-white/30 bg-black/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/95">

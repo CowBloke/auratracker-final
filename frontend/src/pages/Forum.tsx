@@ -42,19 +42,19 @@ function VoteButtons({
         onClick={() => onVote(userVote === 1 ? 0 : 1)}
         className={cn(
           'rounded p-1 transition-colors hover:bg-muted',
-          userVote === 1 ? 'text-orange-500' : 'text-muted-foreground'
+          userVote === 1 ? 'text-warning' : 'text-muted-foreground'
         )}
       >
         <ChevronUp className="h-5 w-5" />
       </button>
-      <span className={cn('text-sm font-bold', userVote === 1 ? 'text-orange-500' : userVote === -1 ? 'text-blue-500' : 'text-foreground')}>
+      <span className={cn('text-sm font-bold', userVote === 1 ? 'text-warning' : userVote === -1 ? 'text-primary' : 'text-foreground')}>
         {score}
       </span>
       <button
         onClick={() => onVote(userVote === -1 ? 0 : -1)}
         className={cn(
           'rounded p-1 transition-colors hover:bg-muted',
-          userVote === -1 ? 'text-blue-500' : 'text-muted-foreground'
+          userVote === -1 ? 'text-primary' : 'text-muted-foreground'
         )}
       >
         <ChevronDown className="h-5 w-5" />
@@ -129,7 +129,7 @@ function PostCard({
               href={post.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 flex items-center gap-1 text-xs text-blue-500 hover:underline"
+              className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
               <ExternalLink className="h-3 w-3" />
@@ -495,7 +495,7 @@ export default function Forum() {
             <div className="mb-4 rounded-lg border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-500 text-2xl font-bold text-white">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning text-2xl font-bold text-white">
                     {currentSub.icon ? (
                       <span>{currentSub.icon}</span>
                     ) : (
@@ -634,7 +634,7 @@ export default function Forum() {
                         subredditName === s.name && 'bg-muted font-medium'
                       )}
                     >
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-warning text-xs font-bold text-white">
                         {s.name[0].toUpperCase()}
                       </span>
                       #{s.name}
@@ -666,7 +666,7 @@ export default function Forum() {
                       )}
                     >
                       <span className="w-4 text-xs text-muted-foreground">{idx + 1}</span>
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-warning text-xs font-bold text-white">
                         {s.name[0].toUpperCase()}
                       </span>
                       <span className="min-w-0 flex-1 truncate">#{s.name}</span>

@@ -98,7 +98,7 @@ export function SpectateEffectBar({ messages, onSend, onConfetti, showInput = tr
               <button
                 type="button"
                 onClick={onConfetti}
-                className="text-muted-foreground hover:text-yellow-400 transition-colors shrink-0"
+                className="text-muted-foreground hover:text-warning transition-colors shrink-0"
                 tabIndex={0}
                 title="Lancer des confettis"
               >

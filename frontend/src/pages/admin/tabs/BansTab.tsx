@@ -133,7 +133,7 @@ export function BansTab(props: BansTabProps) {
                             ban.isActive
                               ? ban.type === 'PERMANENT'
                                 ? 'bg-destructive/20 text-destructive'
-                                : 'bg-amber-500/20 text-amber-400'
+                                : 'bg-warning/20 text-warning'
                               : 'bg-muted text-muted-foreground'
                           )}
                         >
@@ -180,7 +180,7 @@ export function BansTab(props: BansTabProps) {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                            className="h-8 border-success/50 text-success hover:bg-success/10"
                             disabled={unbanning === ban.userId}
                           >
                             {unbanning === ban.userId ? (
@@ -204,7 +204,7 @@ export function BansTab(props: BansTabProps) {
                             <AlertDialogCancel>Annuler</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => unbanUser(ban.userId)}
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-success hover:bg-success"
                             >
                               Débannir
                             </AlertDialogAction>
@@ -253,8 +253,8 @@ export function BansTab(props: BansTabProps) {
                               expired
                                 ? 'bg-muted text-muted-foreground'
                                 : mutedUser.chatMuteExpiresAt
-                                  ? 'bg-amber-500/20 text-amber-400'
-                                  : 'bg-red-500/20 text-red-400'
+                                  ? 'bg-warning/20 text-warning'
+                                  : 'bg-destructive/20 text-destructive'
                             )}
                           >
                             {expired ? 'Expire' : mutedUser.chatMuteExpiresAt ? 'Temporaire' : 'Sans limite'}
@@ -299,7 +299,7 @@ export function BansTab(props: BansTabProps) {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                            className="h-8 border-success/50 text-success hover:bg-success/10"
                             disabled={mutingUser === mutedUser.id}
                           >
                             {mutingUser === mutedUser.id ? (
@@ -323,7 +323,7 @@ export function BansTab(props: BansTabProps) {
                             <AlertDialogCancel>Annuler</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => unmuteChatUser(mutedUser)}
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-success hover:bg-success"
                             >
                               Demuter
                             </AlertDialogAction>
@@ -385,8 +385,8 @@ export function BansTab(props: BansTabProps) {
                             warning.severity === 'HIGH'
                               ? 'bg-destructive/20 text-destructive'
                               : warning.severity === 'MEDIUM'
-                                ? 'bg-amber-500/20 text-amber-400'
-                                : 'bg-blue-500/20 text-blue-400'
+                                ? 'bg-warning/20 text-warning'
+                                : 'bg-muted/20 text-primary'
                           )}
                         >
                           {warning.severity === 'HIGH'
@@ -396,7 +396,7 @@ export function BansTab(props: BansTabProps) {
                               : 'Info'}
                         </span>
                         {warning.isAcknowledged ? (
-                          <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">
+                          <span className="text-xs px-2 py-0.5 rounded bg-success/20 text-success">
                             Lu
                           </span>
                         ) : (
@@ -559,7 +559,7 @@ export function BansTab(props: BansTabProps) {
                         if (val >= 0) setAmendeAmount(val);
                       }}
                       min={10}
-                      className="w-24 text-right tabular-nums bg-red-500/10 border-red-500/50 text-red-400"
+                      className="w-24 text-right tabular-nums bg-destructive/10 border-destructive/50 text-destructive"
                       placeholder="Montant"
                     />
                   </div>

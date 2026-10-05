@@ -64,13 +64,13 @@ export function NavalWarfareGame({
         <div className="flex gap-4">
           <span>
             Tirs:{' '}
-            <span className={cn('font-bold', shotsRemaining === 0 ? 'text-rose-400' : 'text-sky-400')}>
+            <span className={cn('font-bold', shotsRemaining === 0 ? 'text-destructive' : 'text-primary')}>
               {shotsRemaining}
             </span>{' '}
             restant(s)
           </span>
           <span className="text-muted-foreground">
-            Touche(s): <span className="font-semibold text-orange-400">{hitCount}</span>
+            Touche(s): <span className="font-semibold text-warning">{hitCount}</span>
           </span>
           {totalPoints > 0 && (
             <span className="text-muted-foreground">
@@ -117,11 +117,11 @@ export function NavalWarfareGame({
                       'aspect-square rounded-lg border-2 text-base transition-all duration-150 select-none',
                       shot
                         ? shot.isHit
-                          ? 'border-orange-500/60 bg-orange-500/20 cursor-default'
-                          : 'border-sky-900/40 bg-sky-950/50 cursor-default'
+                          ? 'border-warning/60 bg-warning/20 cursor-default'
+                          : 'border-border/40 bg-muted/50 cursor-default'
                         : canFire
-                          ? 'border-border/40 bg-slate-800/50 hover:bg-slate-700/60 hover:border-sky-500/50 cursor-crosshair hover:scale-105'
-                          : 'border-border/20 bg-slate-900/30 cursor-not-allowed opacity-40',
+                          ? 'border-border/40 bg-card/50 hover:bg-card/60 hover:border-border/50 cursor-crosshair hover:scale-105'
+                          : 'border-border/20 bg-card/30 cursor-not-allowed opacity-40',
                       isPend && 'animate-pulse border-primary/60 bg-primary/10'
                     )}
                   >
@@ -146,8 +146,8 @@ export function NavalWarfareGame({
           className={cn(
             'rounded-xl border px-4 py-3 text-sm font-medium transition-all',
             lastResult.isHit
-              ? 'border-orange-500/40 bg-orange-500/10 text-orange-300'
-              : 'border-sky-900/40 bg-sky-950/30 text-sky-400'
+              ? 'border-warning/40 bg-warning/10 text-warning'
+              : 'border-border/40 bg-muted/30 text-primary'
           )}
         >
           {lastResult.isHit

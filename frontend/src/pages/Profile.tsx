@@ -76,12 +76,12 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
 };
 
 const YOU_SKILL_META: Record<string, { label: string; bar: string; text: string }> = {
-  affaires: { label: 'Affaires', bar: 'bg-emerald-500', text: 'text-emerald-500' },
-  social: { label: 'Social', bar: 'bg-purple-500', text: 'text-purple-500' },
-  intelligence: { label: 'Intelligence', bar: 'bg-sky-500', text: 'text-sky-500' },
-  charisme: { label: 'Charisme', bar: 'bg-pink-500', text: 'text-pink-500' },
-  finance: { label: 'Finance', bar: 'bg-amber-500', text: 'text-amber-500' },
-  illegalite: { label: 'Illégalité', bar: 'bg-rose-500', text: 'text-rose-500' },
+  affaires: { label: 'Affaires', bar: 'bg-success', text: 'text-success' },
+  social: { label: 'Social', bar: 'bg-primary', text: 'text-primary' },
+  intelligence: { label: 'Intelligence', bar: 'bg-primary', text: 'text-primary' },
+  charisme: { label: 'Charisme', bar: 'bg-primary', text: 'text-primary' },
+  finance: { label: 'Finance', bar: 'bg-warning', text: 'text-warning' },
+  illegalite: { label: 'Illégalité', bar: 'bg-destructive', text: 'text-destructive' },
 };
 
 const profileEconomyChartConfig = {
@@ -580,7 +580,7 @@ export default function Profile() {
                     <>
                       <Button
                         variant="outline"
-                        className="rounded-full border-amber-500/50 px-5 text-amber-500 hover:bg-amber-500/10"
+                        className="rounded-full border-warning/50 px-5 text-warning hover:bg-warning/10"
                         onClick={openWarningDialog}
                       >
                         <AlertTriangle className="h-4 w-4" />
@@ -588,7 +588,7 @@ export default function Profile() {
                       </Button>
                       <Button
                         variant="outline"
-                        className="rounded-full border-orange-500/50 px-5 text-orange-500 hover:bg-orange-500/10"
+                        className="rounded-full border-warning/50 px-5 text-warning hover:bg-warning/10"
                         onClick={openBanDialog}
                       >
                         <BanIcon className="h-4 w-4" />
@@ -721,14 +721,14 @@ export default function Profile() {
               <SectionBlock title="Aperçu du joueur">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
                   {/* Aura & Global Rank - Big Card */}
-                  <div className="group relative overflow-hidden rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-background to-background p-5 md:col-span-7 xl:col-span-6">
+                  <div className="group relative overflow-hidden rounded-[2rem] border border-warning/20 bg-gradient-to-br from-warning/10 via-background to-background p-5 md:col-span-7 xl:col-span-6">
                     <div className="absolute right-0 top-0 p-6 opacity-10 transition-transform duration-500 group-hover:scale-110 group-hover:opacity-20">
-                      <Sparkles className="h-24 w-24 text-amber-500" />
-                      <div className="absolute inset-0 rounded-full bg-amber-500/30 blur-3xl" />
+                      <Sparkles className="h-24 w-24 text-warning" />
+                      <div className="absolute inset-0 rounded-full bg-warning/30 blur-3xl" />
                     </div>
                     <div className="relative z-10 flex h-full flex-col justify-between gap-5">
                       <div>
-                        <div className="flex items-center gap-2 text-amber-500/80">
+                        <div className="flex items-center gap-2 text-warning/80">
                           <Star className="h-4 w-4" />
                           <p className="text-xs font-semibold tracking-wider uppercase">Aura</p>
                         </div>
@@ -757,13 +757,13 @@ export default function Profile() {
                   {/* Economy - Spans remaining columns */}
                   <div className="flex flex-col gap-4 md:col-span-5 xl:col-span-6">
                     {/* Money */}
-                    <div className="group relative flex flex-1 flex-col justify-center overflow-hidden rounded-[2rem] border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-background to-background p-5">
+                    <div className="group relative flex flex-1 flex-col justify-center overflow-hidden rounded-[2rem] border border-success/20 bg-gradient-to-br from-success/10 via-background to-background p-5">
                       <div className="absolute right-0 top-0 p-4 opacity-10 transition-transform duration-500 group-hover:scale-110 group-hover:opacity-20">
-                        <Wallet className="h-16 w-16 text-emerald-500" />
-                        <div className="absolute inset-0 rounded-full bg-emerald-500/30 blur-2xl" />
+                        <Wallet className="h-16 w-16 text-success" />
+                        <div className="absolute inset-0 rounded-full bg-success/30 blur-2xl" />
                       </div>
                       <div className="relative z-10">
-                        <div className="flex items-center gap-1.5 text-emerald-500/80">
+                        <div className="flex items-center gap-1.5 text-success/80">
                           <Coins className="h-4 w-4" />
                           <p className="text-xs font-semibold tracking-wider uppercase">Argent</p>
                         </div>
@@ -800,8 +800,8 @@ export default function Profile() {
                       <p className="text-xs text-muted-foreground">Win Rate</p>
                       <p className="mt-1 text-xl font-bold">{totalWinRate}%</p>
                     </div>
-                    <div className="rounded-[1.5rem] border border-orange-500/20 bg-gradient-to-b from-orange-500/10 to-transparent p-4 text-center">
-                      <p className="text-xs text-orange-500/80">Streak Quotidien</p>
+                    <div className="rounded-[1.5rem] border border-warning/20 bg-gradient-to-b from-warning/10 to-transparent p-4 text-center">
+                      <p className="text-xs text-warning/80">Streak Quotidien</p>
                       <p className="mt-1 text-xl font-bold">{profileUser.dailyPassStreak} j</p>
                     </div>
                   </div>
@@ -984,8 +984,8 @@ export default function Profile() {
                       {profileUser.marriage ? (
                         <div className="space-y-2">
                           <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Statut relationnel</p>
-                          <div className="group flex items-center gap-3 rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/10 to-transparent p-3 transition-colors hover:border-rose-500/40">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-500">
+                          <div className="group flex items-center gap-3 rounded-2xl border border-destructive/20 bg-gradient-to-br from-destructive/10 to-transparent p-3 transition-colors hover:border-destructive/40">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/20 text-destructive">
                               <Heart className="h-5 w-5" />
                             </div>
                             <div className="min-w-0">
@@ -1019,21 +1019,21 @@ export default function Profile() {
                       value={profileUser.aura.toLocaleString()}
                       detail={formatRank(rankings?.aura?.rank)}
                       icon={Star}
-                      colorClass="text-amber-500 bg-amber-500/10"
+                      colorClass="text-warning bg-warning/10"
                     />
                     <CompactMetric
                       label="Money"
                       value={formatCurrency(profileUser.money, 0)}
                       detail={formatRank(rankings?.money?.rank)}
                       icon={Coins}
-                      colorClass="text-emerald-500 bg-emerald-500/10"
+                      colorClass="text-success bg-success/10"
                     />
                     <CompactMetric
                       label="AuraCoin"
                       value={`${profileUser.auraCoinBalance.toFixed(4)} AC`}
                       detail={auraCoinValue !== null ? formatCurrency(auraCoinValue) : 'Prix indisponible'}
                       icon={Zap}
-                      colorClass="text-sky-500 bg-sky-500/10"
+                      colorClass="text-primary bg-muted/10"
                     />
                     <CompactMetric
                       label="Valeur totale"
@@ -1048,9 +1048,9 @@ export default function Profile() {
                 {social ? (
                   <SidebarPanel title="Réseau" flushBottom={!profileUser.youSkills?.length}>
                     <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                      <CompactMetric label="Followers" value={String(social.followerCount)} icon={Users} colorClass="text-purple-500 bg-purple-500/10" />
-                      <CompactMetric label="Following" value={String(social.followingCount)} icon={Users} colorClass="text-pink-500 bg-pink-500/10" />
-                      <CompactMetric label="Connexions" value={String(social.connectionCount)} icon={Users} colorClass="text-indigo-500 bg-indigo-500/10" />
+                      <CompactMetric label="Followers" value={String(social.followerCount)} icon={Users} colorClass="text-primary bg-muted/10" />
+                      <CompactMetric label="Following" value={String(social.followingCount)} icon={Users} colorClass="text-primary bg-muted/10" />
+                      <CompactMetric label="Connexions" value={String(social.connectionCount)} icon={Users} colorClass="text-primary bg-muted/10" />
                     </div>
 
                     {social.connections.length > 0 ? (
@@ -1078,7 +1078,7 @@ export default function Profile() {
                   <SidebarPanel title="You · Compétences" flushBottom>
                     <div className="grid grid-cols-2 gap-2">
                       {profileUser.youSkills.map((skill) => {
-                        const meta = YOU_SKILL_META[skill.key] ?? { label: skill.key, bar: 'bg-amber-500', text: 'text-amber-500' };
+                        const meta = YOU_SKILL_META[skill.key] ?? { label: skill.key, bar: 'bg-warning', text: 'text-warning' };
                         const pct = Math.round((skill.xp / 100) * 100);
                         return (
                           <div key={skill.key} className="group rounded-2xl border border-border/40 bg-gradient-to-br from-background/50 to-background/10 px-3 py-2 transition-all duration-300 hover:border-border/60 hover:shadow-sm">

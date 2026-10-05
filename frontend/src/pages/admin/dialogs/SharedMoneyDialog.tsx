@@ -37,13 +37,13 @@ export function SharedMoneyDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
               <p className="text-xs text-muted-foreground">Argent personnel</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums text-green-400">
+              <p className="mt-1 text-lg font-semibold tabular-nums text-success">
                 {sharedMoneyUser?.money.toLocaleString('fr-FR') ?? '0'} €
               </p>
             </div>
-            <div className="rounded-lg border border-border/40 bg-emerald-500/10 p-3">
+            <div className="rounded-lg border border-border/40 bg-success/10 p-3">
               <p className="text-xs text-muted-foreground">Compte commun</p>
-              <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-400">
+              <p className="mt-1 text-lg font-semibold tabular-nums text-success">
                 {sharedMoneyUser?.sharedMoney?.coupleBalance.toLocaleString('fr-FR') ?? '0'} €
               </p>
             </div>
@@ -52,7 +52,7 @@ export function SharedMoneyDialog({
           {sharedMoneyUser?.sharedMoney ? (
             <div className="space-y-3 rounded-xl border border-border/40 bg-muted/10 p-4">
               <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-emerald-400" />
+                <Wallet className="h-4 w-4 text-success" />
                 <p className="text-sm font-medium">Conjoint</p>
                 <span className="ml-auto text-sm font-semibold tabular-nums">
                   {sharedMoneyUser.sharedMoney.partner.username}
@@ -60,13 +60,13 @@ export function SharedMoneyDialog({
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>Argent du conjoint</span>
-                <span className="ml-auto font-semibold tabular-nums text-green-400">
+                <span className="ml-auto font-semibold tabular-nums text-success">
                   {sharedMoneyUser.sharedMoney.partner.money.toLocaleString('fr-FR')} €
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>Total du foyer</span>
-                <span className="ml-auto font-semibold tabular-nums text-amber-400">
+                <span className="ml-auto font-semibold tabular-nums text-warning">
                   {(
                     sharedMoneyUser.money +
                     sharedMoneyUser.sharedMoney.partner.money +

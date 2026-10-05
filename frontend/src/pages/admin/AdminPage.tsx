@@ -489,7 +489,7 @@ const getGameDisplayInfo = (log: ActivityLog): { gameType: string; gameLabel: st
 const SKIP_METADATA_KEYS = new Set(['itemId', 'transferId', 'appealId', 'questIds', 'banId', 'defenderUserId']);
 
 const renderNetGain = (net: number) => (
-  <span className={net >= 0 ? 'text-green-400' : 'text-red-400'}>
+  <span className={net >= 0 ? 'text-success' : 'text-destructive'}>
     {net >= 0 ? '+' : ''}{net}
   </span>
 );
@@ -501,7 +501,7 @@ const renderMetadataValue = (key: string, value: unknown): ReactNode => {
     const n = toNumber(value);
     if (n !== null) return renderNetGain(n);
   }
-  if (key === 'won') return value === true ? <span className="text-green-400">Oui</span> : <span className="text-red-400">Non</span>;
+  if (key === 'won') return value === true ? <span className="text-success">Oui</span> : <span className="text-destructive">Non</span>;
   if (key === 'isNewHighScore' || key === 'isNewDailyBest' || key === 'isFirstRunToday') return value === true ? 'Oui' : 'Non';
   if (key === 'banType') return value === 'TEMPORARY' ? 'Temporaire' : value === 'PERMANENT' ? 'Permanent' : String(value);
   if (key === 'gameType' && typeof value === 'string') return formatGameTypeLabel(value);
@@ -541,7 +541,7 @@ const renderLogSummary = (log: ActivityLog): ReactNode => {
       }
       if (gameType === 'battleship') {
         const won = metadata.won === true;
-        return <>{gameLabel} : {won ? <span className="text-green-400">victoire</span> : <span className="text-red-400">défaite</span>} par {actor}</>;
+        return <>{gameLabel} : {won ? <span className="text-success">victoire</span> : <span className="text-destructive">défaite</span>} par {actor}</>;
       }
       const netGain = toNumber(metadata.netGain);
       if (netGain !== null) {
@@ -567,7 +567,7 @@ const renderLogSummary = (log: ActivityLog): ReactNode => {
       const bet = toNumber(metadata.bet);
       const netGain = toNumber(metadata.netGain);
       const won = metadata.won === true;
-      return <>Casino : {won ? <span className="text-green-400">gagné</span> : <span className="text-red-400">perdu</span>}{bet !== null && <>, mise {bet}</>}{netGain !== null && <>, net {renderNetGain(netGain)}</>} par {actor}</>;
+      return <>Casino : {won ? <span className="text-success">gagné</span> : <span className="text-destructive">perdu</span>}{bet !== null && <>, mise {bet}</>}{netGain !== null && <>, net {renderNetGain(netGain)}</>} par {actor}</>;
     }
 
     if (log.action === 'game_reward') {
@@ -631,7 +631,7 @@ const renderLogSummary = (log: ActivityLog): ReactNode => {
   if (log.action === 'chat_auto_mute') {
     const terms = Array.isArray(metadata.detectedTerms) ? metadata.detectedTerms.join(', ') : null;
     const duration = typeof metadata.durationLabel === 'string' ? metadata.durationLabel : null;
-    return <>Mute automatique de {log.targetName || 'inconnu'}{duration && <> ({duration})</>}{terms && <> — termes: <span className="text-red-400">{terms}</span></>}</>;
+    return <>Mute automatique de {log.targetName || 'inconnu'}{duration && <> ({duration})</>}{terms && <> — termes: <span className="text-destructive">{terms}</span></>}</>;
   }
 
   if (log.action === 'chat_mute_appeal') {
@@ -4815,7 +4815,7 @@ export default function Admin() {
               <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
                 {/* Réception — admin only */}
                 {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchPendingSanctions(); fetchChatModerationEvents(); },
-                  inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{inboxCount}</span> : undefined
+                  inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-[11px] font-semibold leading-none">{inboxCount}</span> : undefined
                 )}
 
                 {/* Utilisateurs — admin only */}
@@ -4848,7 +4848,7 @@ export default function Admin() {
                     <div className={dropdownInner}>
                       {dropdownItemBtn('content', 'Objets', <Package className="w-3.5 h-3.5" />, () => setActiveTab('content'))}
                       {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
-                        pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
+                        pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-warning text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
                       )}
                     </div>
                   </div>
@@ -4919,7 +4919,7 @@ export default function Admin() {
                     {dropdownItemBtn('game-limits', 'Limites jeux', <Gamepad2 className="w-3.5 h-3.5" />, () => setActiveTab('game-limits'))}
                     {dropdownItemBtn('chat-history', 'Historique chat', <CalendarRange className="w-3.5 h-3.5" />, () => { setActiveTab('chat-history'); void fetchChatHistoryDays(); })}
                     {dropdownItemBtn('communication', 'Communication', <MessageCircle className="w-3.5 h-3.5" />, () => { setActiveTab('communication'); fetchSupportThreads(); },
-                      supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{supportUnread}</span> : undefined
+                      supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-[11px] font-semibold leading-none">{supportUnread}</span> : undefined
                     )}
                     {isAdminOrSuperAdmin && (
                       <div className="border-t border-border/40 mt-1 pt-1">

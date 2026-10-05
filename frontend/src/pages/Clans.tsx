@@ -89,7 +89,7 @@ const BankContributionRow = ({ entry }: { entry: ClanBankContribution }) => (
       </div>
     </div>
     <div className="text-right">
-      <div className="text-sm font-semibold text-emerald-600">{formatSignedValue(entry.amount)}</div>
+      <div className="text-sm font-semibold text-success">{formatSignedValue(entry.amount)}</div>
       <div className="text-xs text-muted-foreground">ajoutés à la banque</div>
     </div>
   </div>
@@ -115,7 +115,7 @@ const SectionTitle = ({
 
 const ClanEffectBadge = ({ effect }: { effect: ClanActiveEffect }) => (
   <div
-    className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-700 shadow-sm"
+    className="flex h-10 w-10 items-center justify-center rounded-full border border-success/25 bg-success/10 text-success shadow-sm"
     title={`${effect.name} • +${effect.value}%${effect.activeUntil ? ` • ${formatEffectCooldown(effect)}` : ""}`}
   >
     {effect.type === 'CLAN_GAME_MONEY_BOOST' ? <CurrencyIcon type="money" className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
@@ -1202,7 +1202,7 @@ export default function Clans() {
                         </TabsTrigger>
                         <TabsTrigger
                           value="war"
-                          className="text-red-400 data-[state=active]:border-red-500/40 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-500"
+                          className="text-destructive data-[state=active]:border-destructive/40 data-[state=active]:bg-destructive/15 data-[state=active]:text-destructive"
                         >
                           <Swords className="mr-2 h-4 w-4" />
                           Guerre
@@ -1216,7 +1216,7 @@ export default function Clans() {
                         variant="outline"
                         onClick={() => setActiveWarsDialogOpen(true)}
                         disabled={otherActiveWars.length === 0}
-                        className="w-full border-red-500/30 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                        className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-50"
                       >
                         <Swords className="mr-2 h-4 w-4" />
                         Guerres actives ({otherActiveWars.length})
@@ -1267,7 +1267,7 @@ export default function Clans() {
                             } : undefined}
                           >
                             {directoryViewMode === 'war' && isClanAtWar ? (
-                              <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-red-500/40 bg-background p-1 text-red-500 shadow-sm">
+                              <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-destructive/40 bg-background p-1 text-destructive shadow-sm">
                                 <Swords className="h-3 w-3" />
                               </span>
                             ) : null}
@@ -1338,19 +1338,19 @@ export default function Clans() {
                               <ClanTag tag={{ text: selectedClan.tagText, style: parseClanTagStyle(selectedClan.tagStyle) }} />
                             )}
                           </h1>
-                          {selectedClan.viewer.isLeader ? <Crown className="h-4.5 w-4.5 text-amber-500 fill-amber-500/25" /> : null}
+                          {selectedClan.viewer.isLeader ? <Crown className="h-4.5 w-4.5 text-warning fill-warning/25" /> : null}
                           {!selectedClan.isPublic ? (
                             <TooltipProvider>
                               <Tooltip delayDuration={200}>
                                 <TooltipTrigger asChild>
-                                  <span className="cursor-help inline-flex items-center gap-0.5 text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border border-amber-500/15">
+                                  <span className="cursor-help inline-flex items-center gap-0.5 text-warning bg-warning/10 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border border-warning/15">
                                     <Lock className="h-2.5 w-2.5" />
                                     <span>Privé</span>
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent className="max-w-xs bg-slate-950 border-slate-800 text-slate-100 p-3 shadow-xl z-50">
-                                  <p className="font-semibold text-amber-400 mb-1">Clan Privé</p>
-                                  <p className="text-xs leading-relaxed text-slate-300">
+                                <TooltipContent className="max-w-xs bg-card border-border text-foreground p-3 shadow-xl z-50">
+                                  <p className="font-semibold text-warning mb-1">Clan Privé</p>
+                                  <p className="text-xs leading-relaxed text-muted-foreground">
                                     Ce clan est privé. Les joueurs doivent soumettre une candidature pour le rejoindre, et les informations internes ne sont visibles que par ses membres.
                                   </p>
                                 </TooltipContent>
@@ -1370,7 +1370,7 @@ export default function Clans() {
                           </div>
                           <span>•</span>
                           <div className="flex items-center gap-1">
-                            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                            <Sparkles className="h-3.5 w-3.5 text-warning" />
                             <span className="text-foreground">{formatAura(selectedClan.totalAura)} aura</span>
                           </div>
                         </div>
@@ -1380,7 +1380,7 @@ export default function Clans() {
                     <div className="flex flex-wrap items-center gap-2">
                       {/* Visitor Button */}
                       {canJoinSelectedClan && (
-                        <Button size="sm" className="h-9 px-4 font-semibold shadow-md bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
+                        <Button size="sm" className="h-9 px-4 font-semibold shadow-md bg-success hover:bg-success text-white" onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
                           {actionLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
                           {selectedClan.viewer.hasPendingRequest ? "En attente" : "Rejoindre le clan"}
                         </Button>
@@ -1421,7 +1421,7 @@ export default function Clans() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-9 px-3 font-semibold border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                          className="h-9 px-3 font-semibold border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive"
                           onClick={handleLeave}
                           disabled={actionLoading}
                         >
@@ -1488,11 +1488,11 @@ export default function Clans() {
                                   </Avatar>
                                   {isClanLeader ? (
                                     <span className="absolute -right-1 -top-1 rounded-full bg-background p-0.5 shadow-sm border border-border/30">
-                                      <Crown className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                                      <Crown className="h-2.5 w-2.5 text-warning fill-warning" />
                                     </span>
                                   ) : member.isLeader ? (
                                     <span className="absolute -right-1 -top-1 rounded-full bg-background p-0.5 shadow-sm border border-border/30">
-                                      <Shield className="h-2.5 w-2.5 text-blue-500" />
+                                      <Shield className="h-2.5 w-2.5 text-primary" />
                                     </span>
                                   ) : null}
                                 </div>
@@ -1541,7 +1541,7 @@ export default function Clans() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8 rounded-xl bg-muted/20 hover:bg-muted text-muted-foreground hover:text-amber-500"
+                                      className="h-8 w-8 rounded-xl bg-muted/20 hover:bg-muted text-muted-foreground hover:text-warning"
                                       onClick={() => handleTransferLeadership(member.userId, member.username)}
                                       disabled={actionLoading}
                                       title="Transférer le rôle de chef"
@@ -1660,7 +1660,7 @@ export default function Clans() {
                       : 'Prêt ?'}
               </div>
               <Button
-                className={cn('h-28 w-full text-lg', reflexPhase === 'go' ? 'bg-emerald-600 hover:bg-emerald-600/90' : '')}
+                className={cn('h-28 w-full text-lg', reflexPhase === 'go' ? 'bg-success hover:bg-success/90' : '')}
                 disabled={eventMiniGameSubmitting}
                 onClick={() => { void handleReflexClick(); }}
               >
@@ -1787,7 +1787,7 @@ export default function Clans() {
                         : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <Settings2 className="h-4 w-4 text-sky-400" />
+                    <Settings2 className="h-4 w-4 text-primary" />
                     Général
                   </button>
 
@@ -1802,7 +1802,7 @@ export default function Clans() {
                           : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Sparkles className="h-4 w-4 text-amber-400" />
+                      <Sparkles className="h-4 w-4 text-warning" />
                       Tag du clan
                     </button>
                   )}
@@ -1818,7 +1818,7 @@ export default function Clans() {
                           : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Shield className="h-4 w-4 text-purple-400" />
+                      <Shield className="h-4 w-4 text-primary" />
                       Rôles
                     </button>
                   )}
@@ -1834,7 +1834,7 @@ export default function Clans() {
                           : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Megaphone className="h-4 w-4 text-indigo-400" />
+                      <Megaphone className="h-4 w-4 text-primary" />
                       Annonces
                     </button>
                   )}
@@ -1852,7 +1852,7 @@ export default function Clans() {
                         </div>
                         <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 shadow-sm">
                           <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Trophées</div>
-                          <div className="text-base font-bold mt-1 text-amber-500">{formatMoney(selectedClan.warTrophies)}</div>
+                          <div className="text-base font-bold mt-1 text-warning">{formatMoney(selectedClan.warTrophies)}</div>
                         </div>
                         <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 shadow-sm">
                           <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Guerres</div>
@@ -1865,7 +1865,7 @@ export default function Clans() {
                       {/* Emblem Edit */}
                       <div className="space-y-3 rounded-2xl border border-border/40 bg-muted/5 p-4 shadow-sm">
                         <h4 className="text-sm font-bold flex items-center gap-1.5">
-                          <Plus className="h-4 w-4 text-sky-400" />
+                          <Plus className="h-4 w-4 text-primary" />
                           Modifier l'emblème
                         </h4>
                         <ImagePicker
@@ -1883,7 +1883,7 @@ export default function Clans() {
                       {/* Description Edit */}
                       <div className="space-y-3 rounded-2xl border border-border/40 bg-muted/5 p-4 shadow-sm">
                         <h4 className="text-sm font-bold flex items-center gap-1.5">
-                          <Pencil className="h-3.5 w-3.5 text-sky-400" />
+                          <Pencil className="h-3.5 w-3.5 text-primary" />
                           Modifier la description
                         </h4>
                         <Textarea
@@ -1909,7 +1909,7 @@ export default function Clans() {
                   {settingsTab === 'tag' && selectedClan.tagUnlocked && (
                     <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/5 p-5 shadow-sm">
                       <h4 className="text-sm font-bold flex items-center gap-1.5">
-                        <Sparkles className="h-4 w-4 text-amber-400" />
+                        <Sparkles className="h-4 w-4 text-warning" />
                         Tag du clan
                       </h4>
 
@@ -2054,7 +2054,7 @@ export default function Clans() {
                       <div className="flex items-center justify-between border-b border-border/40 pb-3 gap-2">
                         <div>
                           <h3 className="text-sm font-bold flex items-center gap-1.5">
-                            <Shield className="h-4 w-4 text-purple-400" />
+                            <Shield className="h-4 w-4 text-primary" />
                             Rôles du clan
                           </h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -2079,10 +2079,10 @@ export default function Clans() {
                                 <div className="min-w-0">
                                   <div className="text-sm font-bold">{role.name}</div>
                                   <div className="flex flex-wrap gap-1.5 mt-1">
-                                    {role.canManageHorses && <span className="rounded bg-amber-500/10 border border-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">Chevaux</span>}
-                                    {role.canInviteMembers && <span className="rounded bg-emerald-500/10 border border-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">Inviter</span>}
-                                    {role.canKickMembers && <span className="rounded bg-rose-500/10 border border-rose-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-rose-600 dark:text-rose-400">Exclure</span>}
-                                    {role.canManageRoles && <span className="rounded bg-purple-500/10 border border-purple-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-purple-600 dark:text-purple-400">Rôles</span>}
+                                    {role.canManageHorses && <span className="rounded bg-warning/10 border border-warning/10 px-1.5 py-0.5 text-[9px] font-semibold text-warning">Chevaux</span>}
+                                    {role.canInviteMembers && <span className="rounded bg-success/10 border border-success/10 px-1.5 py-0.5 text-[9px] font-semibold text-success">Inviter</span>}
+                                    {role.canKickMembers && <span className="rounded bg-destructive/10 border border-destructive/10 px-1.5 py-0.5 text-[9px] font-semibold text-destructive">Exclure</span>}
+                                    {role.canManageRoles && <span className="rounded bg-muted/10 border border-border/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">Rôles</span>}
                                     {!role.canManageHorses && !role.canInviteMembers && !role.canKickMembers && !role.canManageRoles && (
                                       <span className="text-[9px] text-muted-foreground/50 italic">Aucune permission</span>
                                     )}
@@ -2120,7 +2120,7 @@ export default function Clans() {
                     <div className="space-y-4">
                       <div>
                         <h3 className="text-sm font-bold flex items-center gap-1.5">
-                          <Megaphone className="h-4 w-4 text-indigo-400" />
+                          <Megaphone className="h-4 w-4 text-primary" />
                           Messages de bienvenue & Annonces
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
@@ -2155,7 +2155,7 @@ export default function Clans() {
                                   <button
                                     type="button"
                                     onClick={() => void deletePumpUpMessage(msg.id)}
-                                    className="rounded p-1.5 text-muted-foreground hover:bg-rose-500/10 hover:text-destructive transition-all"
+                                    className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -2277,7 +2277,7 @@ export default function Clans() {
                         : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <Layout className="h-4 w-4 text-sky-400" />
+                    <Layout className="h-4 w-4 text-primary" />
                     Infos & Effets
                   </button>
 
@@ -2291,7 +2291,7 @@ export default function Clans() {
                         : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <MessageSquare className="h-4 w-4 text-sky-400" />
+                    <MessageSquare className="h-4 w-4 text-primary" />
                     Chat du clan
                   </button>
 
@@ -2305,7 +2305,7 @@ export default function Clans() {
                         : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <Landmark className="h-4 w-4 text-emerald-400" />
+                    <Landmark className="h-4 w-4 text-success" />
                     Banque
                   </button>
 
@@ -2319,7 +2319,7 @@ export default function Clans() {
                         : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <Package className="h-4 w-4 text-orange-400" />
+                    <Package className="h-4 w-4 text-warning" />
                     Inventaire
                   </button>
 
@@ -2333,7 +2333,7 @@ export default function Clans() {
                         : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <Swords className="h-4 w-4 text-rose-400" />
+                    <Swords className="h-4 w-4 text-destructive" />
                     Guerre
                   </button>
 
@@ -2348,7 +2348,7 @@ export default function Clans() {
                           : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Sparkles className="h-4 w-4 text-amber-400" />
+                      <Sparkles className="h-4 w-4 text-warning" />
                       Événement
                     </button>
                   ) : null}
@@ -2365,7 +2365,7 @@ export default function Clans() {
                       )}
                     >
                       <span className="flex items-center gap-2.5">
-                        <UserX className="h-4 w-4 rotate-180 text-emerald-400" />
+                        <UserX className="h-4 w-4 rotate-180 text-success" />
                         Candidatures
                       </span>
                       {selectedClan.joinRequests.length > 0 ? (
@@ -2398,7 +2398,7 @@ export default function Clans() {
                       <div className="rounded-2xl border border-border/40 bg-muted/5 p-5 space-y-4">
                         <div className="space-y-1">
                           <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                            <Sparkles className="h-4 w-4 text-amber-500" />
+                            <Sparkles className="h-4 w-4 text-warning" />
                             Boosts & Effets Actifs
                           </h3>
                           <p className="text-xs text-muted-foreground">Les bonus en cours d'activation pour tous les membres.</p>
@@ -2440,9 +2440,9 @@ export default function Clans() {
                               if (entry.type === 'system') {
                                 return (
                                   <div key={entry.id} className="flex justify-center">
-                                    <div className="flex max-w-[90%] items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
-                                      <Megaphone className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                                      <p className="whitespace-pre-wrap break-words text-center text-xs text-amber-600 dark:text-amber-300">{entry.message}</p>
+                                    <div className="flex max-w-[90%] items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-1.5">
+                                      <Megaphone className="h-3.5 w-3.5 shrink-0 text-warning" />
+                                      <p className="whitespace-pre-wrap break-words text-center text-xs text-warning">{entry.message}</p>
                                     </div>
                                   </div>
                                 );
@@ -2490,7 +2490,7 @@ export default function Clans() {
                         <div className="flex flex-wrap items-center justify-between border-b border-border/50 pb-4 gap-3">
                           <div>
                             <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                              <Landmark className="h-4 w-4 text-emerald-400" />
+                              <Landmark className="h-4 w-4 text-success" />
                               Banque de clan
                             </h3>
                             <p className="text-xs text-muted-foreground mt-0.5">
@@ -2542,7 +2542,7 @@ export default function Clans() {
 
                         <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
                           <div className="text-sm font-semibold flex items-center gap-1.5">
-                            <Package className="h-4 w-4 text-orange-400" /> Stockage
+                            <Package className="h-4 w-4 text-warning" /> Stockage
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground">
                             {selectedClan.ownedItems.length > 0
@@ -2559,7 +2559,7 @@ export default function Clans() {
                       <CardContent className="space-y-4 p-0">
                         <div>
                           <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                            <Package className="h-4 w-4 text-orange-400" />
+                            <Package className="h-4 w-4 text-warning" />
                             Objets de clan
                           </h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -2614,7 +2614,7 @@ export default function Clans() {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
                         <div className="rounded-xl border border-border/40 bg-muted/15 px-3 py-2.5 shadow-sm">
                           <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Trophées</div>
-                          <div className="text-sm font-bold mt-0.5 text-amber-500">{formatMoney(selectedClan.warTrophies)}</div>
+                          <div className="text-sm font-bold mt-0.5 text-warning">{formatMoney(selectedClan.warTrophies)}</div>
                         </div>
                         <div className="rounded-xl border border-border/40 bg-muted/15 px-3 py-2.5 shadow-sm">
                           <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Bilan</div>
@@ -2748,14 +2748,14 @@ export default function Clans() {
                                   </div>
                                   <div className="grid gap-3 sm:grid-cols-3">
                                     {/* Memory */}
-                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', gameStatus?.canPlayMemory ? 'border-amber-500/20 bg-amber-500/5' : 'border-border/40 bg-muted/5')}>
+                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', gameStatus?.canPlayMemory ? 'border-warning/20 bg-warning/5' : 'border-border/40 bg-muted/5')}>
                                       <div>
                                         <div className="flex items-start justify-between gap-2 border-b border-border/10 pb-2">
                                           <div className="flex items-center gap-1.5">
                                             <span className="text-lg">🧩</span>
                                             <span className="font-bold text-xs">Jeu Mémoire</span>
                                           </div>
-                                          {gameStatus?.memoryPlayedToday && <Badge variant="outline" className="text-[8px] px-1 py-0 shrink-0 border-emerald-500/20 text-emerald-600 bg-emerald-500/5">✓ Joué</Badge>}
+                                          {gameStatus?.memoryPlayedToday && <Badge variant="outline" className="text-[8px] px-1 py-0 shrink-0 border-success/20 text-success bg-success/5">✓ Joué</Badge>}
                                         </div>
                                         <p className="text-[11px] text-muted-foreground mt-2 leading-normal">Retournez les paires pour fortifier et améliorer vos défenses du clan.</p>
                                       </div>
@@ -2769,14 +2769,14 @@ export default function Clans() {
                                       </div>
                                     </div>
                                     {/* Bomb */}
-                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', gameStatus?.canPlayBomb ? 'border-rose-500/20 bg-rose-500/5' : 'border-border/40 bg-muted/5')}>
+                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', gameStatus?.canPlayBomb ? 'border-destructive/20 bg-destructive/5' : 'border-border/40 bg-muted/5')}>
                                       <div>
                                         <div className="flex items-start justify-between gap-2 border-b border-border/10 pb-2">
                                           <div className="flex items-center gap-1.5">
                                             <span className="text-lg">💣</span>
                                             <span className="font-bold text-xs">Bombardement</span>
                                           </div>
-                                          {gameStatus?.bombPlayedToday && <Badge variant="outline" className="text-[8px] px-1 py-0 shrink-0 border-emerald-500/20 text-emerald-600 bg-emerald-500/5">✓ Joué</Badge>}
+                                          {gameStatus?.bombPlayedToday && <Badge variant="outline" className="text-[8px] px-1 py-0 shrink-0 border-success/20 text-success bg-success/5">✓ Joué</Badge>}
                                         </div>
                                         <p className="text-[11px] text-muted-foreground mt-2 leading-normal">Pilotez un avion et larguez des bombes sur les structures adverses.</p>
                                       </div>
@@ -2790,7 +2790,7 @@ export default function Clans() {
                                       </div>
                                     </div>
                                     {/* Naval */}
-                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', (gameStatus?.naval?.shotsRemaining ?? 0) > 0 ? 'border-sky-500/20 bg-sky-500/5' : 'border-border/40 bg-muted/5')}>
+                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', (gameStatus?.naval?.shotsRemaining ?? 0) > 0 ? 'border-border/20 bg-muted/5' : 'border-border/40 bg-muted/5')}>
                                       <div>
                                         <div className="flex items-start justify-between gap-2 border-b border-border/10 pb-2">
                                           <div className="flex items-center gap-1.5">
@@ -2844,8 +2844,8 @@ export default function Clans() {
                                 <div className="rounded-2xl border border-border/40 bg-background p-4 space-y-3 shadow-sm">
                                   <h5 className="font-semibold text-sm">Récompenses de guerre</h5>
                                   <div className="grid gap-3 sm:grid-cols-2">
-                                    <div className="rounded-2xl border border-border/40 bg-emerald-500/5 p-3 text-xs leading-normal">
-                                      <div className="font-bold text-emerald-600 dark:text-emerald-400">Victoire</div>
+                                    <div className="rounded-2xl border border-border/40 bg-success/5 p-3 text-xs leading-normal">
+                                      <div className="font-bold text-success">Victoire</div>
                                       <div className="mt-1 text-muted-foreground">+{selectedWar.rewardTable.winner.money} money, +{selectedWar.rewardTable.winner.aura} aura et {formatSignedValue(selectedWar.rewardTable.winner.trophies)} trophées pour le clan.</div>
                                     </div>
                                     <div className="rounded-2xl border border-border/40 bg-muted/5 p-3 text-xs leading-normal">
@@ -2989,7 +2989,7 @@ export default function Clans() {
                                   </div>
                                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
                                     <div
-                                      className={cn('h-full rounded-full transition-all', quest.progress.isCompleted ? 'bg-emerald-500' : 'bg-primary')}
+                                      className={cn('h-full rounded-full transition-all', quest.progress.isCompleted ? 'bg-success' : 'bg-primary')}
                                       style={{ width: `${Math.min(100, (quest.progress.currentValue / quest.targetValue) * 100)}%` }}
                                     />
                                   </div>
@@ -3103,14 +3103,14 @@ export default function Clans() {
                         <div className="flex items-center justify-between border-b border-border/50 pb-4">
                           <div>
                             <h3 className="text-sm font-semibold flex items-center gap-2">
-                              <UserX className="h-5 w-5 rotate-180 text-emerald-500" />
+                              <UserX className="h-5 w-5 rotate-180 text-success" />
                               Candidatures de recrutement
                             </h3>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               Validez ou rejetez les demandes des joueurs qui souhaitent rejoindre le clan.
                             </p>
                           </div>
-                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-bold px-2 py-0.5">
+                          <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs font-bold px-2 py-0.5">
                             {selectedClan.joinRequests.length} en attente
                           </Badge>
                         </div>
@@ -3138,7 +3138,7 @@ export default function Clans() {
                                   <div className="min-w-0">
                                     <UsernameDisplay username={request.username} usernameColor={request.usernameColor} />
                                     <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-semibold">
-                                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                                      <Sparkles className="h-3.5 w-3.5 text-warning" />
                                       <span>{formatAura(request.aura)} aura</span>
                                     </div>
                                   </div>
@@ -3146,7 +3146,7 @@ export default function Clans() {
                                 <div className="flex gap-2 shrink-0">
                                   <Button
                                     size="sm"
-                                    className="h-9 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm transition-all"
+                                    className="h-9 px-3 text-xs bg-success hover:bg-success text-white font-semibold shadow-sm transition-all"
                                     onClick={() => handleRequestAction(request.id, 'accept')}
                                     disabled={actionLoading}
                                   >
@@ -3155,7 +3155,7 @@ export default function Clans() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-9 px-3 text-xs border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 font-semibold"
+                                    className="h-9 px-3 text-xs border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive font-semibold"
                                     onClick={() => handleRequestAction(request.id, 'reject')}
                                     disabled={actionLoading}
                                   >
@@ -3362,7 +3362,7 @@ export default function Clans() {
                     <div>
                       <div className="text-sm font-medium">{game.title}</div>
                       <div className="mt-1 text-xs text-muted-foreground">{game.description}</div>
-                      <div className="mt-2 text-xs font-medium text-emerald-600">{game.remainingLabel}</div>
+                      <div className="mt-2 text-xs font-medium text-success">{game.remainingLabel}</div>
                     </div>
                     <Button onClick={() => launchWarGameFromDialog(game.type)}>
                       {game.actionLabel}

@@ -19,14 +19,14 @@ type FormatOption = {
 };
 
 const FORMAT_OPTIONS: FormatOption[] = [
-  { code: 'g', label: 'Vert', className: 'text-emerald-500', icon: 'palette' },
-  { code: 'r', label: 'Rouge', className: 'text-red-500', icon: 'palette' },
-  { code: 'bl', label: 'Bleu', className: 'text-sky-500', icon: 'palette' },
-  { code: 'y', label: 'Jaune', className: 'text-yellow-500', icon: 'palette' },
-  { code: 'p', label: 'Violet', className: 'text-purple-500', icon: 'palette' },
-  { code: 'pink', label: 'Rose', className: 'text-pink-500', icon: 'palette' },
-  { code: 'o', label: 'Orange', className: 'text-orange-500', icon: 'palette' },
-  { code: 'c', label: 'Cyan', className: 'text-cyan-500', icon: 'palette' },
+  { code: 'g', label: 'Vert', className: 'text-success', icon: 'palette' },
+  { code: 'r', label: 'Rouge', className: 'text-destructive', icon: 'palette' },
+  { code: 'bl', label: 'Bleu', className: 'text-primary', icon: 'palette' },
+  { code: 'y', label: 'Jaune', className: 'text-warning', icon: 'palette' },
+  { code: 'p', label: 'Violet', className: 'text-primary', icon: 'palette' },
+  { code: 'pink', label: 'Rose', className: 'text-primary', icon: 'palette' },
+  { code: 'o', label: 'Orange', className: 'text-warning', icon: 'palette' },
+  { code: 'c', label: 'Cyan', className: 'text-primary', icon: 'palette' },
   { code: 'rainbow', label: 'Multicouleur', className: 'animated-message-rainbow font-semibold', icon: 'palette' },
   { code: 'bold', label: 'Gras', className: 'font-bold', icon: 'bold' },
   { code: 'u', label: 'Souligné', className: 'underline underline-offset-2', icon: 'underline' },

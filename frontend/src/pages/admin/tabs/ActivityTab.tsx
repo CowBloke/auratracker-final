@@ -143,35 +143,35 @@ export function ActivityTab(props: ActivityTabProps) {
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-              <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
+              <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5 text-blue-400" />
+                    <Users className="h-3.5 w-3.5 text-primary" />
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Membres actifs</p>
                   </div>
-                  <p className="text-2xl font-bold tabular-nums text-blue-400">{platformStats?.overview.approvedUsers ?? '—'}</p>
+                  <p className="text-2xl font-bold tabular-nums text-primary">{platformStats?.overview.approvedUsers ?? '—'}</p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{platformStats?.overview.totalUsers ?? '—'} inscrits</p>
                 </CardContent>
               </Card>
-              <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-purple-600/5">
+              <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <Gamepad2 className="h-3.5 w-3.5 text-purple-400" />
+                    <Gamepad2 className="h-3.5 w-3.5 text-primary" />
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Parties jouées</p>
                   </div>
-                  <p className="text-2xl font-bold tabular-nums text-purple-400">
+                  <p className="text-2xl font-bold tabular-nums text-primary">
                     {platformStats ? formatBigNumber(platformStats.overview.totalGamesPlayed) : '—'}
                   </p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous les temps</p>
                 </CardContent>
               </Card>
-              <Card className="border-green-500/20 bg-gradient-to-br from-green-500/10 to-green-600/5">
+              <Card className="border-success/20 bg-gradient-to-br from-success/10 to-success/5">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <Trophy className="h-3.5 w-3.5 text-green-400" />
+                    <Trophy className="h-3.5 w-3.5 text-success" />
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Victoires</p>
                   </div>
-                  <p className="text-2xl font-bold tabular-nums text-green-400">
+                  <p className="text-2xl font-bold tabular-nums text-success">
                     {platformStats ? formatBigNumber(platformStats.overview.totalWins) : '—'}
                   </p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
@@ -181,37 +181,37 @@ export function ActivityTab(props: ActivityTabProps) {
                   </p>
                 </CardContent>
               </Card>
-              <Card className="border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5">
+              <Card className="border-warning/20 bg-gradient-to-br from-warning/10 to-warning/5">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <CurrencyIcon type="aura" className="h-3.5 w-3.5" />
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Aura totale</p>
                   </div>
-                  <p className="text-2xl font-bold tabular-nums text-yellow-400">
+                  <p className="text-2xl font-bold tabular-nums text-warning">
                     {platformStats ? formatBigNumber(parseInt(platformStats.overview.totalAura)) : '—'}
                   </p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
                 </CardContent>
               </Card>
-              <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-orange-600/5">
+              <Card className="border-warning/20 bg-gradient-to-br from-warning/10 to-warning/5">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <CurrencyIcon type="money" className="h-3.5 w-3.5" />
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Argent total</p>
                   </div>
-                  <p className="text-2xl font-bold tabular-nums text-orange-400">
+                  <p className="text-2xl font-bold tabular-nums text-warning">
                     {platformStats ? formatBigNumber(platformStats.overview.totalMoney) : '—'}
                   </p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
                 </CardContent>
               </Card>
-              <Card className="border-pink-500/20 bg-gradient-to-br from-pink-500/10 to-pink-600/5">
+              <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-pink-400" />
+                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Transferts</p>
                   </div>
-                  <p className="text-2xl font-bold tabular-nums text-pink-400">
+                  <p className="text-2xl font-bold tabular-nums text-primary">
                     {platformStats ? formatBigNumber(platformStats.overview.totalTransfers) : '—'}
                   </p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
@@ -274,10 +274,10 @@ export function ActivityTab(props: ActivityTabProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <Card className="border-emerald-500/20 bg-emerald-500/5">
+                    <Card className="border-success/20 bg-success/5">
                       <CardContent className="p-4 space-y-1">
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Médiane argent</p>
-                        <p className="text-xl font-semibold tabular-nums text-emerald-300">
+                        <p className="text-xl font-semibold tabular-nums text-success">
                           {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.median)) : '—'}
                         </p>
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
@@ -285,10 +285,10 @@ export function ActivityTab(props: ActivityTabProps) {
                         </p>
                       </CardContent>
                     </Card>
-                    <Card className="border-cyan-500/20 bg-cyan-500/5">
+                    <Card className="border-border/20 bg-muted/5">
                       <CardContent className="p-4 space-y-1">
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Médiane aura</p>
-                        <p className="text-xl font-semibold tabular-nums text-cyan-300">
+                        <p className="text-xl font-semibold tabular-nums text-primary">
                           {auraDistribution ? formatBigNumber(Math.round(auraDistribution.median)) : '—'}
                         </p>
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
@@ -296,10 +296,10 @@ export function ActivityTab(props: ActivityTabProps) {
                         </p>
                       </CardContent>
                     </Card>
-                    <Card className="border-amber-500/20 bg-amber-500/5">
+                    <Card className="border-warning/20 bg-warning/5">
                       <CardContent className="p-4 space-y-1">
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inégalité argent</p>
-                        <p className="text-xl font-semibold tabular-nums text-amber-300">
+                        <p className="text-xl font-semibold tabular-nums text-warning">
                           {moneyDistribution ? formatPercent(moneyDistribution.gini) : '—'}
                         </p>
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
@@ -307,10 +307,10 @@ export function ActivityTab(props: ActivityTabProps) {
                         </p>
                       </CardContent>
                     </Card>
-                    <Card className="border-fuchsia-500/20 bg-fuchsia-500/5">
+                    <Card className="border-border/20 bg-muted/5">
                       <CardContent className="p-4 space-y-1">
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inégalité aura</p>
-                        <p className="text-xl font-semibold tabular-nums text-fuchsia-300">
+                        <p className="text-xl font-semibold tabular-nums text-primary">
                           {auraDistribution ? formatPercent(auraDistribution.gini) : '—'}
                         </p>
                         <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
@@ -334,10 +334,10 @@ export function ActivityTab(props: ActivityTabProps) {
                       {moneyDistribution && moneyDistribution.deciles.length > 0 ? (
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={moneyDistribution.deciles} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
+                            <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
                             <RechartsTooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                              contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                               formatter={(value: number, _name: string, props: any) => [
                                 `${value.toLocaleString('fr-FR')} total · moyenne ${Math.round(props.payload.average).toLocaleString('fr-FR')}`,
                                 'Argent',
@@ -364,10 +364,10 @@ export function ActivityTab(props: ActivityTabProps) {
                       {auraDistribution && auraDistribution.deciles.length > 0 ? (
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={auraDistribution.deciles} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
+                            <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
                             <RechartsTooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                              contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                               formatter={(value: number, _name: string, props: any) => [
                                 `${value.toLocaleString('fr-FR')} total · moyenne ${Math.round(props.payload.average).toLocaleString('fr-FR')}`,
                                 'Aura',
@@ -410,7 +410,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             <span className="font-medium tabular-nums">{formatPercent(item.share)}</span>
                           </div>
                           <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
-                            <div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.max(2, Math.min(100, item.share))}%` }} />
+                            <div className="h-full rounded-full bg-success" style={{ width: `${Math.max(2, Math.min(100, item.share))}%` }} />
                           </div>
                         </div>
                       ))}
@@ -436,7 +436,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             <span className="font-medium tabular-nums">{formatPercent(item.share)}</span>
                           </div>
                           <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
-                            <div className="h-full rounded-full bg-cyan-400" style={{ width: `${Math.max(2, Math.min(100, item.share))}%` }} />
+                            <div className="h-full rounded-full bg-muted" style={{ width: `${Math.max(2, Math.min(100, item.share))}%` }} />
                           </div>
                         </div>
                       ))}
@@ -479,7 +479,7 @@ export function ActivityTab(props: ActivityTabProps) {
                   <BarChart data={platformStats.activityChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                     <XAxis
                       dataKey="date"
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                       tickFormatter={(v: string) => {
@@ -490,13 +490,13 @@ export function ActivityTab(props: ActivityTabProps) {
                     />
                     <YAxis
                       allowDecimals={false}
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                       width={24}
                     />
                     <RechartsTooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                      contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                       formatter={(value: number) => [`${value} partie${value !== 1 ? 's' : ''}`, 'Jeux']}
                       labelFormatter={(label: string) => new Date(label + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
                     />
@@ -533,7 +533,7 @@ export function ActivityTab(props: ActivityTabProps) {
                     >
                       <XAxis
                         type="number"
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                         axisLine={false}
                         tickLine={false}
                         tickFormatter={(v: number) => formatBigNumber(v)}
@@ -541,13 +541,13 @@ export function ActivityTab(props: ActivityTabProps) {
                       <YAxis
                         type="category"
                         dataKey="label"
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                        tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                         axisLine={false}
                         tickLine={false}
                         width={96}
                       />
                       <RechartsTooltip
-                        contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                        contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                         formatter={(value: number, _name: string, props: any) => [
                           `${value.toLocaleString('fr-FR')} parties · ${(props.payload.wins ?? 0).toLocaleString('fr-FR')} victoires`,
                           'Stats',
@@ -1027,15 +1027,15 @@ export function ActivityTab(props: ActivityTabProps) {
                             >
                               <defs>
                                 <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.95} />
-                                  <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0.35} />
+                                  <stop offset="0%" stopColor="var(--foreground)" stopOpacity={0.95} />
+                                  <stop offset="100%" stopColor="var(--foreground)" stopOpacity={0.35} />
                                 </linearGradient>
                                 <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.12} />
-                                  <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
+                                  <stop offset="0%" stopColor="var(--foreground)" stopOpacity={0.12} />
+                                  <stop offset="100%" stopColor="var(--foreground)" stopOpacity={0} />
                                 </linearGradient>
                               </defs>
-                              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                               <XAxis
                                 dataKey="ts"
                                 type="number"
@@ -1043,14 +1043,14 @@ export function ActivityTab(props: ActivityTabProps) {
                                 allowDataOverflow
                                 ticks={xAxisTicks}
                                 tickFormatter={tickFormatter}
-                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                                 axisLine={false}
                                 tickLine={false}
                                 interval={0}
                               />
                               <YAxis
                                 allowDecimals={false}
-                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                                tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                                 axisLine={false}
                                 tickLine={false}
                                 width={24}
@@ -1058,17 +1058,17 @@ export function ActivityTab(props: ActivityTabProps) {
                               {activityHistory.peak > 0 && (
                                 <ReferenceLine
                                   y={activityHistory.peak}
-                                  stroke="hsl(var(--muted-foreground))"
+                                  stroke="var(--muted-foreground)"
                                   strokeDasharray="5 4"
                                   strokeWidth={1}
-                                  label={{ value: `↑ ${activityHistory.peak}`, fill: 'hsl(var(--muted-foreground))', fontSize: 10, position: 'insideTopRight', dy: -4 }}
+                                  label={{ value: `↑ ${activityHistory.peak}`, fill: 'var(--muted-foreground)', fontSize: 10, position: 'insideTopRight', dy: -4 }}
                                 />
                               )}
                               {separatorLines.map(ts => (
                                 <ReferenceLine
                                   key={`sep-${ts}`}
                                   x={ts}
-                                  stroke="hsl(var(--border))"
+                                  stroke="var(--border)"
                                   strokeWidth={1.5}
                                 />
                               ))}
@@ -1076,7 +1076,7 @@ export function ActivityTab(props: ActivityTabProps) {
                                 <>
                                   <ReferenceLine
                                     x={activeActivity.cursorTs}
-                                    stroke="hsl(var(--foreground))"
+                                    stroke="var(--foreground)"
                                     strokeDasharray="4 4"
                                     strokeWidth={1.25}
                                   />
@@ -1084,8 +1084,8 @@ export function ActivityTab(props: ActivityTabProps) {
                                     x={activeActivity.cursorTs}
                                     y={activeActivity.point.max}
                                     r={5}
-                                    fill="hsl(var(--foreground))"
-                                    stroke="hsl(var(--background))"
+                                    fill="var(--foreground)"
+                                    stroke="var(--background)"
                                     strokeWidth={2}
                                   />
                                 </>
@@ -1097,7 +1097,7 @@ export function ActivityTab(props: ActivityTabProps) {
                                 strokeWidth={2.5}
                                 fill="url(#activityGradient)"
                                 dot={false}
-                                activeDot={{ r: 4, fill: 'hsl(var(--foreground))', strokeWidth: 0 }}
+                                activeDot={{ r: 4, fill: 'var(--foreground)', strokeWidth: 0 }}
                                 isAnimationActive={false}
                               />
                             </AreaChart>
@@ -1242,26 +1242,26 @@ export function ActivityTab(props: ActivityTabProps) {
                             }}
                             onMouseLeave={() => setLevelHoverIndex(null)}
                           >
-                            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                             <XAxis
                               dataKey="ts"
                               type="number"
                               domain={['dataMin', 'dataMax']}
                               scale="time"
                               tickFormatter={tickFormatter}
-                              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                              tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                               axisLine={false}
                               tickLine={false}
                             />
                             <YAxis
                               allowDecimals={false}
-                              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                              tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                               axisLine={false}
                               tickLine={false}
                               width={24}
                             />
                             <RechartsTooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                              contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                               formatter={(value: number, name: string) => [
                                 `${value} joueur${value !== 1 ? 's' : ''}`,
                                 labelKey[name] ?? name,
@@ -1371,25 +1371,25 @@ export function ActivityTab(props: ActivityTabProps) {
                   <>
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={pageBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis
                           dataKey="hourLabel"
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                           axisLine={false}
                           tickLine={false}
                           interval={1}
                         />
                         <YAxis
                           allowDecimals={false}
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                           axisLine={false}
                           tickLine={false}
                           width={28}
                         />
                         <RechartsTooltip
                           contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
+                            backgroundColor: 'var(--background)',
+                            border: '1px solid var(--border)',
                             borderRadius: '0.75rem',
                           }}
                           formatter={(value: number, name: string) => [
@@ -1459,25 +1459,25 @@ export function ActivityTab(props: ActivityTabProps) {
                   <>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={gameBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                         <XAxis
                           dataKey="hourLabel"
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                           axisLine={false}
                           tickLine={false}
                           interval={1}
                         />
                         <YAxis
                           allowDecimals={false}
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                           axisLine={false}
                           tickLine={false}
                           width={28}
                         />
                         <RechartsTooltip
                           contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
+                            backgroundColor: 'var(--background)',
+                            border: '1px solid var(--border)',
                             borderRadius: '0.75rem',
                           }}
                           formatter={(value: number, name: string) => [
@@ -1545,16 +1545,16 @@ export function ActivityTab(props: ActivityTabProps) {
                   <>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={gameDurationBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                         <XAxis
                           dataKey="hourLabel"
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                           axisLine={false}
                           tickLine={false}
                           interval={1}
                         />
                         <YAxis
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                           axisLine={false}
                           tickLine={false}
                           width={44}
@@ -1562,8 +1562,8 @@ export function ActivityTab(props: ActivityTabProps) {
                         />
                         <RechartsTooltip
                           contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
+                            backgroundColor: 'var(--background)',
+                            border: '1px solid var(--border)',
                             borderRadius: '0.75rem',
                           }}
                           formatter={(value: number, name: string) => [

@@ -14,11 +14,11 @@ import { toast } from 'sonner';
 import { Clock3, Loader2, Ticket, Users } from 'lucide-react';
 
 const TIER_CONFIG: Record<BraquageLegalTier, { cost: number; tickets: number; maxParticipations: number; label: string; description: string; color: string }> = {
-  BRONZE: { cost: 500, tickets: 1, maxParticipations: 10, label: 'Bronze', description: 'Entrée la plus accessible.', color: 'border-amber-500/25 bg-amber-500/10 text-amber-200' },
-  ARGENT: { cost: 700, tickets: 4, maxParticipations: 8, label: 'Argent', description: 'Plus de tickets pour une mise moyenne.', color: 'border-slate-300/25 bg-slate-300/10 text-slate-100' },
-  OR: { cost: 900, tickets: 10, maxParticipations: 6, label: 'Or', description: 'Un ticket plus dense pour viser gros.', color: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-100' },
-  PLATINE: { cost: 1200, tickets: 25, maxParticipations: 4, label: 'Platine', description: 'Entrée premium.', color: 'border-cyan-500/25 bg-cyan-500/10 text-cyan-100' },
-  VIP: { cost: 1700, tickets: 60, maxParticipations: 2, label: 'VIP', description: 'Le ticket lourd du loto.', color: 'border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-100' },
+  BRONZE: { cost: 500, tickets: 1, maxParticipations: 10, label: 'Bronze', description: 'Entrée la plus accessible.', color: 'border-warning/25 bg-warning/10 text-warning' },
+  ARGENT: { cost: 700, tickets: 4, maxParticipations: 8, label: 'Argent', description: 'Plus de tickets pour une mise moyenne.', color: 'border-border/25 bg-muted/10 text-foreground' },
+  OR: { cost: 900, tickets: 10, maxParticipations: 6, label: 'Or', description: 'Un ticket plus dense pour viser gros.', color: 'border-warning/25 bg-warning/10 text-warning' },
+  PLATINE: { cost: 1200, tickets: 25, maxParticipations: 4, label: 'Platine', description: 'Entrée premium.', color: 'border-border/25 bg-muted/10 text-primary' },
+  VIP: { cost: 1700, tickets: 60, maxParticipations: 2, label: 'VIP', description: 'Le ticket lourd du loto.', color: 'border-border/25 bg-muted/10 text-primary' },
 };
 
 const CONFETTI_COLORS = ['#f59e0b', '#f97316', '#eab308', '#38bdf8', '#22c55e', '#fb7185'];
@@ -238,7 +238,7 @@ export default function BraquageLegal() {
             description="Achetez des tickets par tier, alimentez le pool, puis laissez le tirage décider du gagnant et du propriétaire de la session."
           />
 
-          <Card className="overflow-hidden border-border/60 bg-gradient-to-br from-background via-background to-amber-500/5">
+          <Card className="overflow-hidden border-border/60 bg-gradient-to-br from-background via-background to-warning/5">
             <CardContent className="space-y-6 p-6 md:p-8">
               <div className="flex flex-col items-center gap-4 text-center">
                 <img src="/braquage-legal-logo.png" alt="Loto" className="h-24 w-auto object-contain" />
@@ -257,7 +257,7 @@ export default function BraquageLegal() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Jackpot</p>
-                  <p className="mt-2 text-3xl font-bold tabular-nums text-amber-200">{session?.totalPool.toLocaleString('fr-FR') ?? '0'} €</p>
+                  <p className="mt-2 text-3xl font-bold tabular-nums text-warning">{session?.totalPool.toLocaleString('fr-FR') ?? '0'} €</p>
                   <p className="mt-1 text-sm text-muted-foreground">70% au gagnant, 30% au propriétaire.</p>
                 </div>
                 <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
@@ -363,7 +363,7 @@ export default function BraquageLegal() {
                           </div>
                         </div>
                         <div className="text-right text-sm">
-                          <p className="font-semibold tabular-nums text-amber-200">{entry.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
+                          <p className="font-semibold tabular-nums text-warning">{entry.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
                           <p className="text-muted-foreground">pool {entry.totalPool.toLocaleString('fr-FR')} €</p>
                         </div>
                       </div>
@@ -379,7 +379,7 @@ export default function BraquageLegal() {
       </PageShell>
 
       <Dialog open={Boolean(winnerResult)} onOpenChange={(open) => !open && setWinnerResult(null)}>
-        <DialogContent className="max-w-lg border-border/60 bg-gradient-to-br from-background via-background to-amber-500/10">
+        <DialogContent className="max-w-lg border-border/60 bg-gradient-to-br from-background via-background to-warning/10">
           <DialogHeader className="text-center">
             <DialogTitle className="text-2xl">{winnerResult?.cancelled ? 'Session clôturée' : 'Tirage effectué'}</DialogTitle>
             <DialogDescription>
@@ -394,7 +394,7 @@ export default function BraquageLegal() {
             </div>
           ) : (
             <div className="space-y-4 text-center">
-              <Avatar className="mx-auto h-24 w-24 border-2 border-amber-400/30">
+              <Avatar className="mx-auto h-24 w-24 border-2 border-warning/30">
                 <AvatarImage src={winnerResult?.winner?.profilePicture ? resolveImageUrl(winnerResult.winner.profilePicture) : undefined} alt={winnerResult?.winner?.username ?? 'Gagnant'} />
                 <AvatarFallback className="text-xl">{winnerResult?.winner?.username?.slice(0, 1)?.toUpperCase() ?? '?'}</AvatarFallback>
               </Avatar>
@@ -405,15 +405,15 @@ export default function BraquageLegal() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Gain</p>
-                  <p className="mt-2 text-xl font-bold tabular-nums text-emerald-300">{winnerResult?.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
+                  <p className="mt-2 text-xl font-bold tabular-nums text-success">{winnerResult?.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
                 </div>
                 <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Propriétaire</p>
-                  <p className="mt-2 text-xl font-bold tabular-nums text-amber-200">{winnerResult?.ownerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
+                  <p className="mt-2 text-xl font-bold tabular-nums text-warning">{winnerResult?.ownerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
                 </div>
               </div>
               {winnerResult?.winner?.id === user?.id && (
-                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                <div className="rounded-2xl border border-success/20 bg-success/10 p-4 text-sm text-success">
                   Tu as remporté la session. C&apos;est toi le braqueur du jour.
                 </div>
               )}

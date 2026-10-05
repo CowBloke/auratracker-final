@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react';
-import { Loader2, Upload, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
+import { Upload, X } from 'lucide-react';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
+import { FieldDescription, FieldError } from '@/components/ui/field';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
+import { Spinner } from '@/components/ui/spinner';
 import { resolveImageUrl } from '@/lib/images';
 import { IMAGE_UPLOAD_INPUT_ACCEPT } from '@/lib/image-upload';
+import { cn } from '@/lib/utils';
 
 const DEFAULT_MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_SIZE_LABEL = '10 Mo';
@@ -26,7 +29,7 @@ export function ImagePicker({
   onChange,
   uploadFn,
   disabled,
-  placeholder = 'https://...',
+  placeholder = 'https://…',
   className,
   hidePreview = false,
   maxSizeBytes = DEFAULT_MAX_IMAGE_SIZE_BYTES,
@@ -42,11 +45,11 @@ export function ImagePicker({
   const handleFile = async (file: File | null) => {
     if (!file || isDisabled) return;
     if (!file.type.startsWith('image/')) {
-      setFeedback({ type: 'error', message: 'Seules les images sont acceptees.' });
+      setFeedback({ type: 'error', message: 'Seules les images sont acceptées.' });
       return;
     }
     if (file.size > maxSizeBytes) {
-      setFeedback({ type: 'error', message: `Image trop lourde. Taille max: ${maxSizeLabel}.` });
+      setFeedback({ type: 'error', message: `Image trop lourde. Taille max : ${maxSizeLabel}.` });
       return;
     }
     try {
@@ -54,13 +57,13 @@ export function ImagePicker({
       setUploading(true);
       const url = await uploadFn(file);
       onChange(url);
-      setFeedback({ type: 'success', message: 'Image televersee avec succes.' });
+      setFeedback({ type: 'success', message: 'Image téléversée avec succès.' });
     } catch (error: any) {
       const uploadError =
         error?.response?.data?.error ||
         error?.response?.data?.message ||
         error?.message ||
-        'Image refusee. Verifie le format, la taille ou l URL.';
+        "Image refusée. Vérifiez le format, la taille ou l'URL.";
       setFeedback({ type: 'error', message: uploadError });
     } finally {
       setUploading(false);
@@ -68,108 +71,85 @@ export function ImagePicker({
   };
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('flex flex-col gap-2', className)}>
       <input
         ref={fileInputRef}
         type="file"
         accept={IMAGE_UPLOAD_INPUT_ACCEPT}
         className="hidden"
-        onChange={(e) => {
-          handleFile(e.target.files?.[0] || null);
-          e.currentTarget.value = '';
+        onChange={(event) => {
+          void handleFile(event.target.files?.[0] || null);
+          event.currentTarget.value = '';
         }}
       />
 
-      <div
-        tabIndex={0}
-        onPaste={(e) => {
+      <InputGroup
+        data-dragging={dropzoneActive || undefined}
+        className="data-[dragging]:border-ring data-[dragging]:ring-[3px] data-[dragging]:ring-ring/50"
+        onPaste={(event) => {
           if (isDisabled) return;
-          const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith('image/'));
+          const item = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith('image/'));
           if (!item) return;
-          e.preventDefault();
-          handleFile(item.getAsFile());
+          event.preventDefault();
+          void handleFile(item.getAsFile());
         }}
-        onDragEnter={(e) => {
-          e.preventDefault();
+        onDragOver={(event) => {
+          event.preventDefault();
           if (!isDisabled) setDropzoneActive(true);
         }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          if (!isDisabled) setDropzoneActive(true);
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        onDragLeave={() => setDropzoneActive(false)}
+        onDrop={(event) => {
+          event.preventDefault();
           setDropzoneActive(false);
+          void handleFile(event.dataTransfer.files?.[0] || null);
         }}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDropzoneActive(false);
-          handleFile(e.dataTransfer.files?.[0] || null);
-        }}
-        onClick={() => {
-          if (!isDisabled) fileInputRef.current?.click();
-        }}
-        className={cn(
-          'rounded-md border border-dashed px-4 py-4 text-center text-sm outline-none transition-colors',
-          dropzoneActive ? 'border-primary bg-primary/10' : 'border-border bg-background/60',
-          isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-primary/60',
-        )}
       >
-        {uploading ? (
-          <span className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Upload en cours...
-          </span>
-        ) : (
-          <span className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
-            <span className="flex items-center justify-center gap-2">
-              <Upload className="h-4 w-4" />
-              Cliquez, glissez ou collez (Ctrl+V)
-            </span>
-            <span className="text-xs">
-              Taille max: {maxSizeLabel}. JPG, PNG, WebP, GIF, AVIF
-            </span>
-          </span>
-        )}
-      </div>
+        <InputGroupInput
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          disabled={isDisabled}
+        />
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton variant="secondary" disabled={isDisabled} onClick={() => fileInputRef.current?.click()}>
+            {uploading ? <Spinner /> : <Upload />}
+            Téléverser
+          </InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
 
-      {feedback && (
-        <p className={cn('text-xs', feedback.type === 'error' ? 'text-destructive' : 'text-emerald-600')}>
-          {feedback.message}
-        </p>
-      )}
+      <FieldDescription>
+        Collez une URL, glissez-déposez ou collez une image (Ctrl+V). Taille max : {maxSizeLabel}. JPG, PNG, WebP, GIF, AVIF.
+      </FieldDescription>
 
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={isDisabled}
-        className="bg-transparent"
-      />
+      {feedback?.type === 'error' ? <FieldError>{feedback.message}</FieldError> : null}
+      {feedback?.type === 'success' ? <p className="text-sm text-success">{feedback.message}</p> : null}
 
-      {!hidePreview && value && (
-        <div className="relative">
-          <img
-            src={resolveImageUrl(value)}
-            alt="Preview"
-            className="max-h-40 w-full max-w-full rounded-md border border-border/30 object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
+      {!hidePreview && value ? (
+        <div className="relative overflow-hidden rounded-md border">
+          <AspectRatio ratio={16 / 9}>
+            <img
+              src={resolveImageUrl(value)}
+              alt="Aperçu"
+              className="size-full object-cover"
+              onError={(event) => {
+                (event.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </AspectRatio>
           <Button
             type="button"
-            variant="ghost"
+            variant="secondary"
+            size="icon-sm"
+            className="absolute right-2 top-2"
             onClick={() => onChange('')}
             disabled={isDisabled}
-            className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center bg-background/80 border border-border rounded-full text-muted-foreground hover:text-foreground"
             aria-label="Retirer l'image"
           >
-            <X className="h-4 w-4" />
+            <X />
           </Button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -111,23 +111,23 @@ export default function AdminWarningModal() {
   const severityConfig = {
     LOW: {
       icon: Info,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      borderColor: 'border-blue-500/30',
+      color: 'text-primary',
+      bgColor: 'bg-muted/10',
+      borderColor: 'border-border/30',
       label: 'Information',
     },
     MEDIUM: {
       icon: AlertCircle,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10',
-      borderColor: 'border-yellow-500/30',
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
+      borderColor: 'border-warning/30',
       label: 'Avertissement',
     },
     HIGH: {
       icon: AlertTriangle,
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10',
-      borderColor: 'border-red-500/30',
+      color: 'text-destructive',
+      bgColor: 'bg-destructive/10',
+      borderColor: 'border-destructive/30',
       label: 'Avertissement Grave',
     },
   };
@@ -135,9 +135,9 @@ export default function AdminWarningModal() {
   const config = isAmende 
     ? {
         icon: AlertTriangle,
-        color: 'text-red-500',
-        bgColor: 'bg-red-500/10',
-        borderColor: 'border-red-500/30',
+        color: 'text-destructive',
+        bgColor: 'bg-destructive/10',
+        borderColor: 'border-destructive/30',
         label: 'Amende',
       }
     : severityConfig[currentWarning.severity];
@@ -160,7 +160,7 @@ export default function AdminWarningModal() {
   return (
     <Dialog open>
       <DialogContent
-        className={cn("max-w-lg", isAmende && 'border-red-500/50 ')}
+        className={cn("max-w-lg", isAmende && 'border-destructive/50 ')}
         onEscapeKeyDown={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
@@ -174,7 +174,7 @@ export default function AdminWarningModal() {
               <DialogTitle className={config.color}>
                 {currentWarning.customTitle || config.label}
                 {isAmende && currentWarning.amount && (
-                  <span className="block text-xl font-bold text-red-500">
+                  <span className="block text-xl font-bold text-destructive">
                     {currentWarning.amount}
                   </span>
                 )}
@@ -188,10 +188,10 @@ export default function AdminWarningModal() {
 
         <div className="space-y-4">
           {isAmende && currentWarning.amount ? (
-            <div className={cn('rounded-lg border-2 p-4 text-center', 'border-red-500/50 bg-red-500/20')}>
-              <p className="text-xs text-red-600 font-medium mb-1">MONTANT DE L'AMENDE</p>
-              <p className="text-5xl font-bold text-red-500 mb-3">{currentWarning.amount}</p>
-              <p className="text-sm text-red-600 font-semibold">Pièces d'or</p>
+            <div className={cn('rounded-lg border-2 p-4 text-center', 'border-destructive/50 bg-destructive/20')}>
+              <p className="text-xs text-destructive font-medium mb-1">MONTANT DE L'AMENDE</p>
+              <p className="text-5xl font-bold text-destructive mb-3">{currentWarning.amount}</p>
+              <p className="text-sm text-destructive font-semibold">Pièces d'or</p>
             </div>
           ) : null}
 

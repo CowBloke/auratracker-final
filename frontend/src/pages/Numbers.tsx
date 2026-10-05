@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { auraCoinApi, clansApi, leaderboardsApi, usersApi } from '../services/api';
-import { Card, CardContent } from '@/components/ui/card';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 
 type StatItem = {
   label: string;
@@ -50,13 +51,15 @@ const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digit
 
 const StatCard = ({ label, value, hint }: StatItem) => (
   <Card>
-    <CardContent className="p-4 md:p-5 space-y-2">
-      <p className={cn(TYPOGRAPHY.H2, "md:text-4xl tabular-nums")}>{value}</p>
-      <p className={TYPOGRAPHY.SMALL}>{label}</p>
-      {hint && (
-        <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground/70")}>{hint}</p>
-      )}
-    </CardContent>
+    <CardHeader>
+      <CardDescription>{label}</CardDescription>
+      <CardTitle className="text-3xl tabular-nums">{value}</CardTitle>
+    </CardHeader>
+    {hint ? (
+      <CardContent>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </CardContent>
+    ) : null}
   </Card>
 );
 
@@ -144,31 +147,33 @@ export default function Numbers() {
   }, []);
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+    <PageShell>
+      <PageHeader title="Nombres" description="Les chiffres clés de la communauté, de l'économie et des jeux." />
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-        </div>
-      ) : sections.length === 0 ? (
-        <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
-          Impossible de charger les nombres pour le moment.
-        </p>
-      ) : (
-        <div className={SPACING.PAGE_SPACING}>
-          {sections.map((section) => (
-            <div key={section.title} className={SPACING.CARD_SPACING}>
-              <h2 className={TYPOGRAPHY.MUTED}>
-                {section.title}
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {section.items.map((item) => (
-                  <StatCard key={item.label} {...item} />
-                ))}
-              </div>
-            </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 8 }, (_, index) => (
+            <Skeleton key={index} className="h-28" />
           ))}
         </div>
+      ) : sections.length === 0 ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Chiffres indisponibles</EmptyTitle>
+            <EmptyDescription>Impossible de charger les nombres pour le moment.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        sections.map((section) => (
+          <section key={section.title} className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold tracking-tight">{section.title}</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {section.items.map((item) => (
+                <StatCard key={item.label} {...item} />
+              ))}
+            </div>
+          </section>
+        ))
       )}
-    </div>
+    </PageShell>
   );
 }

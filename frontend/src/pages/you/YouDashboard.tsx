@@ -67,13 +67,13 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
     <div className="rounded-xl border border-border/40 bg-card transition-all hover:border-border" data-tutorial-id="you-dashboard-owned-business-card">
       {/* Placement warning */}
       {isUnplaced && (
-        <div className="flex items-center gap-2 rounded-t-xl border-b border-amber-400/20 bg-amber-400/8 px-3 py-1.5">
-          <AlertTriangle className="h-3 w-3 shrink-0 text-amber-400" />
-          <span className="min-w-0 flex-1 text-[10px] text-amber-400">Non placé sur la carte</span>
+        <div className="flex items-center gap-2 rounded-t-xl border-b border-warning/20 bg-warning/8 px-3 py-1.5">
+          <AlertTriangle className="h-3 w-3 shrink-0 text-warning" />
+          <span className="min-w-0 flex-1 text-[10px] text-warning">Non placé sur la carte</span>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onStartPlacing(b.id); }}
-            className="flex shrink-0 items-center gap-1 rounded-md bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-400 transition-colors hover:bg-amber-400/25"
+            className="flex shrink-0 items-center gap-1 rounded-md bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning transition-colors hover:bg-warning/25"
             data-tutorial-id="you-dashboard-place-business"
           >
             <MapPin className="h-2.5 w-2.5" />
@@ -84,13 +84,13 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
 
       {/* Work reminder banner */}
       {needsWork && (
-        <div className="flex items-center gap-2 border-b border-orange-500/20 bg-orange-500/8 px-3 py-2">
-          <Hammer className="h-3 w-3 shrink-0 text-orange-400" />
-          <span className="min-w-0 flex-1 text-[10px] text-orange-400">Travail journalier requis</span>
+        <div className="flex items-center gap-2 border-b border-warning/20 bg-warning/8 px-3 py-2">
+          <Hammer className="h-3 w-3 shrink-0 text-warning" />
+          <span className="min-w-0 flex-1 text-[10px] text-warning">Travail journalier requis</span>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onWork(); }}
-            className="flex shrink-0 items-center gap-1 rounded-md bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400 transition-colors hover:bg-orange-500/25"
+            className="flex shrink-0 items-center gap-1 rounded-md bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning transition-colors hover:bg-warning/25"
             data-tutorial-id="you-dashboard-work-button"
           >
             <Hammer className="h-2.5 w-2.5" />
@@ -118,7 +118,7 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
           </div>
           <div>
             <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Net /jour</div>
-            <div className={cn('text-[12px] font-semibold tabular-nums', displayNet >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+            <div className={cn('text-[12px] font-semibold tabular-nums', displayNet >= 0 ? 'text-success' : 'text-destructive')}>
               {displayNet >= 0 ? '+' : ''}{displayNet.toLocaleString('fr-FR')}€
             </div>
           </div>
@@ -127,15 +127,15 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
           <div className="mt-2 grid grid-cols-3 gap-1.5 border-t border-border/30 pt-2">
             <div>
               <div className="text-[8px] uppercase tracking-wide text-muted-foreground/70">Runway</div>
-              <div className={cn('text-[10px] font-semibold tabular-nums', f.runwayDays != null && f.runwayDays < 5 ? 'text-amber-400' : 'text-muted-foreground')}>{runwayLabel}</div>
+              <div className={cn('text-[10px] font-semibold tabular-nums', f.runwayDays != null && f.runwayDays < 5 ? 'text-warning' : 'text-muted-foreground')}>{runwayLabel}</div>
             </div>
             <div>
               <div className="text-[8px] uppercase tracking-wide text-muted-foreground/70">Crédit</div>
-              <div className="text-[10px] font-semibold tabular-nums text-sky-400">{f.creditScore}</div>
+              <div className="text-[10px] font-semibold tabular-nums text-primary">{f.creditScore}</div>
             </div>
             <div>
               <div className="text-[8px] uppercase tracking-wide text-muted-foreground/70">Intrants</div>
-              <div className={cn('text-[10px] font-semibold tabular-nums', f.inputCoverage.percent >= 80 ? 'text-emerald-400' : f.inputCoverage.percent >= 45 ? 'text-amber-400' : 'text-red-400')}>{f.inputCoverage.percent}%</div>
+              <div className={cn('text-[10px] font-semibold tabular-nums', f.inputCoverage.percent >= 80 ? 'text-success' : f.inputCoverage.percent >= 45 ? 'text-warning' : 'text-destructive')}>{f.inputCoverage.percent}%</div>
             </div>
           </div>
         )}
@@ -164,13 +164,13 @@ function MemberBizTile({ b, currentUserId, onOpen, onWork }: {
   return (
     <div className="rounded-xl border border-border/40 bg-card transition-all hover:border-border">
       {needsWork && (
-        <div className="flex items-center gap-2 border-b border-orange-500/20 bg-orange-500/8 px-3 py-2">
-          <Hammer className="h-3 w-3 shrink-0 text-orange-400" />
-          <span className="min-w-0 flex-1 text-[10px] text-orange-400">Travail journalier requis</span>
+        <div className="flex items-center gap-2 border-b border-warning/20 bg-warning/8 px-3 py-2">
+          <Hammer className="h-3 w-3 shrink-0 text-warning" />
+          <span className="min-w-0 flex-1 text-[10px] text-warning">Travail journalier requis</span>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onWork(); }}
-            className="flex shrink-0 items-center gap-1 rounded-md bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400 transition-colors hover:bg-orange-500/25"
+            className="flex shrink-0 items-center gap-1 rounded-md bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning transition-colors hover:bg-warning/25"
           >
             <Hammer className="h-2.5 w-2.5" />
             Travailler
@@ -241,7 +241,7 @@ function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlac
           <div className="mb-3 rounded-xl border border-border/40 bg-card p-3">
             <div className="mb-1 flex items-baseline justify-between">
               <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Valeur totale</span>
-              <span className={cn('text-[10px] font-medium tabular-nums', totalNet >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+              <span className={cn('text-[10px] font-medium tabular-nums', totalNet >= 0 ? 'text-success' : 'text-destructive')}>
                 {totalNet >= 0 ? '+' : ''}{totalNet.toLocaleString('fr-FR')}€ /mois
               </span>
             </div>

@@ -196,7 +196,7 @@ function SlotButton({
         isInline ? 'h-10 w-10 rounded-xl border' : 'h-16 w-16 rounded-md border-2',
         editable
           ? isActive
-            ? 'border-foreground shadow-[0_0_0_3px_hsl(var(--foreground)/0.1)] cursor-pointer'
+            ? 'border-foreground shadow-[0_0_0_3px_color-mix(in oklab, var(--foreground) 10%, transparent)] cursor-pointer'
             : 'border-border/50 hover:border-foreground/60 cursor-pointer'
           : 'border-transparent',
       )}

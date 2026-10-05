@@ -163,7 +163,7 @@ function BusinessPin({
     >
       <BizIcon className={cn('text-white drop-shadow-sm', iconSize)} />
       {underConstruction && (
-        <span className="absolute -top-1 -right-1 flex size-3 items-center justify-center rounded-full bg-amber-400 text-[7px] font-bold text-black shadow">
+        <span className="absolute -top-1 -right-1 flex size-3 items-center justify-center rounded-full bg-warning text-[7px] font-bold text-black shadow">
           ⚒
         </span>
       )}
@@ -248,7 +248,7 @@ function BusinessInfoPanel({
               onClick={() => setShowReviews((v) => !v)}
               className="flex items-center gap-1 text-xs hover:opacity-80"
             >
-              <span className="text-amber-500">★ {business.avgRating.toFixed(1)}</span>
+              <span className="text-warning">★ {business.avgRating.toFixed(1)}</span>
               <span className="text-muted-foreground">{business.ratingCount} avis</span>
               {showReviews ? <ChevronUp className="size-3 text-muted-foreground" /> : <ChevronDown className="size-3 text-muted-foreground" />}
             </button>
@@ -279,7 +279,7 @@ function BusinessInfoPanel({
                 <span className="text-[11px] font-semibold text-foreground">{r.user.username}</span>
                 <div className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className={cn('size-3', i <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-amber-400/20')} />
+                    <Star key={i} className={cn('size-3', i <= r.rating ? 'fill-warning text-warning' : 'text-warning/20')} />
                   ))}
                 </div>
               </div>
@@ -397,10 +397,10 @@ export const CarteTab = forwardRef<
 
     return [
       { label: 'EMP', value: `${ownedBusinesses.length} entrep.`, icon: Building2, valueClass: 'text-foreground' },
-      { label: 'MAP', value: `${placedCount} placés`, icon: MapPin, valueClass: 'text-sky-500' },
+      { label: 'MAP', value: `${placedCount} placés`, icon: MapPin, valueClass: 'text-primary' },
       { label: 'TRE', value: formatMoney(totalTreasury), icon: Wallet, valueClass: 'text-foreground' },
-      { label: 'REV', value: `+${formatMoney(totalRevenue)}/mois`, icon: TrendingUp, valueClass: 'text-emerald-500' },
-      { label: 'COST', value: `-${formatMoney(totalExpenses)}/mois`, icon: TrendingDown, valueClass: 'text-rose-500' },
+      { label: 'REV', value: `+${formatMoney(totalRevenue)}/mois`, icon: TrendingUp, valueClass: 'text-success' },
+      { label: 'COST', value: `-${formatMoney(totalExpenses)}/mois`, icon: TrendingDown, valueClass: 'text-destructive' },
       { label: 'LOAN', value: `${activeLoans} prêts`, icon: Activity, valueClass: 'text-foreground' },
       { label: 'SOC', value: `${data.relationships.length} relations`, icon: Users, valueClass: 'text-foreground' },
     ];
@@ -558,8 +558,8 @@ export const CarteTab = forwardRef<
               onClick={() => setOwnerFilter(f)}
               style={
                 ownerFilter === f
-                  ? { background: 'hsl(var(--foreground))', color: 'hsl(var(--background))', borderColor: 'hsl(var(--foreground))' }
-                  : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'hsl(var(--border) / 0.3)' }
+                  ? { background: 'var(--foreground)', color: 'var(--background)', borderColor: 'var(--foreground)' }
+                  : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'color-mix(in oklab, var(--border) 30%, transparent)' }
               }
               className="rounded-full border px-3 py-1 text-[11px] font-medium transition-all"
             >
@@ -576,8 +576,8 @@ export const CarteTab = forwardRef<
               onClick={() => setMapType(t)}
               style={
                 mapType === t
-                  ? { background: 'hsl(var(--foreground))', color: 'hsl(var(--background))', borderColor: 'hsl(var(--foreground))' }
-                  : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'hsl(var(--border) / 0.3)' }
+                  ? { background: 'var(--foreground)', color: 'var(--background)', borderColor: 'var(--foreground)' }
+                  : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'color-mix(in oklab, var(--border) 30%, transparent)' }
               }
               className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-all"
             >
@@ -682,8 +682,8 @@ export const CarteTab = forwardRef<
       {/* Placement banner */}
       {placingBusinessId && (
         <div className="absolute left-1/2 top-3 z-20 -translate-x-1/2">
-          <div className="flex items-center gap-3 rounded-xl border border-sky-500/30 bg-background/95 px-4 py-2.5 shadow-lg backdrop-blur-sm">
-            <MapPin className="size-4 shrink-0 text-sky-500" />
+          <div className="flex items-center gap-3 rounded-xl border border-border/30 bg-background/95 px-4 py-2.5 shadow-lg backdrop-blur-sm">
+            <MapPin className="size-4 shrink-0 text-primary" />
             <div>
               <p className="text-xs font-semibold text-foreground">
                 {savingPlacementId ? 'Enregistrement…' : 'Cliquez sur la carte pour placer'}

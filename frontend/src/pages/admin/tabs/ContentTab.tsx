@@ -130,11 +130,11 @@ export function ContentTab(props: ContentTabProps) {
               }
             });
             return (
-              <Card className="border-violet-500/20 bg-gradient-to-b from-violet-950/20 to-transparent">
+              <Card className="border-border/20 bg-gradient-to-b from-muted to-transparent">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
-                    <Gamepad2 className="h-3.5 w-3.5 text-violet-400" />
-                    <CardDescription className="text-violet-300">Apparence forcee du jour</CardDescription>
+                    <Gamepad2 className="h-3.5 w-3.5 text-primary" />
+                    <CardDescription className="text-primary">Apparence forcee du jour</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -148,7 +148,7 @@ export function ContentTab(props: ContentTabProps) {
                   ) : (
                     <>
                       <Select value={djForcedSkinSelected} onValueChange={setDjForcedSkinSelected}>
-                        <SelectTrigger className="bg-transparent border-violet-500/30 text-xs h-8">
+                        <SelectTrigger className="bg-transparent border-border/30 text-xs h-8">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -161,7 +161,7 @@ export function ContentTab(props: ContentTabProps) {
                         </SelectContent>
                       </Select>
                       {djForcedSkinId && djForcedSkinId !== '__none__' && (
-                        <p className="text-xs text-violet-400">
+                        <p className="text-xs text-primary">
                           Force : {djRotatingItems.find((i: any) => i.id === djForcedSkinId)?.name ?? djForcedSkinId}
                         </p>
                       )}
@@ -169,7 +169,7 @@ export function ContentTab(props: ContentTabProps) {
                         size="sm"
                         onClick={saveDjForcedSkin}
                         disabled={djForcedSkinSaving}
-                        className="w-full bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-400 hover:to-indigo-500 text-white border-0 h-8 text-xs"
+                        className="w-full bg-gradient-to-r from-muted to-muted hover:from-muted hover:to-muted text-white border-0 h-8 text-xs"
                       >
                         {djForcedSkinSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : null}
                         Appliquer

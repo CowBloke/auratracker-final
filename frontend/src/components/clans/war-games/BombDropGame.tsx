@@ -596,7 +596,7 @@ export function BombDropGame({ isPractice, onComplete }: BombDropGameProps) {
     <div className="space-y-3">
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">
-          {t('bombdrop_bombs_label')} <span className="font-semibold text-orange-400">{display.bombsLeft}/{MAX_BOMBS}</span>
+          {t('bombdrop_bombs_label')} <span className="font-semibold text-warning">{display.bombsLeft}/{MAX_BOMBS}</span>
         </span>
         <span className="font-semibold text-primary">{t('bombdrop_score_label')}: {display.score}</span>
         <span className="text-muted-foreground">{t('bombdrop_hits_label')}: {display.hits}</span>

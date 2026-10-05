@@ -191,15 +191,15 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
             {sectionItems.map((item) => (
               <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-yellow-400/15 text-lg">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-warning/15 text-lg">
                     {(item as any).imageUrl
                       ? <img src={(item as any).imageUrl} className="h-9 w-9 object-cover" alt={item.label} />
-                      : (item.emoji ?? <ShoppingCart className="h-4 w-4 text-yellow-400" />)}
+                      : (item.emoji ?? <ShoppingCart className="h-4 w-4 text-warning" />)}
                   </div>
                   <div>
                     <p className="text-sm font-medium">{item.label}</p>
                     <p className="text-xs text-muted-foreground">{item.price.toLocaleString('fr-FR')} €</p>
-                    {item.xpHint && <p className="text-[10px] text-purple-400/80">{item.xpHint}</p>}
+                    {item.xpHint && <p className="text-[10px] text-primary/80">{item.xpHint}</p>}
                   </div>
                 </div>
                 <Button size="sm" onClick={() => void buy(item.key)} disabled={buying !== null}>Acheter</Button>
@@ -260,20 +260,20 @@ function GridCard({ business, onClick }: { business: YouBusiness; onClick: () =>
             <Users className="h-2.5 w-2.5" />{displayedMemberCount(business)}
           </span>
           {business.avgRating != null && business.ratingCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">
-              <Star className="h-2.5 w-2.5 fill-amber-400/40" />{business.avgRating.toFixed(1)}
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning">
+              <Star className="h-2.5 w-2.5 fill-warning/40" />{business.avgRating.toFixed(1)}
             </span>
           )}
           <span className={cn(
             'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums',
-            business.satisfaction >= 70 ? 'bg-emerald-500/15 text-emerald-400'
-            : business.satisfaction >= 40 ? 'bg-amber-500/15 text-amber-400'
-            : 'bg-red-500/15 text-red-400',
+            business.satisfaction >= 70 ? 'bg-success/15 text-success'
+            : business.satisfaction >= 40 ? 'bg-warning/15 text-warning'
+            : 'bg-destructive/15 text-destructive',
           )}>
             {business.satisfaction}%
           </span>
           {underConstruction && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500">
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning">
               🏗 {business.constructionProject?.progress.percent ?? 0}%
             </span>
           )}
@@ -293,18 +293,18 @@ function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () 
       <AppModal.Header tone="money" title="Finances" subtitle={business.name} />
       <AppModal.Body scrollable>
       <div className="space-y-3">
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-4">
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-emerald-500">Trésorerie</p>
-          <p className="mt-1 text-[22px] font-bold tabular-nums leading-tight text-emerald-400">{fmt(business.treasuryMoney)}</p>
+        <div className="rounded-xl border border-success/20 bg-success/8 px-4 py-4">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-success">Trésorerie</p>
+          <p className="mt-1 text-[22px] font-bold tabular-nums leading-tight text-success">{fmt(business.treasuryMoney)}</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3 py-3">
+          <div className="rounded-xl border border-success/20 bg-success/8 px-3 py-3">
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Rev. mensuel</p>
-            <p className="mt-1 text-[13px] font-bold tabular-nums text-emerald-400">{fmt(business.monthlyRevenue)}</p>
+            <p className="mt-1 text-[13px] font-bold tabular-nums text-success">{fmt(business.monthlyRevenue)}</p>
           </div>
-          <div className={cn('rounded-xl border px-3 py-3', net >= 0 ? 'bg-emerald-500/8 border-emerald-500/20' : 'bg-red-500/8 border-red-500/20')}>
+          <div className={cn('rounded-xl border px-3 py-3', net >= 0 ? 'bg-success/8 border-success/20' : 'bg-destructive/8 border-destructive/20')}>
             <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Net / mois</p>
-            <p className={cn('mt-1 text-[13px] font-bold tabular-nums', net >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+            <p className={cn('mt-1 text-[13px] font-bold tabular-nums', net >= 0 ? 'text-success' : 'text-destructive')}>
               {net >= 0 ? '+' : ''}{fmt(net)}
             </p>
           </div>
@@ -325,15 +325,15 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
       <AppModal.Body scrollable>
       {business.avgRating != null && business.ratingCount > 0 ? (
         <div className="space-y-3">
-          <div className="flex items-center gap-4 rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-4">
-            <span className="text-[40px] font-bold text-amber-400 tabular-nums leading-none">{business.avgRating.toFixed(1)}</span>
+          <div className="flex items-center gap-4 rounded-xl border border-warning/20 bg-warning/8 px-4 py-4">
+            <span className="text-[40px] font-bold text-warning tabular-nums leading-none">{business.avgRating.toFixed(1)}</span>
             <div>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Star key={i} className={cn('h-4 w-4',
-                    i <= Math.floor(business.avgRating!) ? 'fill-amber-400 text-amber-400'
-                    : i === Math.ceil(business.avgRating!) && business.avgRating! % 1 >= 0.3 ? 'fill-amber-400/40 text-amber-400'
-                    : 'text-amber-400/20',
+                    i <= Math.floor(business.avgRating!) ? 'fill-warning text-warning'
+                    : i === Math.ceil(business.avgRating!) && business.avgRating! % 1 >= 0.3 ? 'fill-warning/40 text-warning'
+                    : 'text-warning/20',
                   )} />
                 ))}
               </div>
@@ -348,7 +348,7 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
                     <span className="text-[12px] font-semibold text-foreground">{r.user.username}</span>
                     <div className="flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map((i) => (
-                        <Star key={i} className={cn('h-3 w-3', i <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-amber-400/20')} />
+                        <Star key={i} className={cn('h-3 w-3', i <= r.rating ? 'fill-warning text-warning' : 'text-warning/20')} />
                       ))}
                     </div>
                   </div>
@@ -378,9 +378,9 @@ function InvestmentsModal({ open, onClose, business }: { open: boolean; onClose:
       {business.recentInvestments.length > 0 ? (
         <div className="space-y-1.5">
           {business.recentInvestments.map((inv) => {
-            const riskColor = inv.riskLevel === 'low' ? 'text-emerald-400' : inv.riskLevel === 'high' ? 'text-rose-400' : 'text-amber-400';
+            const riskColor = inv.riskLevel === 'low' ? 'text-success' : inv.riskLevel === 'high' ? 'text-destructive' : 'text-warning';
             return (
-              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-sky-400/15 bg-muted/10 px-3 py-2 text-xs">
+              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/15 bg-muted/10 px-3 py-2 text-xs">
                 <span className="font-medium">{inv.investor.username}</span>
                 <span className={cn('font-semibold', riskColor)}>{fmt(inv.amount)}</span>
               </div>
@@ -407,13 +407,13 @@ function ShareholdersModal({ open, onClose, business, userId }: {
       <AppModal.Header tone="money" title={`Capital · ${business.name}`} subtitle={shareholderDesc} />
       <AppModal.Body scrollable>
       <div className="space-y-1.5">
-        <div className="rounded-lg border border-amber-400/15 bg-muted/10 px-3 py-2.5">
+        <div className="rounded-lg border border-warning/15 bg-muted/10 px-3 py-2.5">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">{business.owner.username}{business.ownerId === userId ? ' · toi' : ''}</span>
-            <span className="font-bold text-amber-300">{business.ownerSharePercent.toFixed(2)}%</span>
+            <span className="font-bold text-warning">{business.ownerSharePercent.toFixed(2)}%</span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
-            <div className="h-full rounded-full bg-amber-400/70" style={{ width: `${Math.max(0, Math.min(100, business.ownerSharePercent))}%` }} />
+            <div className="h-full rounded-full bg-warning/70" style={{ width: `${Math.max(0, Math.min(100, business.ownerSharePercent))}%` }} />
           </div>
         </div>
         {business.shareholders.length === 0 ? (
@@ -425,7 +425,7 @@ function ShareholdersModal({ open, onClose, business, userId }: {
               <span className="font-bold">{s.sharePercent.toFixed(2)}%</span>
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
-              <div className="h-full rounded-full bg-amber-300/70" style={{ width: `${Math.max(0, Math.min(100, s.sharePercent))}%` }} />
+              <div className="h-full rounded-full bg-warning/70" style={{ width: `${Math.max(0, Math.min(100, s.sharePercent))}%` }} />
             </div>
           </div>
         ))}
@@ -496,7 +496,7 @@ function FilePlainteModal({
         <div className="space-y-4">
           <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Scale className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+              <Scale className="h-3.5 w-3.5 shrink-0 text-primary" />
               <span>Déposer une plainte contre un joueur ou un business.</span>
             </div>
           </div>
@@ -637,35 +637,35 @@ function DetailPanel({
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <button type="button" onClick={() => setShowFinance(true)}
-              className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-400 transition-colors hover:bg-emerald-500/25">
+              className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-bold text-success transition-colors hover:bg-success/25">
               <TrendingUp className="h-2.5 w-2.5" />{fmtCompact(business.treasuryMoney)}
             </button>
             {business.avgRating != null && business.ratingCount > 0 && (
               <button type="button" onClick={() => setShowReviews(true)}
-                className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-400 transition-colors hover:bg-amber-400/25">
-                <Star className="h-2.5 w-2.5 fill-amber-400/40" />{business.avgRating.toFixed(1)}
+                className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning transition-colors hover:bg-warning/25">
+                <Star className="h-2.5 w-2.5 fill-warning/40" />{business.avgRating.toFixed(1)}
               </button>
             )}
             {onShowTeam && (
               <button type="button" onClick={onShowTeam}
-                className="inline-flex items-center gap-1 rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-medium text-violet-400 transition-colors hover:bg-violet-400/25">
+                className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-muted/25">
                 <Users className="h-2.5 w-2.5" />{displayedMemberCount(business)}
               </button>
             )}
             {business.isShared && onShowShareholders && (
               <button type="button" onClick={onShowShareholders}
-                className="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300 transition-colors hover:bg-amber-400/25">
+                className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning transition-colors hover:bg-warning/25">
                 <Crown className="h-2.5 w-2.5" />{business.shareholders.length + 1}
               </button>
             )}
             {business.recentInvestments.length > 0 && (
               <button type="button" onClick={() => setShowInvestments(true)}
-                className="inline-flex items-center gap-1 rounded-full bg-sky-400/15 px-2 py-0.5 text-[10px] font-medium text-sky-400 transition-colors hover:bg-sky-400/25">
+                className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-muted/25">
                 <TrendingUp className="h-2.5 w-2.5" />{business.recentInvestments.length}
               </button>
             )}
             {underConstruction && (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">
+              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
                 🏗 {business.constructionProject?.progress.percent ?? 0}%
               </span>
             )}
@@ -676,19 +676,19 @@ function DetailPanel({
         <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
           {!isOwned && business.supportEnabled && onOpenSupport && (
             <button type="button" onClick={onOpenSupport}
-              className="flex items-center gap-1.5 rounded-lg border border-teal-500/25 bg-teal-500/10 px-2.5 py-1.5 text-[11px] font-medium text-teal-400 transition-colors hover:bg-teal-500/20">
+              className="flex items-center gap-1.5 rounded-lg border border-success/25 bg-success/10 px-2.5 py-1.5 text-[11px] font-medium text-success transition-colors hover:bg-success/20">
               <MessageSquare className="h-3.5 w-3.5 shrink-0" />
               <span>Support</span>
             </button>
           )}
           {canApply ? (
             <button type="button" onClick={() => onAction(business.id, 'apply')}
-              className="flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/15 px-2.5 py-1.5 text-[11px] font-semibold text-violet-300 transition-colors hover:bg-violet-500/25">
+              className="flex items-center gap-1.5 rounded-lg border border-border/30 bg-muted/15 px-2.5 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-muted/25">
               <UserCheck className="h-3.5 w-3.5 shrink-0" />
               <span>Postuler</span>
             </button>
           ) : !isOwned && hasPendingApplication ? (
-            <span className="rounded-lg border border-violet-400/20 bg-violet-400/5 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+            <span className="rounded-lg border border-border/20 bg-muted/5 px-2.5 py-1.5 text-[10px] text-muted-foreground">
               Candidature en attente
             </span>
           ) : null}
@@ -702,7 +702,7 @@ function DetailPanel({
 
           {/* Livret épargne */}
           {business.typeKey === 'bank' && business.livretEpargneUnlocked && (
-            <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-xs text-amber-300">
+            <div className="flex items-center gap-2 rounded-xl border border-warning/20 bg-warning/8 px-3 py-2 text-xs text-warning">
               <Sparkles className="h-3.5 w-3.5 shrink-0" />
               <span>Livret épargne disponible</span>
             </div>
@@ -719,11 +719,11 @@ function DetailPanel({
                       <p className="text-[12px] font-medium">{product.name}</p>
                       <p className="text-[10px] text-muted-foreground">Niv. {product.deployedLevel}/10</p>
                     </div>
-                    <p className="text-[11px] font-semibold text-sky-300">+{product.currentRevenue.toLocaleString('fr-FR')} €</p>
+                    <p className="text-[11px] font-semibold text-primary">+{product.currentRevenue.toLocaleString('fr-FR')} €</p>
                   </div>
                   {(product.isResearchActive || product.canDeploy) && (
                     <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted/40">
-                      <div className="h-full rounded-full bg-sky-400" style={{ width: `${product.progressPercent}%` }} />
+                      <div className="h-full rounded-full bg-muted" style={{ width: `${product.progressPercent}%` }} />
                     </div>
                   )}
                 </div>
@@ -738,7 +738,7 @@ function DetailPanel({
             {(() => {
               if (business.typeKey === 'bank') return (
                 <button type="button" onClick={() => onAction(business.id, 'bank')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-left text-emerald-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                  className="flex w-full items-center gap-3 rounded-lg border border-success/20 bg-success/10 px-4 py-4 text-left text-success transition-all hover:opacity-90 active:scale-[0.99]">
                   <Landmark className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold">Gérer mes comptes</p>
@@ -749,7 +749,7 @@ function DetailPanel({
               );
               if (business.typeKey === 'transfer') return (
                 <button type="button" onClick={() => onAction(business.id, 'transfer')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-4 py-4 text-left text-cyan-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
                   <ArrowLeftRight className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold">Envoyer de l'argent</p>
@@ -762,7 +762,7 @@ function DetailPanel({
                 <button type="button"
                   disabled={(business.formationProducts?.length ?? 0) === 0}
                   onClick={() => onAction(business.id, 'formation')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-left text-amber-400 transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
+                  className="flex w-full items-center gap-3 rounded-lg border border-warning/20 bg-warning/10 px-4 py-4 text-left text-warning transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
                   <GraduationCap className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold">Accéder aux formations</p>
@@ -775,7 +775,7 @@ function DetailPanel({
                 <button type="button"
                   disabled={isOwned}
                   onClick={() => { if (!isOwned) onAction(business.id, 'purchase'); }}
-                  className="flex w-full items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-4 text-left text-yellow-400 transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
+                  className="flex w-full items-center gap-3 rounded-lg border border-warning/20 bg-warning/10 px-4 py-4 text-left text-warning transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
                   <ShoppingCart className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold">{isOwned ? 'Achat indisponible' : 'Acheter'}</p>
@@ -786,7 +786,7 @@ function DetailPanel({
               );
               if (business.typeKey === 'supreme_court') return (
                 <button type="button" onClick={() => onAction(business.id, 'plainte')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-4 py-4 text-left text-indigo-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
                   <Scale className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold">Déposer une plainte</p>
@@ -797,7 +797,7 @@ function DetailPanel({
               );
               if (!business.isStateOwned) return (
                 <button type="button" onClick={() => onAction(business.id, 'invest')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-sky-500/20 bg-sky-500/10 px-4 py-4 text-left text-sky-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                  className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
                   <TrendingUp className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold">Investir</p>
@@ -811,7 +811,7 @@ function DetailPanel({
 
             {business.typeKey === 'bank' && (
               <button type="button" onClick={() => onAction(business.id, 'loan')}
-                className="flex w-full items-center gap-3 rounded-lg border border-violet-500/20 bg-violet-500/10 px-4 py-4 text-left text-violet-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
                 <HandCoins className="h-5 w-5 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-semibold">Prendre un prêt</p>
@@ -832,7 +832,7 @@ function DetailPanel({
                 <span className="text-[12px]">{business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}</span>
               </button>
               <button type="button" onClick={() => onAction(business.id, 'buyout')}
-                className="flex w-full items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-3 py-2 text-left text-muted-foreground transition-all hover:bg-muted/15 hover:text-rose-400">
+                className="flex w-full items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-3 py-2 text-left text-muted-foreground transition-all hover:bg-muted/15 hover:text-destructive">
                 <HandCoins className="h-3.5 w-3.5 shrink-0" />
                 <span className="text-[12px]">Faire une offre de rachat</span>
               </button>
@@ -1042,7 +1042,7 @@ export function BusinessBrowserModal({
                     className={cn(
                       'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all',
                       sortMode === key
-                        ? 'bg-cyan-500/15 text-cyan-300'
+                        ? 'bg-muted/15 text-primary'
                         : 'text-muted-foreground/60 hover:text-muted-foreground',
                     )}
                     style={sortMode === key ? { border: '1px solid rgba(34,211,238,0.25)' } : { border: '1px solid rgba(255,255,255,0.06)' }}

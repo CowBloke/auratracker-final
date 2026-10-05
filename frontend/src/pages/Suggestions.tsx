@@ -624,7 +624,7 @@ export default function Suggestions() {
                     size="icon"
                     className={cn(
                       'h-7 w-7',
-                      suggestion.userVote === 1 && 'text-emerald-500'
+                      suggestion.userVote === 1 && 'text-success'
                     )}
                   >
                     <ChevronUp className="h-5 w-5" />
@@ -634,8 +634,8 @@ export default function Suggestions() {
                       TYPOGRAPHY.H5,
                       'tabular-nums py-1',
                       viewMode === 'grid' && 'min-w-[3ch] text-center',
-                      suggestion.score > 0 && 'text-emerald-500',
-                      suggestion.score < 0 && 'text-rose-500'
+                      suggestion.score > 0 && 'text-success',
+                      suggestion.score < 0 && 'text-destructive'
                     )}
                   >
                     {suggestion.score}
@@ -646,7 +646,7 @@ export default function Suggestions() {
                     size="icon"
                     className={cn(
                       'h-7 w-7',
-                      suggestion.userVote === -1 && 'text-rose-500'
+                      suggestion.userVote === -1 && 'text-destructive'
                     )}
                   >
                     <ChevronDown className="h-5 w-5" />
@@ -660,7 +660,7 @@ export default function Suggestions() {
                       <div className="flex items-center gap-2">
                         <h3 className={TYPOGRAPHY.H5}>{suggestion.title}</h3>
                         {suggestion.boost && suggestion.boost > 0 && (
-                          <span className={cn(TYPOGRAPHY.XS, "px-2 py-0.5 font-medium bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded")}>
+                          <span className={cn(TYPOGRAPHY.XS, "px-2 py-0.5 font-medium bg-warning/20 text-warning border border-warning/30 rounded")}>
                             Nouveau
                           </span>
                         )}
@@ -725,7 +725,7 @@ export default function Suggestions() {
                               disabled={statusUpdating[suggestion.id]}
                               variant="outline"
                               size="sm"
-                              className="text-xs text-rose-500 border-rose-500/40 hover:text-rose-400"
+                              className="text-xs text-destructive border-destructive/40 hover:text-destructive"
                             >
                               Marquer non réalisée
                             </Button>

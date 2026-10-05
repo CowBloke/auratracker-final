@@ -155,9 +155,9 @@ function CreateListingModal({
       <button
         type="button"
         onClick={handleOpen}
-        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 transition hover:border-emerald-500/60 hover:bg-emerald-500/10"
+        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-success/40 bg-success/5 px-4 py-3 text-[13px] font-semibold text-success transition hover:border-success/60 hover:bg-success/10"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/15">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-success/20 bg-success/15">
           <Tag className="h-4 w-4" />
         </span>
         Vendre une ressource au marché
@@ -280,7 +280,7 @@ function CreateListingModal({
         <AppModal.Footer left={
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground">Total estimé :</span>
-            <span className="text-sm font-black text-emerald-500">{fmt(quantity * unitPrice)}€</span>
+            <span className="text-sm font-black text-success">{fmt(quantity * unitPrice)}€</span>
           </div>
         }>
           <AppModal.Button variant="ghost" onClick={() => setOpen(false)}>Annuler</AppModal.Button>
@@ -357,7 +357,7 @@ function BuyFlow({
         type="button"
         onClick={() => void buy()}
         disabled={loading}
-        className="flex items-center gap-1.5 rounded-lg border-none bg-emerald-500 px-3 py-1.5 text-[12.5px] font-bold text-[#06281c] shadow-[0_2px_8px_-2px_rgba(52,211,153,0.5)] transition hover:bg-emerald-400 disabled:opacity-60"
+        className="flex items-center gap-1.5 rounded-lg border-none bg-success px-3 py-1.5 text-[12.5px] font-bold text-[#06281c] shadow-[0_2px_8px_-2px_rgba(52,211,153,0.5)] transition hover:bg-success disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
         Acheter · {fmt(total)}€
@@ -405,7 +405,7 @@ function ItemBuyFlow({ listing, onBought }: { listing: YouResourceMarketListing;
   return (
     <div className="flex items-center gap-2">
       {effectLabel && (
-        <span className="rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-bold text-pink-500 border border-pink-500/20">
+        <span className="rounded-full bg-muted/10 px-2 py-0.5 text-[10px] font-bold text-primary border border-border/20">
           {effectLabel}
         </span>
       )}
@@ -413,7 +413,7 @@ function ItemBuyFlow({ listing, onBought }: { listing: YouResourceMarketListing;
         type="button"
         onClick={() => void buy()}
         disabled={loading}
-        className="flex items-center gap-1.5 rounded-lg bg-pink-500 px-3 py-1.5 text-[12.5px] font-bold text-white shadow-[0_2px_8px_-2px_rgba(236,72,153,0.5)] transition hover:bg-pink-400 disabled:opacity-60"
+        className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[12.5px] font-bold text-white shadow-[0_2px_8px_-2px_rgba(236,72,153,0.5)] transition hover:bg-muted disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
         Acheter · {fmt(listing.unitPrice)}€
@@ -447,14 +447,14 @@ function ItemListingRow({ listing, onCancelled, onBought }: {
   };
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-3 border-t border-border/30 px-4 py-3.5', listing.mine && 'bg-amber-500/4')}>
+    <div className={cn('flex flex-wrap items-center gap-3 border-t border-border/30 px-4 py-3.5', listing.mine && 'bg-warning/4')}>
       <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', meta?.bg ?? 'bg-muted')}>
         <Icon className={cn('h-4.5 w-4.5', meta?.iconColor ?? 'text-muted-foreground')} />
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground leading-tight">
           {def?.name ?? resourceLabel(listing.resourceType)}
-          {listing.mine && <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-500">toi</span>}
+          {listing.mine && <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-warning">toi</span>}
         </div>
         <div className="text-[10.5px] text-muted-foreground">{listing.businessName} · {listing.sellerName}</div>
       </div>
@@ -467,7 +467,7 @@ function ItemListingRow({ listing, onCancelled, onBought }: {
             type="button"
             onClick={() => void cancel()}
             disabled={cancelling}
-            className="flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/8 px-3 py-1.5 text-[12px] font-semibold text-red-500 transition hover:bg-red-500/15 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-1.5 text-[12px] font-semibold text-destructive transition hover:bg-destructive/15 disabled:opacity-50"
           >
             {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             Retirer
@@ -496,9 +496,9 @@ function ListingRow({
   const avg = stats?.avg ?? listing.unitPrice;
   const diff = ((listing.unitPrice - avg) / avg) * 100;
   const priceFlag = diff < -4
-    ? { label: 'bon prix', cls: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' }
+    ? { label: 'bon prix', cls: 'bg-success/15 text-success' }
     : diff > 6
-      ? { label: 'cher', cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' }
+      ? { label: 'cher', cls: 'bg-warning/15 text-warning' }
       : null;
 
   const cancel = async () => {
@@ -518,7 +518,7 @@ function ListingRow({
     <div
       className={cn(
         'grid items-center gap-3 border-t border-border/30 px-4 py-3.5',
-        listing.mine ? 'bg-amber-500/4' : '',
+        listing.mine ? 'bg-warning/4' : '',
       )}
       style={{ gridTemplateColumns: '1fr auto auto auto auto' }}
     >
@@ -531,7 +531,7 @@ function ListingRow({
           <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground leading-tight">
             {resourceLabel(listing.resourceType)}
             {listing.mine && (
-              <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-500">toi</span>
+              <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-warning">toi</span>
             )}
           </div>
           <div className="text-[10.5px] text-muted-foreground truncate">
@@ -576,7 +576,7 @@ function ListingRow({
             type="button"
             onClick={() => void cancel()}
             disabled={cancelling}
-            className="flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/8 px-3 py-1.5 text-[12px] font-semibold text-red-500 transition hover:bg-red-500/15 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-1.5 text-[12px] font-semibold text-destructive transition hover:bg-destructive/15 disabled:opacity-50"
           >
             {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             Retirer
@@ -778,9 +778,9 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
           {filteredItems.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-pink-500" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-pink-500">Marché des Items</span>
-                <div className="flex-1 border-t border-pink-500/20" />
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Marché des Items</span>
+                <div className="flex-1 border-t border-border/20" />
                 <span className="text-[10px] text-muted-foreground">{filteredItems.length} annonce{filteredItems.length > 1 ? 's' : ''}</span>
               </div>
               <Card className="overflow-hidden">
@@ -803,9 +803,9 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
             <div className="space-y-2">
               {filteredItems.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-500">Marché des Ressources</span>
-                  <div className="flex-1 border-t border-emerald-500/20" />
+                  <TrendingUp className="h-3.5 w-3.5 text-success" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-success">Marché des Ressources</span>
+                  <div className="flex-1 border-t border-success/20" />
                   <span className="text-[10px] text-muted-foreground">{filteredResources.length} annonce{filteredResources.length > 1 ? 's' : ''}</span>
                 </div>
               )}

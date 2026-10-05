@@ -208,15 +208,15 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Presence Section */}
       {showPresence && (
-        <div className="space-y-2 border-l-4 border-l-cyan-500/80 bg-cyan-950/5 dark:bg-cyan-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-cyan-950/10">
+        <div className="space-y-2 border-l-4 border-l-border/80 bg-muted/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-muted/10">
           <div className="flex items-center gap-2 px-1">
-            <Sparkle className="h-4 w-4 text-cyan-400" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-400">Système de présence</p>
+            <Sparkle className="h-4 w-4 text-primary" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Système de présence</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-cyan-200/90">Utilisateurs en ligne fictifs</div>
+                <div className="text-sm font-medium text-primary/90">Utilisateurs en ligne fictifs</div>
                 <div className="text-xs text-muted-foreground">Complète la liste des connectés avec des utilisateurs hors-ligne pour maintenir un minimum de 10 % affichés.</div>
               </div>
               <Switch checked={fakeOnlineEnabled} disabled={savingFakeOnline} onCheckedChange={saveFakeOnline} />
@@ -227,29 +227,29 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Referral & Limits Section */}
       {showReferral && (
-        <div className="space-y-2 border-l-4 border-l-indigo-500/80 bg-indigo-950/5 dark:bg-indigo-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-indigo-950/10">
+        <div className="space-y-2 border-l-4 border-l-border/80 bg-muted/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-muted/10">
           <div className="flex items-center gap-2 px-1">
-            <Trophy className="h-4 w-4 text-indigo-400" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">Parrainage & Quotas</p>
+            <Trophy className="h-4 w-4 text-primary" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Parrainage & Quotas</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-indigo-200/90">Matchmaking duel</div>
+                <div className="text-sm font-medium text-primary/90">Matchmaking duel</div>
                 <div className="text-xs text-muted-foreground">Affiche le bouton côté joueur et autorise l'entrée dans la file de matchmaking duel.</div>
               </div>
               <Switch checked={duelMatchmakingEnabled} disabled={savingDuelMatchmakingEnabled} onCheckedChange={saveDuelMatchmakingEnabled} />
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-indigo-200/90">Système de parrainage</div>
+                <div className="text-sm font-medium text-primary/90">Système de parrainage</div>
                 <div className="text-xs text-muted-foreground">Coupe l'usage des codes de parrainage sur l'inscription et masque le module côté joueur.</div>
               </div>
               <Switch checked={referralEnabled} disabled={savingReferralEnabled} onCheckedChange={saveReferralEnabled} />
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-indigo-200/90">Carte de parrainage sur le dashboard</div>
+                <div className="text-sm font-medium text-primary/90">Carte de parrainage sur le dashboard</div>
                 <div className="text-xs text-muted-foreground">Affiche la carte de suivi du parrainage sur la page dashboard des joueurs.</div>
               </div>
               <Switch
@@ -260,7 +260,7 @@ export function SettingsTab(props: SettingsTabProps) {
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-indigo-200/90">Récompense par inscription</div>
+                <div className="text-sm font-medium text-primary/90">Récompense par inscription</div>
                 <div className="text-xs text-muted-foreground">Montant versé au parrain et au filleul quand un compte parrainé est approuvé.</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -274,14 +274,14 @@ export function SettingsTab(props: SettingsTabProps) {
                   onChange={(event) => setReferralRewardAmount(event.target.value)}
                   className="w-24 h-8 text-sm"
                 />
-                <Button size="sm" onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled} className="bg-indigo-600 hover:bg-indigo-700">
+                <Button size="sm" onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled} className="bg-primary hover:bg-primary">
                   {savingReferralReward ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-indigo-200/90">Aura distribuable par jour</div>
+                <div className="text-sm font-medium text-primary/90">Aura distribuable par jour</div>
                 <div className="text-xs text-muted-foreground">Quota global disponible pour chaque joueur à chaque reset de minuit. Valeur par défaut: 100.</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -295,7 +295,7 @@ export function SettingsTab(props: SettingsTabProps) {
                   onChange={(event) => setDailyAuraDistributionLimit(event.target.value)}
                   className="w-24 h-8 text-sm"
                 />
-                <Button size="sm" onClick={saveDailyAuraDistributionLimit} disabled={savingDailyAuraDistributionLimit} className="bg-indigo-600 hover:bg-indigo-700">
+                <Button size="sm" onClick={saveDailyAuraDistributionLimit} disabled={savingDailyAuraDistributionLimit} className="bg-primary hover:bg-primary">
                   {savingDailyAuraDistributionLimit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
@@ -306,15 +306,15 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Market Section */}
       {showMarket && (
-        <div className="space-y-2 border-l-4 border-l-emerald-500/80 bg-emerald-950/5 dark:bg-emerald-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-emerald-950/10">
+        <div className="space-y-2 border-l-4 border-l-success/80 bg-success/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-success/10">
           <div className="flex items-center gap-2 px-1">
-            <Sparkles className="h-4 w-4 text-emerald-400" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Salle de marché (Frais & Cryptos)</p>
+            <Sparkles className="h-4 w-4 text-success" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-success">Salle de marché (Frais & Cryptos)</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-emerald-200/90">Frais Aura Coin</div>
+                <div className="text-sm font-medium text-success/90">Frais Aura Coin</div>
                 <div className="text-xs text-muted-foreground">Taux appliqué sur les achats et ventes AuraCoin (0 = 0 %, 0.5 = 50 %).</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -328,14 +328,14 @@ export function SettingsTab(props: SettingsTabProps) {
                   onChange={(event) => setAuraCoinBuyFeePercentage(event.target.value)}
                   className="w-28 h-8 text-sm"
                 />
-                <Button size="sm" onClick={saveAuraCoinBuyFee} disabled={savingAuraCoinBuyFee} className="bg-emerald-600 hover:bg-emerald-700">
+                <Button size="sm" onClick={saveAuraCoinBuyFee} disabled={savingAuraCoinBuyFee} className="bg-success hover:bg-success">
                   {savingAuraCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-emerald-200/90">Frais Aura Stable</div>
+                <div className="text-sm font-medium text-success/90">Frais Aura Stable</div>
                 <div className="text-xs text-muted-foreground">Stable coin à faible volatilité. Même logique de frais modifiable depuis l'admin.</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -349,14 +349,14 @@ export function SettingsTab(props: SettingsTabProps) {
                   onChange={(event) => setStableCoinBuyFeePercentage(event.target.value)}
                   className="w-28 h-8 text-sm"
                 />
-                <Button size="sm" onClick={saveStableCoinBuyFee} disabled={savingStableCoinBuyFee} className="bg-emerald-600 hover:bg-emerald-700">
+                <Button size="sm" onClick={saveStableCoinBuyFee} disabled={savingStableCoinBuyFee} className="bg-success hover:bg-success">
                   {savingStableCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             </div>
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-emerald-200/90">Frais Chaos Coin</div>
+                <div className="text-sm font-medium text-success/90">Frais Chaos Coin</div>
                 <div className="text-xs text-muted-foreground">Coin très instable avec frais séparés pour équilibrer le risque et les spreads.</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -370,7 +370,7 @@ export function SettingsTab(props: SettingsTabProps) {
                   onChange={(event) => setChaosCoinBuyFeePercentage(event.target.value)}
                   className="w-28 h-8 text-sm"
                 />
-                <Button size="sm" onClick={saveChaosCoinBuyFee} disabled={savingChaosCoinBuyFee} className="bg-emerald-600 hover:bg-emerald-700">
+                <Button size="sm" onClick={saveChaosCoinBuyFee} disabled={savingChaosCoinBuyFee} className="bg-success hover:bg-success">
                   {savingChaosCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
@@ -381,15 +381,15 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Clash Section */}
       {showClash && (
-        <div className="space-y-2 border-l-4 border-l-amber-500/80 bg-amber-950/5 dark:bg-amber-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-amber-950/10">
+        <div className="space-y-2 border-l-4 border-l-warning/80 bg-warning/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-warning/10">
           <div className="flex items-center gap-2 px-1">
-            <Gamepad2 className="h-4 w-4 text-amber-400" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Clash Village</p>
+            <Gamepad2 className="h-4 w-4 text-warning" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-warning">Clash Village</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-amber-200/90">Temps de recharge d'attaque</div>
+                <div className="text-sm font-medium text-warning/90">Temps de recharge d'attaque</div>
                 <div className="text-xs text-muted-foreground">Temps d'attente appliqué après un raid réussi ou raté. Mettre `0` pour désactiver ce temps de recharge.</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -404,7 +404,7 @@ export function SettingsTab(props: SettingsTabProps) {
                   className="w-24 h-8 text-sm"
                 />
                 <span className="text-xs text-muted-foreground">min</span>
-                <Button size="sm" onClick={saveClashAttackCooldown} disabled={savingClashAttackCooldown} className="bg-amber-600 hover:bg-amber-700 text-black font-semibold">
+                <Button size="sm" onClick={saveClashAttackCooldown} disabled={savingClashAttackCooldown} className="bg-warning hover:bg-warning text-black font-semibold">
                   {savingClashAttackCooldown ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
@@ -415,16 +415,16 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Communication Section */}
       {showComm && (
-        <div className="space-y-2 border-l-4 border-l-violet-500/80 bg-violet-950/5 dark:bg-violet-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-violet-950/10">
+        <div className="space-y-2 border-l-4 border-l-border/80 bg-muted/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-muted/10">
           <div className="flex items-center gap-2 px-1">
-            <MessageCircle className="h-4 w-4 text-violet-400" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-violet-400">Communication & Contenu</p>
+            <MessageCircle className="h-4 w-4 text-primary" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Communication & Contenu</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="px-4 py-3.5 space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-sm font-medium text-violet-200/90">Blocage du chat</div>
+                  <div className="text-sm font-medium text-primary/90">Blocage du chat</div>
                   <div className="text-xs text-muted-foreground">
                     Coupe l'envoi de messages pour les joueurs. Les admins gardent l'accès pour modérer.
                   </div>
@@ -507,7 +507,7 @@ export function SettingsTab(props: SettingsTabProps) {
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={saveChatBlockSettings} disabled={savingChatBlockSettings} className="bg-violet-600 hover:bg-violet-700">
+                <Button onClick={saveChatBlockSettings} disabled={savingChatBlockSettings} className="bg-primary hover:bg-primary">
                   {savingChatBlockSettings ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
                   Sauvegarder le chat
                 </Button>
@@ -516,7 +516,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-violet-200/90">Annonce topbar</div>
+                <div className="text-sm font-medium text-primary/90">Annonce topbar</div>
                 <div className="text-xs text-muted-foreground">
                   {announcementMessage.trim()
                     ? `"${announcementMessage.trim().slice(0, 48)}${announcementMessage.trim().length > 48 ? '…' : ''}"`
@@ -531,7 +531,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-violet-200/90">Page de connexion</div>
+                <div className="text-sm font-medium text-primary/90">Page de connexion</div>
                 <div className="text-xs text-muted-foreground">
                   {loginMessage.trim()
                     ? `Message actif · CTA ${loginRegisterCtaEnabled ? 'active' : 'desactive'}`
@@ -546,7 +546,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-violet-200/90">Page principale du site</div>
+                <div className="text-sm font-medium text-primary/90">Page principale du site</div>
                 <div className="text-xs text-muted-foreground">
                   {DEFAULT_LANDING_PAGE_OPTIONS.find((option) => option.value === defaultLandingPage)?.label ?? 'Tableau de bord'} s'ouvre quand un utilisateur connecté arrive sur `auratracker.xyz`.
                 </div>
@@ -564,7 +564,7 @@ export function SettingsTab(props: SettingsTabProps) {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button size="sm" onClick={saveDefaultLandingPage} disabled={savingDefaultLandingPage} className="bg-violet-600 hover:bg-violet-700">
+                <Button size="sm" onClick={saveDefaultLandingPage} disabled={savingDefaultLandingPage} className="bg-primary hover:bg-primary">
                   {savingDefaultLandingPage ? <Loader2 className="h-3.5 w-3.5 animate-pulse" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
@@ -572,7 +572,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-violet-200/90">Logo sidebar → accès à Moi réservé aux admins</div>
+                <div className="text-sm font-medium text-primary/90">Logo sidebar → accès à Moi réservé aux admins</div>
                 <div className="text-xs text-muted-foreground">
                   Quand activé, seul un admin peut ouvrir la section Moi en cliquant sur le logo en haut à gauche.
                 </div>
@@ -586,7 +586,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-violet-200/90">Dashboard et mises à jour</div>
+                <div className="text-sm font-medium text-primary/90">Dashboard et mises à jour</div>
                 <div className="text-xs text-muted-foreground">
                   Une seule interface pour composer les mises à jour visibles sur le dashboard.
                 </div>
@@ -599,8 +599,8 @@ export function SettingsTab(props: SettingsTabProps) {
 
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-violet-200/90">Maintenance</div>
-                <div className={cn('text-xs', maintenanceEnabled ? 'text-amber-500' : 'text-muted-foreground')}>
+                <div className="text-sm font-medium text-primary/90">Maintenance</div>
+                <div className={cn('text-xs', maintenanceEnabled ? 'text-warning' : 'text-muted-foreground')}>
                   {maintenanceEnabled
                     ? 'Maintenance globale active'
                     : maintenanceAutoWeekendEnabled
@@ -616,7 +616,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
             <div className="gap-4 px-4 py-3.5">
               <div className="mb-2">
-                <div className="text-sm font-medium text-violet-200/90">IP STDO ignorees pour le ban rapide</div>
+                <div className="text-sm font-medium text-primary/90">IP STDO ignorees pour le ban rapide</div>
                 <div className="text-xs text-muted-foreground">
                   Une IP par ligne. Si une IP est ici, la popup "meme IP" n'affichera pas les autres comptes lies.
                 </div>
@@ -646,7 +646,7 @@ export function SettingsTab(props: SettingsTabProps) {
           <div className="space-y-3 py-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Message</label>
-              <span className={cn('text-xs', announcementMessage.length >= ANNOUNCEMENT_MAX_LENGTH ? 'text-amber-400' : 'text-muted-foreground')}>
+              <span className={cn('text-xs', announcementMessage.length >= ANNOUNCEMENT_MAX_LENGTH ? 'text-warning' : 'text-muted-foreground')}>
                 {announcementMessage.length}/{ANNOUNCEMENT_MAX_LENGTH}
               </span>
             </div>
@@ -767,15 +767,15 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Features Section */}
       {showFeatures && (
-        <div className="space-y-2 border-l-4 border-l-teal-500/80 bg-teal-950/5 dark:bg-teal-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-teal-950/10">
+        <div className="space-y-2 border-l-4 border-l-success/80 bg-success/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-success/10">
           <div className="flex items-center gap-2 px-1">
-            <Gamepad2 className="h-4 w-4 text-teal-400" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-teal-400">Fonctionnalités</p>
+            <Gamepad2 className="h-4 w-4 text-success" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-success">Fonctionnalités</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium text-teal-200/90">Pages du site</div>
+                <div className="text-sm font-medium text-success/90">Pages du site</div>
                 <div className="text-xs text-muted-foreground">
                   {blockedPages.length > 0
                     ? `${blockedPages.length} page${blockedPages.length > 1 ? 's' : ''} désactivée${blockedPages.length > 1 ? 's' : ''}`
@@ -793,22 +793,22 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Deployment Section */}
       {showDeploy && (
-        <div className="space-y-2 border-l-4 border-l-slate-500/80 bg-slate-950/5 dark:bg-slate-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-slate-950/10">
+        <div className="space-y-2 border-l-4 border-l-border/80 bg-card/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-card/10">
           <div className="flex items-center gap-2 px-1">
-            <Terminal className="h-4 w-4 text-slate-400" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Déploiement</p>
+            <Terminal className="h-4 w-4 text-muted-foreground" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Déploiement</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-200/90">Déployer la dernière version</div>
+                <div className="text-sm font-medium text-foreground/90">Déployer la dernière version</div>
                 <div className="text-xs text-muted-foreground flex flex-wrap gap-1 items-center">
-                  Exécute <code className="font-mono bg-muted/40 px-1 rounded text-slate-300">/var/scripts/deploy.sh</code> sur le serveur pour mettre en ligne les derniers changements Git.
+                  Exécute <code className="font-mono bg-muted/40 px-1 rounded text-muted-foreground">/var/scripts/deploy.sh</code> sur le serveur pour mettre en ligne les derniers changements Git.
                 </div>
                 {deployOutput && (
                   <button
                     onClick={() => setDeployModalOpen(true)}
-                    className={`mt-1.5 text-xs font-semibold underline-offset-2 hover:underline ${deployOutput.success ? 'text-green-500' : 'text-destructive'}`}
+                    className={`mt-1.5 text-xs font-semibold underline-offset-2 hover:underline ${deployOutput.success ? 'text-success' : 'text-destructive'}`}
                   >
                     {deployOutput.success ? 'Succès - voir la sortie' : 'Échec - voir la sortie'}
                   </button>
@@ -853,19 +853,19 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Danger Zone Section */}
       {showDanger && (
-        <div className="space-y-3 border-2 border-red-500/30 bg-red-950/5 dark:bg-red-950/10 p-4 rounded-2xl transition-all shadow-lg shadow-red-950/20">
+        <div className="space-y-3 border-2 border-destructive/30 bg-destructive/5 p-4 rounded-2xl transition-all shadow-lg">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-red-500 animate-pulse shrink-0" />
+            <ShieldAlert className="h-5 w-5 text-destructive animate-pulse shrink-0" />
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-red-500">Zone de Danger (Actions Destructives)</p>
-              <p className="text-[10px] text-red-400/70">Ces actions ont un impact irréversible sur la base de données et l'expérience de jeu.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-destructive">Zone de Danger (Actions Destructives)</p>
+              <p className="text-[10px] text-destructive/70">Ces actions ont un impact irréversible sur la base de données et l'expérience de jeu.</p>
             </div>
           </div>
-          <div className="rounded-xl border border-red-500/20 overflow-hidden bg-card/60 backdrop-blur-sm divide-y divide-red-500/10">
+          <div className="rounded-xl border border-destructive/20 overflow-hidden bg-card/60 backdrop-blur-sm divide-y divide-destructive/10">
             {/* Vider le chat */}
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-semibold text-red-200">Vider le chat global</div>
+                <div className="text-sm font-semibold text-destructive">Vider le chat global</div>
                 <div className="text-xs text-muted-foreground">Masque visuellement tous les messages du chat global pour les joueurs, sans supprimer l'historique stocké.</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -875,14 +875,14 @@ export function SettingsTab(props: SettingsTabProps) {
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="border-red-500/40 text-red-400 hover:bg-red-500/10" disabled={clearingChat}>
+                    <Button variant="outline" size="sm" className="border-destructive/40 text-destructive hover:bg-destructive/10" disabled={clearingChat}>
                       {clearingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
                         Vider le chat ?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
@@ -891,7 +891,7 @@ export function SettingsTab(props: SettingsTabProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction onClick={clearChat} className="bg-red-600 hover:bg-red-700">
+                      <AlertDialogAction onClick={clearChat} className="bg-destructive hover:bg-destructive">
                         Vider le chat
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -903,7 +903,7 @@ export function SettingsTab(props: SettingsTabProps) {
             {/* Entreprises */}
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-semibold text-red-200">Création d'entreprise</div>
+                <div className="text-sm font-semibold text-destructive">Création d'entreprise</div>
                 <div className="text-xs text-muted-foreground">Active ou désactive la possibilité pour les joueurs de fonder de nouvelles entreprises.</div>
               </div>
               <Switch
@@ -916,10 +916,10 @@ export function SettingsTab(props: SettingsTabProps) {
             {/* Purger toutes les entreprises */}
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-semibold text-red-200">Purger toutes les entreprises</div>
+                <div className="text-sm font-semibold text-destructive">Purger toutes les entreprises</div>
                 <div className="text-xs text-muted-foreground">Supprime définitivement toutes les entreprises en cours et rembourse les propriétaires.</div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => void purgeAllBusinesses()} disabled={purgingBusinesses} className="shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10">
+              <Button variant="outline" size="sm" onClick={() => void purgeAllBusinesses()} disabled={purgingBusinesses} className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10">
                 {purgingBusinesses ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
                 Purger les entreprises
               </Button>
@@ -928,10 +928,10 @@ export function SettingsTab(props: SettingsTabProps) {
             {/* Reinitialiser les niveaux */}
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-semibold text-red-200">Réinitialiser les niveaux débloqués</div>
+                <div className="text-sm font-semibold text-destructive">Réinitialiser les niveaux débloqués</div>
                 <div className="text-xs text-muted-foreground">Remet le niveau débloqué de tous les joueurs à 0 (tous devront repartir du niveau 1).</div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => void resetBusinessUnlockLevels()} disabled={resettingUnlockLevels} className="shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10">
+              <Button variant="outline" size="sm" onClick={() => void resetBusinessUnlockLevels()} disabled={resettingUnlockLevels} className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10">
                 {resettingUnlockLevels ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
                 Réinitialiser les niveaux
               </Button>
@@ -940,10 +940,10 @@ export function SettingsTab(props: SettingsTabProps) {
             {/* Purger Marketplace d'objets */}
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-semibold text-red-200">Purger la marketplace d'objets</div>
+                <div className="text-sm font-semibold text-destructive">Purger la marketplace d'objets</div>
                 <div className="text-xs text-muted-foreground">Supprime/annule toutes les offres d'objets en cours et restitue la totalité des items aux vendeurs.</div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => void purgeAllMarketplaceListings()} disabled={purgingMarketplaceListings} className="shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10">
+              <Button variant="outline" size="sm" onClick={() => void purgeAllMarketplaceListings()} disabled={purgingMarketplaceListings} className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10">
                 {purgingMarketplaceListings ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Ban className="h-3.5 w-3.5 mr-1" />}
                 Annuler toutes les offres d'objets
               </Button>
@@ -952,10 +952,10 @@ export function SettingsTab(props: SettingsTabProps) {
             {/* Purger Marché de ressources */}
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-semibold text-red-200">Purger le marché de ressources</div>
+                <div className="text-sm font-semibold text-destructive">Purger le marché de ressources</div>
                 <div className="text-xs text-muted-foreground">Désactive/annule toutes les offres de ressources actives et restitue les stocks aux entreprises.</div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => void purgeAllResourceMarketListings()} disabled={purgingResourceMarketListings} className="shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10">
+              <Button variant="outline" size="sm" onClick={() => void purgeAllResourceMarketListings()} disabled={purgingResourceMarketListings} className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10">
                 {purgingResourceMarketListings ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Ban className="h-3.5 w-3.5 mr-1" />}
                 Annuler toutes les offres de ressources
               </Button>
@@ -976,7 +976,7 @@ export function SettingsTab(props: SettingsTabProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto p-4">
-            <pre className="text-[11px] font-mono bg-black/80 text-green-400 rounded-lg p-4 whitespace-pre-wrap break-all leading-relaxed min-h-[200px]">
+            <pre className="text-[11px] font-mono bg-black/80 text-success rounded-lg p-4 whitespace-pre-wrap break-all leading-relaxed min-h-[200px]">
               {deployOutput
                 ? [deployOutput.stdout, deployOutput.stderr].filter(Boolean).join('\n') || deployOutput.message
                 : ''}
@@ -999,7 +999,7 @@ export function SettingsTab(props: SettingsTabProps) {
                   Importe les scores passes dans GameScoreHistory pour alimenter les classements journalier / hebdo / mensuel. A lancer une seule fois.
                 </div>
                 {backfillResult && (
-                  <p className="text-xs text-green-500 mt-1">{backfillResult.inserted} importes, {backfillResult.skipped} ignores.</p>
+                  <p className="text-xs text-success mt-1">{backfillResult.inserted} importes, {backfillResult.skipped} ignores.</p>
                 )}
               </div>
               <Button

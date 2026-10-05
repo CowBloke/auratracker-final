@@ -199,13 +199,13 @@ export function FeedCard({
     return (
       <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/15">
-            <UserPlus className="h-4 w-4 text-violet-300" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/15">
+            <UserPlus className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold">{item.offer.business.name}</p>
-              <Pill label={directionLabel} color="bg-violet-400/15 text-violet-300" />
+              <Pill label={directionLabel} color="bg-muted/15 text-primary" />
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">{subtitle} · {item.offer.salary.toLocaleString('fr-FR')} money/jour</p>
             <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
@@ -228,19 +228,19 @@ export function FeedCard({
     return (
       <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-400/15">
-            <Heart className="h-4 w-4 text-pink-300" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/15">
+            <Heart className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold">{item.relationship.otherUser.username} te demande en mariage</p>
-              <Pill label="Mariage" color="bg-pink-400/15 text-pink-300" />
+              <Pill label="Mariage" color="bg-muted/15 text-primary" />
             </div>
             {proposal.message ? <p className="mt-0.5 text-xs text-muted-foreground">{proposal.message}</p> : null}
             <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
             {confirmMarriage ? (
               <div className="mt-2 space-y-2">
-                <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200 space-y-1">
+                <div className="rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-xs text-warning space-y-1">
                   <p className="font-semibold">Consequences du mariage :</p>
                   <p>· Compte bancaire commun partage avec ton conjoint</p>
                   <p>· En cas de divorce, le compte commun est divise en deux</p>
@@ -268,13 +268,13 @@ export function FeedCard({
     return (
       <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-400/15">
-            <X className="h-4 w-4 text-rose-300" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-destructive/15">
+            <X className="h-4 w-4 text-destructive" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold">{item.relationship.otherUser.username} demande le divorce</p>
-              <Pill label="Divorce" color="bg-rose-400/15 text-rose-300" />
+              <Pill label="Divorce" color="bg-destructive/15 text-destructive" />
             </div>
             {proposal.message ? <p className="mt-0.5 text-xs text-muted-foreground">{proposal.message}</p> : null}
             <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
@@ -294,16 +294,16 @@ export function FeedCard({
     return (
       <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/15">
-            <Landmark className="h-4 w-4 text-amber-300" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/15">
+            <Landmark className="h-4 w-4 text-warning" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold">{item.businessName}</p>
-              <Pill label="Pret actif" color="bg-amber-400/15 text-amber-300" />
+              <Pill label="Pret actif" color="bg-warning/15 text-warning" />
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">{formatMoney(item.loan.amount)} principal · {item.loan.interestRate} % · {item.loan.termDays} jours</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Reste a rembourser : <span className="font-semibold text-amber-300">{formatMoney(remaining)}</span></p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Reste a rembourser : <span className="font-semibold text-warning">{formatMoney(remaining)}</span></p>
             <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
             {onRepayLoan ? (
               <div className="mt-2 flex gap-2">
@@ -330,15 +330,15 @@ export function FeedCard({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold">{item.relationship.otherUser.username}</p>
             <Pill label={pill.label} color={pill.color} />
-            {item.relationship.pendingProposal?.direction === 'sent' ? <Pill label="Demande envoyee" color="bg-amber-400/15 text-amber-300" /> : null}
-            {item.relationship.pendingDivorceProposal?.direction === 'sent' ? <Pill label="Divorce en attente" color="bg-rose-400/15 text-rose-300" /> : null}
+            {item.relationship.pendingProposal?.direction === 'sent' ? <Pill label="Demande envoyee" color="bg-warning/15 text-warning" /> : null}
+            {item.relationship.pendingDivorceProposal?.direction === 'sent' ? <Pill label="Divorce en attente" color="bg-destructive/15 text-destructive" /> : null}
           </div>
           <div className="mt-1.5">
-            <ProgressBar value={item.relationship.connectionLevel} color="bg-pink-400" />
+            <ProgressBar value={item.relationship.connectionLevel} color="bg-muted" />
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground/60">{timeAgo}</p>
         </div>
-        <span className="shrink-0 text-sm font-bold tabular-nums text-pink-400">{item.relationship.connectionLevel}%</span>
+        <span className="shrink-0 text-sm font-bold tabular-nums text-primary">{item.relationship.connectionLevel}%</span>
       </div>
     );
   }

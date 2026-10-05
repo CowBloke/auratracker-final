@@ -13,23 +13,23 @@ interface Props {
 
 const rarityBorder: Record<string, string> = {
   common: 'border-border',
-  rare: 'border-sky-500/60',
-  epic: 'border-fuchsia-500/60',
-  legendary: 'border-amber-500/70',
+  rare: 'border-border/60',
+  epic: 'border-border/60',
+  legendary: 'border-warning/70',
 };
 
 const rarityBg: Record<string, string> = {
   common: 'bg-card',
-  rare: 'bg-sky-950/60',
-  epic: 'bg-fuchsia-950/60',
-  legendary: 'bg-amber-950/60',
+  rare: 'bg-muted/60',
+  epic: 'bg-muted/60',
+  legendary: 'bg-warning/60',
 };
 
 const rarityIconColor: Record<string, string> = {
   common: '',
-  rare: 'text-sky-400',
-  epic: 'text-fuchsia-400',
-  legendary: 'text-amber-400',
+  rare: 'text-primary',
+  epic: 'text-primary',
+  legendary: 'text-warning',
 };
 
 function RewardIcon({ item }: { item: RewardItem }) {
@@ -89,28 +89,28 @@ export default function RewardCollector({ items, currentIndex, phase, onAdvance,
 
           <div className="space-y-2">
             {totals.money > 0 && (
-              <div className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3">
+              <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/10 px-4 py-3">
                 <CurrencyIcon type="money" className="h-5 w-5" />
                 <span className="text-lg font-bold">+{totals.money.toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground">coins</span>
               </div>
             )}
             {totals.aura > 0 && (
-              <div className="flex items-center gap-3 rounded-xl border border-purple-500/20 bg-purple-500/10 px-4 py-3">
+              <div className="flex items-center gap-3 rounded-xl border border-border/20 bg-muted/10 px-4 py-3">
                 <CurrencyIcon type="aura" className="h-5 w-5" />
                 <span className="text-lg font-bold">+{totals.aura.toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground">aura</span>
               </div>
             )}
             {totals.itemRewards.map((item, i) => {
-              const border = item.rarity ? rarityBorder[item.rarity] : 'border-blue-500/20';
-              const bg = item.rarity ? rarityBg[item.rarity] : 'bg-blue-500/10';
+              const border = item.rarity ? rarityBorder[item.rarity] : 'border-border/20';
+              const bg = item.rarity ? rarityBg[item.rarity] : 'bg-muted/10';
               return (
                 <div
                   key={i}
                   className={`flex items-center gap-3 rounded-xl border ${border} ${bg} px-4 py-3`}
                 >
-                  <Gift className="h-5 w-5 text-blue-400" />
+                  <Gift className="h-5 w-5 text-primary" />
                   <span className="font-bold">{item.label}</span>
                 </div>
               );

@@ -137,7 +137,7 @@ export function TaxesTab(props: TaxesTabProps) {
               </Button>
             </div>
 
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-muted-foreground">
+            <div className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 text-xs text-muted-foreground">
               Chaque prélèvement crée une notification dans l&apos;Inbox du joueur avec le montant retiré, le taux appliqué et son nouveau solde.
             </div>
           </CardContent>

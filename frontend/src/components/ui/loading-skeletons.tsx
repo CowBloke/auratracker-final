@@ -9,8 +9,8 @@ type LoadingSkeletonProps = {
 };
 
 const skeletonTheme = {
-  baseColor: 'hsl(var(--muted))',
-  highlightColor: 'hsl(var(--border))',
+  baseColor: 'var(--muted)',
+  highlightColor: 'var(--border)',
 };
 
 export function CenteredSkeletonCard({ className }: LoadingSkeletonProps) {

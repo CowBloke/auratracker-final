@@ -166,8 +166,8 @@ export function LogsTab(props: LogsTabProps) {
                 className={cn(
                   'rounded-full text-xs transition-all',
                   isSelected
-                    ? 'border-purple-500 bg-purple-500 text-white hover:bg-purple-500'
-                    : 'border-purple-500 text-purple-400 bg-transparent hover:bg-muted/30 hover:text-purple-300'
+                    ? 'border-border bg-primary text-white hover:bg-primary'
+                    : 'border-border text-primary bg-transparent hover:bg-muted/30 hover:text-primary'
                 )}
               >
                 <Gamepad2 className="h-3 w-3" />
@@ -394,7 +394,7 @@ export function LogsTab(props: LogsTabProps) {
                 Tous les logs seront exportés sans aucun filtre ni limite de date.
               </p>
             )}
-            {downloadLogsError && <p className="text-xs text-red-400">{downloadLogsError}</p>}
+            {downloadLogsError && <p className="text-xs text-destructive">{downloadLogsError}</p>}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -438,20 +438,20 @@ export function LogsTab(props: LogsTabProps) {
             const gameRowAccentClass =
               log.type === 'GAME'
                 ? gameDisplayInfo.isMultiplayer
-                  ? 'bg-cyan-500/[0.05] hover:bg-cyan-500/[0.10]'
-                  : 'bg-amber-500/[0.05] hover:bg-amber-500/[0.10]'
+                  ? 'bg-muted/[0.05] hover:bg-muted/[0.10]'
+                  : 'bg-warning/[0.05] hover:bg-warning/[0.10]'
                 : 'hover:bg-muted/20';
             const gameDetailsAccentClass =
               log.type === 'GAME'
                 ? gameDisplayInfo.isMultiplayer
-                  ? 'bg-cyan-500/[0.04]'
-                  : 'bg-amber-500/[0.04]'
+                  ? 'bg-muted/[0.04]'
+                  : 'bg-warning/[0.04]'
                 : 'bg-muted/10';
             const typePillClass =
               log.type === 'GAME'
                 ? gameDisplayInfo.isMultiplayer
-                  ? 'bg-cyan-600'
-                  : 'bg-amber-600'
+                  ? 'bg-primary'
+                  : 'bg-warning'
                 : (config?.bgColor || 'bg-muted');
 
             return (

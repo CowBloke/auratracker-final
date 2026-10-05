@@ -38,8 +38,8 @@ export function AdsTab(props: AdsTabProps) {
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-base font-semibold">{ad.title}</p>
-                          <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-300">{ad.adType}</span>
-                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">En attente</span>
+                          <span className="rounded-full bg-muted/15 px-2 py-0.5 text-xs text-primary">{ad.adType}</span>
+                          <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">En attente</span>
                         </div>
                         <p className="text-sm text-muted-foreground">{ad.tagline}</p>
                         <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{ad.business.name} - par {ad.business.owner.username}</p>
@@ -109,7 +109,7 @@ export function AdsTab(props: AdsTabProps) {
                       <div className="flex h-44 items-center justify-center bg-muted/30 text-xs text-muted-foreground">Pas d'image</div>
                     )}
                     <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                      <span className={ad.status === 'APPROVED' ? 'rounded-full bg-emerald-600/90 px-2 py-0.5 text-[11px] text-white font-medium' : ad.status === 'PENDING' ? 'rounded-full bg-amber-600/90 px-2 py-0.5 text-[11px] text-white font-medium' : 'rounded-full bg-red-600/90 px-2 py-0.5 text-[11px] text-white font-medium'}>
+                      <span className={ad.status === 'APPROVED' ? 'rounded-full bg-success/90 px-2 py-0.5 text-[11px] text-white font-medium' : ad.status === 'PENDING' ? 'rounded-full bg-warning/90 px-2 py-0.5 text-[11px] text-white font-medium' : 'rounded-full bg-destructive/90 px-2 py-0.5 text-[11px] text-white font-medium'}>
                         {ad.status === 'APPROVED' ? 'Approuvee' : ad.status === 'PENDING' ? 'En attente' : 'Rejetee'}
                       </span>
                       {!ad.isActive && (
@@ -121,7 +121,7 @@ export function AdsTab(props: AdsTabProps) {
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-sm">{ad.title}</p>
-                        <span className="rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[11px] text-violet-300">{ad.adType}</span>
+                        <span className="rounded-full bg-muted/15 px-1.5 py-0.5 text-[11px] text-primary">{ad.adType}</span>
                       </div>
                       <p className="text-xs text-muted-foreground">{ad.tagline}</p>
                       <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{ad.business.name} - {ad.business.owner.username}</p>

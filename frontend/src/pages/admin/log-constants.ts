@@ -9,18 +9,18 @@ export type LogTypeConfigEntry = {
 };
 
 export const LOG_TYPE_CONFIG: Record<string, LogTypeConfigEntry> = {
-  AUTH: { label: 'Connexion', color: 'text-blue-400', bgColor: 'bg-blue-500', borderColor: 'border-blue-500', icon: LogIn },
-  CHAT: { label: 'Chat', color: 'text-green-400', bgColor: 'bg-green-500', borderColor: 'border-green-500', icon: MessageCircle },
-  GAME: { label: 'Jeux', color: 'text-purple-400', bgColor: 'bg-purple-500', borderColor: 'border-purple-500', icon: Gamepad2 },
-  ECONOMY: { label: 'Economie', color: 'text-yellow-400', bgColor: 'bg-yellow-500', borderColor: 'border-yellow-500', icon: Coins },
-  PARTY: { label: 'Groupe', color: 'text-pink-400', bgColor: 'bg-pink-500', borderColor: 'border-pink-500', icon: Users },
-  MARKETPLACE: { label: 'Boutique', color: 'text-orange-400', bgColor: 'bg-orange-500', borderColor: 'border-orange-500', icon: Store },
-  ADMIN: { label: 'Admin', color: 'text-red-400', bgColor: 'bg-red-500', borderColor: 'border-red-500', icon: Shield },
-  BAN: { label: 'Bans', color: 'text-red-300', bgColor: 'bg-red-700', borderColor: 'border-red-700', icon: Gavel },
-  SUGGESTION: { label: 'Suggestions', color: 'text-cyan-400', bgColor: 'bg-cyan-500', borderColor: 'border-cyan-500', icon: Lightbulb },
-  AURACOIN: { label: 'AuraCoin', color: 'text-amber-400', bgColor: 'bg-amber-500', borderColor: 'border-amber-500', icon: TrendingUp },
-  BUSINESS: { label: 'Business', color: 'text-emerald-400', bgColor: 'bg-emerald-600', borderColor: 'border-emerald-600', icon: Briefcase },
-  FORUM: { label: 'Forum', color: 'text-indigo-400', bgColor: 'bg-indigo-500', borderColor: 'border-indigo-500', icon: Newspaper },
+  AUTH: { label: 'Connexion', color: 'text-primary', bgColor: 'bg-primary', borderColor: 'border-border', icon: LogIn },
+  CHAT: { label: 'Chat', color: 'text-success', bgColor: 'bg-success', borderColor: 'border-success', icon: MessageCircle },
+  GAME: { label: 'Jeux', color: 'text-primary', bgColor: 'bg-primary', borderColor: 'border-border', icon: Gamepad2 },
+  ECONOMY: { label: 'Economie', color: 'text-warning', bgColor: 'bg-warning', borderColor: 'border-warning', icon: Coins },
+  PARTY: { label: 'Groupe', color: 'text-primary', bgColor: 'bg-primary', borderColor: 'border-border', icon: Users },
+  MARKETPLACE: { label: 'Boutique', color: 'text-warning', bgColor: 'bg-warning', borderColor: 'border-warning', icon: Store },
+  ADMIN: { label: 'Admin', color: 'text-destructive', bgColor: 'bg-destructive', borderColor: 'border-destructive', icon: Shield },
+  BAN: { label: 'Bans', color: 'text-destructive', bgColor: 'bg-destructive', borderColor: 'border-destructive', icon: Gavel },
+  SUGGESTION: { label: 'Suggestions', color: 'text-primary', bgColor: 'bg-primary', borderColor: 'border-border', icon: Lightbulb },
+  AURACOIN: { label: 'AuraCoin', color: 'text-warning', bgColor: 'bg-warning', borderColor: 'border-warning', icon: TrendingUp },
+  BUSINESS: { label: 'Business', color: 'text-success', bgColor: 'bg-success', borderColor: 'border-success', icon: Briefcase },
+  FORUM: { label: 'Forum', color: 'text-primary', bgColor: 'bg-primary', borderColor: 'border-border', icon: Newspaper },
 };
 
 export const ACTION_LABELS: Record<string, string> = {

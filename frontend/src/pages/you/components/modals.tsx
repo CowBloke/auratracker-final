@@ -75,8 +75,8 @@ function BusinessTypeDetailPanel({ type }: { type: YouBusinessType }) {
       <div className="divide-y divide-border/40">
         <StatRow label="Frais de création" value={type.creationFee > 0 ? `${type.creationFee.toLocaleString('fr-FR')} money` : 'Gratuit'} />
         {type.minCapital > 0 && <StatRow label="Capital minimum" value={`${type.minCapital.toLocaleString('fr-FR')} money`} />}
-        {type.monthlyRevenue > 0 && <StatRow label="Revenus estimés" value={`${type.monthlyRevenue.toLocaleString('fr-FR')} /mois`} accent="text-emerald-500" />}
-        {type.monthlyExpenses > 0 && <StatRow label="Dépenses estimées" value={`${type.monthlyExpenses.toLocaleString('fr-FR')} /mois`} accent="text-red-400" />}
+        {type.monthlyRevenue > 0 && <StatRow label="Revenus estimés" value={`${type.monthlyRevenue.toLocaleString('fr-FR')} /mois`} accent="text-success" />}
+        {type.monthlyExpenses > 0 && <StatRow label="Dépenses estimées" value={`${type.monthlyExpenses.toLocaleString('fr-FR')} /mois`} accent="text-destructive" />}
         {produces.length > 0 && (
           <div className="flex items-center justify-between gap-3 py-2">
             <span className="text-[11px] text-muted-foreground">Production</span>
@@ -367,16 +367,16 @@ export function CreateBusinessModal({
                     className={cn(
                       'flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all',
                       juiceSpecialization === opt.value
-                        ? 'border-pink-500/50 bg-pink-500/10'
+                        ? 'border-border/50 bg-muted/10'
                         : 'border-border/40 bg-muted/10 hover:bg-muted/20',
                     )}
                   >
-                    <Droplets className={cn('h-4 w-4 shrink-0', juiceSpecialization === opt.value ? 'text-pink-500' : 'text-muted-foreground')} />
+                    <Droplets className={cn('h-4 w-4 shrink-0', juiceSpecialization === opt.value ? 'text-primary' : 'text-muted-foreground')} />
                     <div className="min-w-0 flex-1">
-                      <p className={cn('text-[13px] font-semibold leading-tight', juiceSpecialization === opt.value ? 'text-pink-500' : 'text-foreground')}>{opt.label}</p>
+                      <p className={cn('text-[13px] font-semibold leading-tight', juiceSpecialization === opt.value ? 'text-primary' : 'text-foreground')}>{opt.label}</p>
                       <p className="text-[10.5px] text-muted-foreground">{opt.desc}</p>
                     </div>
-                    {juiceSpecialization === opt.value && <Check className="h-3.5 w-3.5 shrink-0 text-pink-500" />}
+                    {juiceSpecialization === opt.value && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
                   </button>
                 ))}
               </div>
@@ -545,9 +545,9 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
           />
         </FieldRow>
         <div className="grid grid-cols-3 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4">
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-amber-400">{rate}%</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-warning">{rate}%</p></div>
           <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Remb. / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div>
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{formatMoney(total)}</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-destructive">{formatMoney(total)}</p></div>
         </div>
         <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
           {Number(collateralAura || 0) > 0
@@ -567,7 +567,7 @@ export function InvestModal({ open, onClose, business, onSubmitted }: { open: bo
   const [amount, setAmount] = useState('1000');
   const [riskLevel, setRiskLevel] = useState<'low' | 'medium' | 'high'>('medium');
   const [submitting, setSubmitting] = useState(false);
-  const ranges = { low: { label: 'Faible', color: 'text-emerald-400', min: 2, max: 5 }, medium: { label: 'Moyen', color: 'text-yellow-400', min: 5, max: 15 }, high: { label: 'Eleve', color: 'text-red-400', min: 10, max: 40 } } as const;
+  const ranges = { low: { label: 'Faible', color: 'text-success', min: 2, max: 5 }, medium: { label: 'Moyen', color: 'text-warning', min: 5, max: 15 }, high: { label: 'Eleve', color: 'text-destructive', min: 10, max: 40 } } as const;
   const selected = ranges[riskLevel];
 
   const submit = async () => {
@@ -655,7 +655,7 @@ export function TransferBusinessModal({
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {availablePlayers.map((player) => {
           const selected = player.id === recipientId;
-          return <button key={player.id} type="button" onClick={() => setRecipientId(player.id)} className={cn('flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors', selected ? 'border-cyan-400/50 bg-cyan-400/10' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour recevoir un transfert.'}</p></div>{selected ? <Pill label="Destinataire" color="bg-cyan-400/15 text-cyan-300" /> : null}</button>;
+          return <button key={player.id} type="button" onClick={() => setRecipientId(player.id)} className={cn('flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors', selected ? 'border-border/50 bg-muted/10' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour recevoir un transfert.'}</p></div>{selected ? <Pill label="Destinataire" color="bg-muted/15 text-primary" /> : null}</button>;
         })}
       </div>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} /></FieldRow>
@@ -762,12 +762,12 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
       <div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-2">
         <div className="flex items-center justify-between gap-3 text-xs">
           <span className="text-muted-foreground">Montant suggere auto-calcule</span>
-          <button type="button" className="font-semibold text-amber-300 transition-opacity hover:opacity-80" onClick={() => setAmount(String(suggestedAmount))}>
+          <button type="button" className="font-semibold text-warning transition-opacity hover:opacity-80" onClick={() => setAmount(String(suggestedAmount))}>
             Utiliser {formatMoney(suggestedAmount)}
           </button>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Ta part</p><p className="text-sm font-bold text-amber-300">{numericSharePercent.toLocaleString('fr-FR')}%</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Ta part</p><p className="text-sm font-bold text-warning">{numericSharePercent.toLocaleString('fr-FR')}%</p></div>
           <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Owner restant</p><p className="text-sm font-bold">{Math.max(0, 100 - numericSharePercent).toLocaleString('fr-FR')}%</p></div>
           <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Base actuelle</p><p className="text-sm font-bold">{formatMoney(business?.treasuryMoney ?? 0)}</p></div>
         </div>
@@ -936,17 +936,17 @@ export function MarriageModal({ open, onClose, relationships, onSubmitted }: { o
 
 // Transaction type metadata
 const TX_META: Record<string, { icon: typeof TrendingUp; color: string; label: string }> = {
-  DEPOSIT: { icon: ArrowDownCircle, color: 'text-emerald-400', label: 'Dépôt' },
-  WITHDRAW: { icon: ArrowUpCircle, color: 'text-red-400', label: 'Retrait' },
-  BANK_DEPOSIT: { icon: Landmark, color: 'text-emerald-400', label: 'Dépôt client' },
-  BANK_WITHDRAW: { icon: Landmark, color: 'text-red-400', label: 'Retrait client' },
-  FORMATION_SALE: { icon: GraduationCap, color: 'text-amber-400', label: 'Vente formation' },
-  SALARY: { icon: Users, color: 'text-orange-400', label: 'Salaires' },
-  SERVICE_FEE: { icon: CreditCard, color: 'text-cyan-400', label: 'Frais de service' },
-  LOAN_ISSUE: { icon: CreditCard, color: 'text-amber-400', label: 'Prêt accordé' },
-  LOAN_REPAY: { icon: CreditCard, color: 'text-emerald-400', label: 'Remboursement' },
-  NPC_COLLECT: { icon: TrendingUp, color: 'text-yellow-400', label: 'Recettes clients' },
-  ITEM_SALE: { icon: TrendingUp, color: 'text-lime-400', label: 'Vente article' },
+  DEPOSIT: { icon: ArrowDownCircle, color: 'text-success', label: 'Dépôt' },
+  WITHDRAW: { icon: ArrowUpCircle, color: 'text-destructive', label: 'Retrait' },
+  BANK_DEPOSIT: { icon: Landmark, color: 'text-success', label: 'Dépôt client' },
+  BANK_WITHDRAW: { icon: Landmark, color: 'text-destructive', label: 'Retrait client' },
+  FORMATION_SALE: { icon: GraduationCap, color: 'text-warning', label: 'Vente formation' },
+  SALARY: { icon: Users, color: 'text-warning', label: 'Salaires' },
+  SERVICE_FEE: { icon: CreditCard, color: 'text-primary', label: 'Frais de service' },
+  LOAN_ISSUE: { icon: CreditCard, color: 'text-warning', label: 'Prêt accordé' },
+  LOAN_REPAY: { icon: CreditCard, color: 'text-success', label: 'Remboursement' },
+  NPC_COLLECT: { icon: TrendingUp, color: 'text-warning', label: 'Recettes clients' },
+  ITEM_SALE: { icon: TrendingUp, color: 'text-success', label: 'Vente article' },
 };
 
 function TxRow({ tx }: { tx: YouBusinessTransaction }) {
@@ -962,7 +962,7 @@ function TxRow({ tx }: { tx: YouBusinessTransaction }) {
         <p className="text-xs font-medium">{tx.label}</p>
         <p className="text-[10px] text-muted-foreground">{new Date(tx.createdAt).toLocaleString('fr-FR')}</p>
       </div>
-      <p className={cn('shrink-0 text-sm font-bold tabular-nums', isPositive ? 'text-emerald-400' : 'text-red-400')}>
+      <p className={cn('shrink-0 text-sm font-bold tabular-nums', isPositive ? 'text-success' : 'text-destructive')}>
         {isPositive ? '+' : ''}{tx.amount.toLocaleString('fr-FR')} €
       </p>
     </div>
@@ -1338,8 +1338,8 @@ export function ManageBusinessModal({
                     icon={ArrowDownCircle}
                     label="Déposer"
                     sub="Injecter du money dans la trésorerie"
-                    iconBg="bg-emerald-400/15"
-                    iconColor="text-emerald-400"
+                    iconBg="bg-success/15"
+                    iconColor="text-success"
                     onClick={() => toggleSection('deposit')}
                   />
                   <InlineSection open={activeSection === 'deposit'}>
@@ -1358,8 +1358,8 @@ export function ManageBusinessModal({
                     icon={ArrowUpCircle}
                     label="Retirer"
                     sub="Récupérer du money vers ton solde"
-                    iconBg="bg-red-400/15"
-                    iconColor="text-red-400"
+                    iconBg="bg-destructive/15"
+                    iconColor="text-destructive"
                     onClick={() => toggleSection('withdraw')}
                   />
                   <InlineSection open={activeSection === 'withdraw'}>
@@ -1377,20 +1377,20 @@ export function ManageBusinessModal({
                   icon={Wallet}
                   label={npcOnCooldown ? 'Collecter les recettes (cooldown)' : 'Collecter les recettes'}
                   sub={npcOnCooldown ? 'Disponible dans quelques heures' : 'Ajoute les recettes clients a la tresorerie'}
-                  iconBg="bg-yellow-400/15"
-                  iconColor="text-yellow-400"
+                  iconBg="bg-warning/15"
+                  iconColor="text-warning"
                   onClick={() => { if (!npcOnCooldown && !collectingNpc) void collectNpc(); }}
                 />
               ) : null}
 
               {/* Production & Ressources */}
               {business.ownerKind === 'you' && PRODUCER_TYPES.has(business.typeKey) ? (
-                <ActionRow icon={Factory} label="Production & Ressources" sub="Stock, équipe, fabrication et stockage" iconBg="bg-emerald-400/15" iconColor="text-emerald-400" onClick={() => setProductionOpen(true)} />
+                <ActionRow icon={Factory} label="Production & Ressources" sub="Stock, équipe, fabrication et stockage" iconBg="bg-success/15" iconColor="text-success" onClick={() => setProductionOpen(true)} />
               ) : null}
 
               {/* Gérer l'équipe */}
               {business.ownerKind === 'you' ? (
-                <ActionRow icon={Users} label="Gérer l'équipe" sub="Salaires, invitations et départs" iconBg="bg-violet-400/15" iconColor="text-violet-400" onClick={() => setManageTeamOpen(true)} />
+                <ActionRow icon={Users} label="Gérer l'équipe" sub="Salaires, invitations et départs" iconBg="bg-muted/15" iconColor="text-primary" onClick={() => setManageTeamOpen(true)} />
               ) : null}
 
               {/* Créer une pub */}
@@ -1399,15 +1399,15 @@ export function ManageBusinessModal({
                   icon={Megaphone}
                   label="Créer une pub"
                   sub="Crée des annonces pour tes entreprises"
-                  iconBg="bg-fuchsia-400/15"
-                  iconColor="text-fuchsia-300"
+                  iconBg="bg-muted/15"
+                  iconColor="text-primary"
                   onClick={() => { window.location.href = '?tab=publicites'; }}
                 />
               ) : null}
 
               {/* Gérer le menu */}
               {business.ownerKind === 'you' && (business.typeKey === 'restaurant' || business.typeKey === 'lemonade' || business.typeKey === 'epicerie' || business.typeKey === 'illegal_market') ? (
-                <ActionRow icon={Utensils} label="Gérer le menu" sub="Modifier les articles et prix" iconBg="bg-orange-400/15" iconColor="text-orange-400" onClick={() => setManageMenuOpen(true)} />
+                <ActionRow icon={Utensils} label="Gérer le menu" sub="Modifier les articles et prix" iconBg="bg-warning/15" iconColor="text-warning" onClick={() => setManageMenuOpen(true)} />
               ) : null}
 
               {business.ownerKind === 'you' && isIllegalMarket ? (
@@ -1416,8 +1416,8 @@ export function ManageBusinessModal({
                     icon={ShieldAlert}
                     label="Ameliorations illegales"
                     sub="Augmente revenus, satisfaction et XP Illegalite"
-                    iconBg="bg-fuchsia-400/15"
-                    iconColor="text-fuchsia-300"
+                    iconBg="bg-muted/15"
+                    iconColor="text-primary"
                     onClick={() => toggleSection('illegalUpgrades')}
                   />
                   <InlineSection open={activeSection === 'illegalUpgrades'}>
@@ -1433,7 +1433,7 @@ export function ManageBusinessModal({
                               </p>
                             </div>
                             {upgrade.purchased ? (
-                              <Pill label="Debloquee" color="bg-emerald-400/15 text-emerald-300" />
+                              <Pill label="Debloquee" color="bg-success/15 text-success" />
                             ) : (
                               <Button
                                 size="sm"
@@ -1457,7 +1457,7 @@ export function ManageBusinessModal({
 
               {/* Modifier le profil */}
               {business.ownerKind === 'you' ? (
-                <ActionRow icon={Edit2} label="Modifier le profil" sub="Nom, description et logo" iconBg="bg-sky-400/15" iconColor="text-sky-400" onClick={() => setEditProfileOpen(true)} />
+                <ActionRow icon={Edit2} label="Modifier le profil" sub="Nom, description et logo" iconBg="bg-muted/15" iconColor="text-primary" onClick={() => setEditProfileOpen(true)} />
               ) : null}
 
               {/* Settings section */}
@@ -1472,8 +1472,8 @@ export function ManageBusinessModal({
                         icon={Percent}
                         label={`Taux d'emprunt · ${business.loanInterestRate ?? 4} %`}
                         sub="Applicable aux nouveaux prêts accordés"
-                        iconBg="bg-amber-400/15"
-                        iconColor="text-amber-400"
+                        iconBg="bg-warning/15"
+                        iconColor="text-warning"
                         onClick={() => toggleSection('loanRate')}
                       />
                       <InlineSection open={activeSection === 'loanRate'}>
@@ -1491,8 +1491,8 @@ export function ManageBusinessModal({
                       icon={Sparkles}
                       label={business.livretEpargneUnlocked ? 'Livret Épargne · Actif' : 'Livret Épargne · Débloquer'}
                       sub={business.livretEpargneUnlocked ? '+0,5 % / jour pour les clients' : `Coût : ${formatMoney(5000)} · Passe de 0,2 % à 0,5 % / jour`}
-                      iconBg="bg-amber-400/15"
-                      iconColor="text-amber-400"
+                      iconBg="bg-warning/15"
+                      iconColor="text-warning"
                       onClick={() => { if (!business.livretEpargneUnlocked) void buyLivret(); }}
                     />
                   ) : null}
@@ -1505,8 +1505,8 @@ export function ManageBusinessModal({
                           icon={ArrowUpCircle}
                           label="Envoyer via ma plateforme"
                           sub="Utiliser ce service de transfert pour envoyer de l'argent"
-                          iconBg="bg-cyan-400/15"
-                          iconColor="text-cyan-400"
+                          iconBg="bg-muted/15"
+                          iconColor="text-primary"
                           onClick={() => setTransferOpen(true)}
                         />
                       ) : null}
@@ -1514,8 +1514,8 @@ export function ManageBusinessModal({
                         icon={Percent}
                         label={`Frais de transfert · ${business.transferFeeRate ?? 2} %`}
                         sub="Prélevés sur chaque transfert entre joueurs"
-                        iconBg="bg-cyan-400/15"
-                        iconColor="text-cyan-400"
+                        iconBg="bg-muted/15"
+                        iconColor="text-primary"
                         onClick={() => toggleSection('transferFee')}
                       />
                       <InlineSection open={activeSection === 'transferFee'}>
@@ -1533,8 +1533,8 @@ export function ManageBusinessModal({
                       icon={GraduationCap}
                       label="Gérer les formations"
                       sub={`${business.formationProducts?.length ?? 0} formation(s) en ligne`}
-                      iconBg="bg-amber-400/15"
-                      iconColor="text-amber-400"
+                      iconBg="bg-warning/15"
+                      iconColor="text-warning"
                       onClick={() => setManageFormationsOpen(true)}
                     />
                   ) : null}
@@ -1569,21 +1569,21 @@ export function ManageBusinessModal({
                           onClick={handleClick}
                           className={cn(
                             'group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors',
-                            isClickable ? 'hover:bg-sky-400/5' : 'cursor-default',
+                            isClickable ? 'hover:bg-muted/5' : 'cursor-default',
                           )}
                         >
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-400/15">
-                            <TrendingUp className="h-4 w-4 text-sky-400" />
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/15">
+                            <TrendingUp className="h-4 w-4 text-primary" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <p className="text-sm font-medium">{product.name}</p>
-                              <span className="shrink-0 text-xs font-semibold text-sky-300">+{product.currentRevenue.toLocaleString('fr-FR')} €</span>
+                              <span className="shrink-0 text-xs font-semibold text-primary">+{product.currentRevenue.toLocaleString('fr-FR')} €</span>
                             </div>
                             <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel}</p>
                             {(product.isResearchActive || product.canDeploy) && (
                               <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted/40">
-                                <div className="h-full rounded-full bg-sky-400 transition-all" style={{ width: `${product.progressPercent}%` }} />
+                                <div className="h-full rounded-full bg-muted transition-all" style={{ width: `${product.progressPercent}%` }} />
                               </div>
                             )}
                           </div>
@@ -1603,8 +1603,8 @@ export function ManageBusinessModal({
                     icon={Trash2}
                     label={liquidating ? 'Liquidation en cours…' : 'Liquider l\'entreprise'}
                     sub="Action irréversible — la structure sera supprimée."
-                    iconBg="bg-red-400/15"
-                    iconColor="text-red-400"
+                    iconBg="bg-destructive/15"
+                    iconColor="text-destructive"
                     onClick={() => { if (!liquidating) void liquidateBusiness(); }}
                   />
                 </>
@@ -1619,9 +1619,9 @@ export function ManageBusinessModal({
             {/* Trésorerie */}
             <Card>
               <CardContent className="space-y-4 px-5 py-4">
-                <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-5 py-6 text-center">
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-300/70">Trésorerie</p>
-                  <p className="mt-2 text-5xl font-semibold tabular-nums text-emerald-200">{business.treasuryMoney.toLocaleString('fr-FR')} €</p>
+                <div className="rounded-2xl border border-success/25 bg-success/10 px-5 py-6 text-center">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-success/70">Trésorerie</p>
+                  <p className="mt-2 text-5xl font-semibold tabular-nums text-success">{business.treasuryMoney.toLocaleString('fr-FR')} €</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
@@ -1634,13 +1634,13 @@ export function ManageBusinessModal({
                     </div>
                   ))}
                 </div>
-                <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-4">
+                <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Capital partage</p>
                       <p className="mt-1 text-sm font-semibold">{business.isShared ? 'Entreprise partagee' : 'Fondateur seul'}</p>
                     </div>
-                    <Pill label={`${business.ownerSharePercent.toFixed(0)}% fondateur`} color="bg-amber-400/15 text-amber-300" />
+                    <Pill label={`${business.ownerSharePercent.toFixed(0)}% fondateur`} color="bg-warning/15 text-warning" />
                   </div>
                   <div className="mt-3 space-y-2">
                     <div className="flex items-center justify-between rounded-lg bg-background/50 px-3 py-2 text-sm">
@@ -1681,14 +1681,14 @@ export function ManageBusinessModal({
                       <button
                         type="button"
                         onClick={() => setLoanViewTab('active')}
-                        className={cn('rounded-md px-2.5 py-1 text-xs transition-colors', loanViewTab === 'active' ? 'bg-amber-400/20 text-amber-300' : 'text-muted-foreground hover:text-foreground')}
+                        className={cn('rounded-md px-2.5 py-1 text-xs transition-colors', loanViewTab === 'active' ? 'bg-warning/20 text-warning' : 'text-muted-foreground hover:text-foreground')}
                       >
                         Actifs ({activeLoans.length})
                       </button>
                       <button
                         type="button"
                         onClick={() => setLoanViewTab('history')}
-                        className={cn('rounded-md px-2.5 py-1 text-xs transition-colors', loanViewTab === 'history' ? 'bg-emerald-400/20 text-emerald-300' : 'text-muted-foreground hover:text-foreground')}
+                        className={cn('rounded-md px-2.5 py-1 text-xs transition-colors', loanViewTab === 'history' ? 'bg-success/20 text-success' : 'text-muted-foreground hover:text-foreground')}
                       >
                         Historique ({bankLoans.length})
                       </button>
@@ -1732,15 +1732,15 @@ export function ManageBusinessModal({
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
                                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Finance client</p>
                                     <p className="mt-1 text-sm font-semibold text-foreground">{borrowerMoney.toLocaleString('fr-FR')} €</p>
-                                    <p className="text-[11px] text-amber-300/90">Aura: {borrowerAura.toLocaleString('fr-FR')}</p>
+                                    <p className="text-[11px] text-warning/90">Aura: {borrowerAura.toLocaleString('fr-FR')}</p>
                                   </div>
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
                                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Echeance</p>
-                                    <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{formatLoanDate(dueDate)}</p>
+                                    <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-destructive' : 'text-foreground'}`}>{formatLoanDate(dueDate)}</p>
                                   </div>
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
                                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Temps restant</p>
-                                    <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{isActive ? getLoanTimeLeftLabel(loan) : '-'}</p>
+                                    <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-destructive' : 'text-foreground'}`}>{isActive ? getLoanTimeLeftLabel(loan) : '-'}</p>
                                   </div>
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
                                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Accorde le</p>
@@ -1748,31 +1748,31 @@ export function ManageBusinessModal({
                                   </div>
                                 </div>
                                 {loan.collateralAura > 0 || loan.collateralAuraHeld > 0 ? (
-                                  <p className="mt-2 text-xs text-amber-400">Hypothèque aura: {Math.max(loan.collateralAuraHeld, loan.collateralAura).toLocaleString('fr-FR')}</p>
+                                  <p className="mt-2 text-xs text-warning">Hypothèque aura: {Math.max(loan.collateralAuraHeld, loan.collateralAura).toLocaleString('fr-FR')}</p>
                                 ) : null}
                                 {loan.motivationMessage ? <p className="mt-2 text-xs text-muted-foreground">Motivation: "{loan.motivationMessage}"</p> : null}
                                 <p className="mt-2 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € rembourses</p>
-                                <p className={`mt-1 text-xs ${canBorrowerRepayNow ? 'text-emerald-300' : 'text-muted-foreground'}`}>
+                                <p className={`mt-1 text-xs ${canBorrowerRepayNow ? 'text-success' : 'text-muted-foreground'}`}>
                                   {canBorrowerRepayNow
                                     ? 'Le client peut rembourser integralement maintenant.'
                                     : `Le client ne peut pas encore solder le pret (manque ${(remaining - borrowerMoney).toLocaleString('fr-FR')} €).`}
                                 </p>
                                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
-                                  <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
+                                  <div className="h-full rounded-full bg-success transition-all" style={{ width: `${pct}%` }} />
                                 </div>
                               </div>
                               {canClaimCollateral ? (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="shrink-0 text-xs border-rose-400/40 text-rose-400 hover:bg-rose-400/10"
+                                  className="shrink-0 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
                                   onClick={() => void repayLoanNow(loan.id)}
                                   disabled={repayingLoanId !== null}
                                 >
                                   Saisir l'hypothèque
                                 </Button>
                               ) : isPastDue ? (
-                                <p className="shrink-0 text-xs text-rose-400/70">En defaut · pas d'hypothèque</p>
+                                <p className="shrink-0 text-xs text-destructive/70">En defaut · pas d'hypothèque</p>
                               ) : isActive ? (
                                 <p className="shrink-0 text-xs text-muted-foreground">Remboursement en cours</p>
                               ) : null}
@@ -2055,8 +2055,8 @@ export function ManageTeamModal({
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-medium">{invitation.employee.username}</p>
-                          <Pill label={invitation.initiatedByRole === 'EMPLOYER' ? 'Offre envoyée' : 'Candidature'} color="bg-violet-400/15 text-violet-300" />
-                          <Pill label={`${invitation.salary.toLocaleString('fr-FR')} €/j`} color="bg-emerald-400/15 text-emerald-300" />
+                          <Pill label={invitation.initiatedByRole === 'EMPLOYER' ? 'Offre envoyée' : 'Candidature'} color="bg-muted/15 text-primary" />
+                          <Pill label={`${invitation.salary.toLocaleString('fr-FR')} €/j`} color="bg-success/15 text-success" />
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">Rôle : {{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[invitation.role] ?? invitation.role}</p>
                         {invitation.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{invitation.message}"</p> : null}
@@ -2091,8 +2091,8 @@ export function ManageTeamModal({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <p className="text-sm font-medium">{member.user.username}</p>
-                        <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-violet-400/15 text-violet-400" />
-                        {isLawFirm && member.isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
+                        <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-muted/15 text-primary" />
+                        {isLawFirm && member.isPrimaryLawyer ? <Pill label="Principal" color="bg-warning/15 text-warning" /> : null}
                       </div>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {(member.salary ?? 0).toLocaleString('fr-FR')} €/jour
@@ -2103,7 +2103,7 @@ export function ManageTeamModal({
                       <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setEditingMember(member)}>
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void sack(member.id)} disabled={sackingId !== null}>
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => void sack(member.id)} disabled={sackingId !== null}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -2256,10 +2256,10 @@ export function MemberEditModal({
 
       {/* Law firm profile */}
       {isLawFirm ? (
-        <div className="space-y-4 rounded-xl border border-indigo-400/20 bg-indigo-400/5 px-4 py-4">
+        <div className="space-y-4 rounded-xl border border-border/20 bg-muted/5 px-4 py-4">
           <div className="flex items-center gap-2">
-            <Scale className="h-4 w-4 text-indigo-300" />
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-300">Profil avocat</p>
+            <Scale className="h-4 w-4 text-primary" />
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Profil avocat</p>
           </div>
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Titre</p>
@@ -2269,7 +2269,7 @@ export function MemberEditModal({
               ))}
             </SelectBox>
             <p className="text-[11px] text-muted-foreground/60">
-              Les <span className="text-indigo-300">Associé(e)s ★</span> ont accès à la gestion du cabinet (invitations, trésorerie…).
+              Les <span className="text-primary">Associé(e)s ★</span> ont accès à la gestion du cabinet (invitations, trésorerie…).
             </p>
           </div>
           <div className="space-y-2">
@@ -2303,7 +2303,7 @@ export function MemberEditModal({
               className="h-4 w-4 rounded"
             />
             <div>
-              <p className="text-sm font-medium text-amber-300">Avocat principal</p>
+              <p className="text-sm font-medium text-warning">Avocat principal</p>
               <p className="text-[11px] text-muted-foreground/70">Mis en avant sur la fiche publique du cabinet.</p>
             </div>
           </label>
@@ -2371,8 +2371,8 @@ export function TeamRosterModal({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <p className="text-sm font-semibold">{m.user.username}</p>
-                  <Pill label={roleLabel(m.role)} color="bg-violet-400/15 text-violet-400" />
-                  {isLawFirm && (m as any).isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
+                  <Pill label={roleLabel(m.role)} color="bg-muted/15 text-primary" />
+                  {isLawFirm && (m as any).isPrimaryLawyer ? <Pill label="Principal" color="bg-warning/15 text-warning" /> : null}
                 </div>
                 {m.specialty ? <p className="mt-0.5 text-xs text-muted-foreground">{m.specialty}</p> : null}
               </div>
@@ -2474,7 +2474,7 @@ export function BankAccountModal({
               </Button>
             ) : null}
             {!hasEpargne && business?.livretEpargneUnlocked ? (
-              <Button size="sm" variant="outline" className="flex-1 text-xs border-amber-400/30 text-amber-300 hover:bg-amber-400/10" onClick={() => void openAccount('EPARGNE')} disabled={opening}>
+              <Button size="sm" variant="outline" className="flex-1 text-xs border-warning/30 text-warning hover:bg-warning/10" onClick={() => void openAccount('EPARGNE')} disabled={opening}>
                 <Sparkles className="mr-1.5 h-3.5 w-3.5" />Compte épargne
               </Button>
             ) : null}
@@ -2489,17 +2489,17 @@ export function BankAccountModal({
               const isEpargne = account.accountType === 'EPARGNE';
               const isActive = activeAccountId === account.id;
               return (
-                <div key={account.id} className={cn('rounded-xl border bg-muted/10 px-4 py-4', isEpargne ? 'border-amber-400/25' : 'border-border/40')}>
+                <div key={account.id} className={cn('rounded-xl border bg-muted/10 px-4 py-4', isEpargne ? 'border-warning/25' : 'border-border/40')}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        {isEpargne ? <Sparkles className="h-3.5 w-3.5 text-amber-400" /> : <Landmark className="h-3.5 w-3.5 text-emerald-400" />}
+                        {isEpargne ? <Sparkles className="h-3.5 w-3.5 text-warning" /> : <Landmark className="h-3.5 w-3.5 text-success" />}
                         <p className="text-sm font-semibold">{isEpargne ? 'Compte Épargne' : 'Compte Courant'}</p>
                       </div>
-                      <p className={cn('mt-1 text-xl font-bold tabular-nums', isEpargne ? 'text-amber-300' : 'text-emerald-300')}>
+                      <p className={cn('mt-1 text-xl font-bold tabular-nums', isEpargne ? 'text-warning' : 'text-success')}>
                         {account.balance.toLocaleString('fr-FR')} €
                       </p>
-                      {isEpargne ? <p className="mt-0.5 text-[10px] text-amber-400/70">+0,5 % / jour</p> : <p className="mt-0.5 text-[10px] text-emerald-400/70">+0,2 % / jour</p>}
+                      {isEpargne ? <p className="mt-0.5 text-[10px] text-warning/70">+0,5 % / jour</p> : <p className="mt-0.5 text-[10px] text-success/70">+0,2 % / jour</p>}
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" className="text-xs" onClick={() => { setActiveAccountId(account.id); setAction('deposit'); setAmount('500'); }}>
@@ -2573,8 +2573,8 @@ export function FormationPurchaseModal({
       <AppModal.Body scrollable>
       {purchased ? (
         <div className="space-y-4 text-center">
-          <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-6">
-            <GraduationCap className="mx-auto h-10 w-10 text-emerald-400" />
+          <div className="rounded-xl border border-success/25 bg-success/10 px-4 py-6">
+            <GraduationCap className="mx-auto h-10 w-10 text-success" />
             <p className="mt-3 text-sm font-semibold">Formation achetée !</p>
             <p className="mt-1 text-xs text-muted-foreground">Clique sur le bouton pour accéder au contenu.</p>
           </div>
@@ -2584,9 +2584,9 @@ export function FormationPurchaseModal({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-4">
+          <div className="rounded-xl border border-warning/20 bg-warning/8 px-4 py-4">
             <div className="flex items-center gap-3">
-              <GraduationCap className="h-8 w-8 text-amber-400" />
+              <GraduationCap className="h-8 w-8 text-warning" />
               <div>
                 <p className="text-sm font-semibold">{business?.name}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">Propriétaire : {business?.owner.username}</p>
@@ -2596,7 +2596,7 @@ export function FormationPurchaseModal({
           <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Prix de la formation</span>
-              <span className="font-bold text-amber-300">{price.toLocaleString('fr-FR')} €</span>
+              <span className="font-bold text-warning">{price.toLocaleString('fr-FR')} €</span>
             </div>
           </div>
         </div>
@@ -2750,14 +2750,14 @@ export function ManageFormationsModal({
               {p.imageUrl ? (
                 <img src={p.imageUrl} alt={p.title} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
               ) : (
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-400/15">
-                  <GraduationCap className="h-5 w-5 text-amber-400" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/15">
+                  <GraduationCap className="h-5 w-5 text-warning" />
                 </div>
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{p.title}</p>
                 {p.description ? <p className="text-xs text-muted-foreground line-clamp-1">{p.description}</p> : null}
-                <p className="text-xs font-medium text-amber-300">{p.price.toLocaleString('fr-FR')} €</p>
+                <p className="text-xs font-medium text-warning">{p.price.toLocaleString('fr-FR')} €</p>
               </div>
               <div className="flex shrink-0 gap-1">
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-xs" onClick={() => startEdit(p)}>
@@ -2766,7 +2766,7 @@ export function ManageFormationsModal({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 w-7 p-0 border-red-400/30 text-red-300 hover:bg-red-500/10"
+                  className="h-7 w-7 p-0 border-destructive/30 text-destructive hover:bg-destructive/10"
                   onClick={() => void remove(p.id)}
                   disabled={deletingId === p.id}
                 >
@@ -2806,7 +2806,7 @@ export function ManageFormationsModal({
             if (!currentProduct) return null;
             return (
               <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs space-y-2">
-                <p className={cn('font-medium', currentProduct.status === 'APPROVED' ? 'text-emerald-400' : currentProduct.status === 'REJECTED' ? 'text-rose-400' : 'text-amber-400')}>
+                <p className={cn('font-medium', currentProduct.status === 'APPROVED' ? 'text-success' : currentProduct.status === 'REJECTED' ? 'text-destructive' : 'text-warning')}>
                   Statut: {currentProduct.status === 'APPROVED' ? 'ApprouvÃ©e' : currentProduct.status === 'REJECTED' ? 'RefusÃ©e' : 'En attente'}
                 </p>
                 <p className="text-muted-foreground">Fichier actuel: {draft.attachmentFile?.name ?? currentProduct.attachmentOriginalName ?? 'Aucun'}</p>
@@ -3010,8 +3010,8 @@ export function FormationCatalogModal({
       <AppModal.Body scrollable>
       {purchasedAccess ? (
         <div className="space-y-4 text-center">
-          <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-6">
-            <GraduationCap className="mx-auto h-10 w-10 text-emerald-400" />
+          <div className="rounded-xl border border-success/25 bg-success/10 px-4 py-6">
+            <GraduationCap className="mx-auto h-10 w-10 text-success" />
             <p className="mt-3 text-sm font-semibold">{purchasedAccess.title}</p>
             <p className="mt-1 text-xs text-muted-foreground">Clique pour reouvrir ton acces securise.</p>
           </div>
@@ -3049,18 +3049,18 @@ export function FormationCatalogModal({
                 ) : null}
                 <div className="space-y-3 px-4 py-3">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/15">
-                      <GraduationCap className="h-4 w-4 text-amber-400" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-warning/15">
+                      <GraduationCap className="h-4 w-4 text-warning" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <p className="text-sm font-semibold">{product.title}</p>
-                        {hasPurchased ? <Pill label="Achetee" color="bg-emerald-400/15 text-emerald-300" /> : null}
-                        {product.status === 'PENDING' ? <Pill label="En attente" color="bg-amber-400/15 text-amber-300" /> : null}
-                        {product.status === 'REJECTED' ? <Pill label="Refusee" color="bg-rose-400/15 text-rose-300" /> : null}
+                        {hasPurchased ? <Pill label="Achetee" color="bg-success/15 text-success" /> : null}
+                        {product.status === 'PENDING' ? <Pill label="En attente" color="bg-warning/15 text-warning" /> : null}
+                        {product.status === 'REJECTED' ? <Pill label="Refusee" color="bg-destructive/15 text-destructive" /> : null}
                       </div>
                       {product.description ? <p className="mt-0.5 text-xs text-muted-foreground">{product.description}</p> : null}
-                      <p className="mt-1.5 text-sm font-bold text-amber-300">{product.price.toLocaleString('fr-FR')} EUR</p>
+                      <p className="mt-1.5 text-sm font-bold text-warning">{product.price.toLocaleString('fr-FR')} EUR</p>
                     </div>
                   </div>
 
@@ -3085,7 +3085,7 @@ export function FormationCatalogModal({
                   </div>
 
                   {isOwnerPreview && product.status === 'REJECTED' && product.reviewerNote ? (
-                    <div className="rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">
+                    <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                       Note moderation: {product.reviewerNote}
                     </div>
                   ) : null}
@@ -3095,9 +3095,9 @@ export function FormationCatalogModal({
                       type="button"
                       onClick={() => onShowProductReviews?.(product.id)}
                       disabled={!onShowProductReviews}
-                      className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-2 py-0.5 text-[11px] font-medium text-amber-400 transition-colors hover:bg-muted/20 disabled:pointer-events-none disabled:opacity-50"
+                      className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-2 py-0.5 text-[11px] font-medium text-warning transition-colors hover:bg-muted/20 disabled:pointer-events-none disabled:opacity-50"
                     >
-                      <Star className="h-3 w-3 fill-amber-400" />
+                      <Star className="h-3 w-3 fill-warning" />
                       <span>{product.avgRating?.toFixed(1) ?? '--'}</span>
                       <span className="text-muted-foreground/70">({ratingCount})</span>
                     </button>
@@ -3356,7 +3356,7 @@ export function ManageMenuModal({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
                 onClick={() => setMenu((prev) => prev.filter((_, i) => i !== idx))}
               >
                 <Trash2 className="h-4 w-4" />

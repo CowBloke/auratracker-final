@@ -157,33 +157,33 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
         <CardContent className="space-y-4">
           {/* Summary cards */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
+            <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5 text-blue-400" />
+                  <Users className="h-3.5 w-3.5 text-primary" />
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Utilisateurs actifs</p>
                 </div>
-                <p className="text-2xl font-bold tabular-nums text-blue-400">{totals.count.toLocaleString('fr-FR')}</p>
+                <p className="text-2xl font-bold tabular-nums text-primary">{totals.count.toLocaleString('fr-FR')}</p>
                 <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>vus en ligne sur la période</p>
               </CardContent>
             </Card>
-            <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-purple-600/5">
+            <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-purple-400" />
+                  <Clock className="h-3.5 w-3.5 text-primary" />
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Temps cumulé</p>
                 </div>
-                <p className="text-2xl font-bold tabular-nums text-purple-400">{formatScreenTime(totals.totalSeconds)}</p>
+                <p className="text-2xl font-bold tabular-nums text-primary">{formatScreenTime(totals.totalSeconds)}</p>
                 <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous utilisateurs confondus</p>
               </CardContent>
             </Card>
-            <Card className="border-green-500/20 bg-gradient-to-br from-green-500/10 to-green-600/5">
+            <Card className="border-success/20 bg-gradient-to-br from-success/10 to-success/5">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
-                  <Gauge className="h-3.5 w-3.5 text-green-400" />
+                  <Gauge className="h-3.5 w-3.5 text-success" />
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Moyenne / utilisateur</p>
                 </div>
-                <p className="text-2xl font-bold tabular-nums text-green-400">{formatScreenTime(totals.averageSeconds)}</p>
+                <p className="text-2xl font-bold tabular-nums text-success">{formatScreenTime(totals.averageSeconds)}</p>
                 <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>temps d'écran moyen</p>
               </CardContent>
             </Card>
@@ -227,7 +227,7 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
                           <div className="flex items-center gap-2">
                             <div className="h-2 flex-1 min-w-[40px] rounded-full bg-muted/50 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-purple-400"
+                                className="h-full rounded-full bg-muted"
                                 style={{ width: `${topSeconds > 0 ? Math.max(2, (entry.totalSeconds / topSeconds) * 100) : 0}%` }}
                               />
                             </div>

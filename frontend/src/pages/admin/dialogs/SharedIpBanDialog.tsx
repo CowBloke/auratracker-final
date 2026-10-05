@@ -58,7 +58,7 @@ export function SharedIpBanDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-amber-400" />
+            <ShieldAlert className="h-5 w-5 text-warning" />
             Comptes liés à la même IP
           </DialogTitle>
           <DialogDescription>
@@ -68,7 +68,7 @@ export function SharedIpBanDialog({
             {ip && <span className="font-mono text-foreground"> ({ip})</span>}. Le ban rapide
             applique exactement les mêmes paramètres.
             {isTrustedIp && (
-              <span className="mt-2 block text-amber-500">
+              <span className="mt-2 block text-warning">
                 Cette IP est marquee comme IP STDO/lycee fiable : les comptes lies ne sont pas proposes au ban rapide.
               </span>
             )}
@@ -101,7 +101,7 @@ export function SharedIpBanDialog({
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium truncate">{u.username}</span>
                         {u.isAdmin && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-muted/20 text-primary">
                             Admin
                           </span>
                         )}
@@ -111,7 +111,7 @@ export function SharedIpBanDialog({
                           </span>
                         )}
                         {!u.activeBan && bannedIds.includes(u.id) && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-400">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-success/20 text-success">
                             Banni
                           </span>
                         )}
@@ -122,7 +122,7 @@ export function SharedIpBanDialog({
                     {u.isAdmin ? (
                       <span className="text-xs text-muted-foreground shrink-0">Protégé</span>
                     ) : alreadyBanned ? (
-                      <Check className="h-4 w-4 text-green-500 shrink-0" />
+                      <Check className="h-4 w-4 text-success shrink-0" />
                     ) : (
                       <Button
                         size="sm"

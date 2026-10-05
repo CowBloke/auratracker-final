@@ -133,7 +133,7 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
                   <BarChart data={wealthStats.wealthBrackets} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
                     <XAxis
                       dataKey="label"
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                       interval={0}
@@ -143,13 +143,13 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
                     />
                     <YAxis
                       allowDecimals={false}
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
                       width={28}
                     />
                     <RechartsTooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                      contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                       formatter={(value: number) => [`${value} joueurs`, 'Richesse']}
                     />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>
@@ -174,7 +174,7 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
                   <BarChart data={wealthStats.auraBrackets} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
                     <XAxis
                       dataKey="label"
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                       interval={0}
@@ -184,13 +184,13 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
                     />
                     <YAxis
                       allowDecimals={false}
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
                       width={28}
                     />
                     <RechartsTooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                      contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                       formatter={(value: number) => [`${value} joueurs`, 'Aura']}
                     />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#f59e0b" isAnimationActive={false} />

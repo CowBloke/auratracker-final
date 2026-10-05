@@ -136,15 +136,15 @@ export function UsersTab(props: UsersTabProps) {
           {selectedUserIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 pt-3 mt-1 border-t border-border/30">
               <span className="text-xs text-muted-foreground">{selectedUserIds.length} sélectionné(s) :</span>
-              <Button size="sm" onClick={() => openBadgeModal('')} className="h-7 bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1.5">
+              <Button size="sm" onClick={() => openBadgeModal('')} className="h-7 bg-primary hover:bg-primary text-white text-xs gap-1.5">
                 <Award className="h-3.5 w-3.5" />
                 Badge
               </Button>
-              <Button size="sm" onClick={massMuteUsers} className="h-7 bg-amber-600 hover:bg-amber-700 text-white text-xs gap-1.5">
+              <Button size="sm" onClick={massMuteUsers} className="h-7 bg-warning hover:bg-warning text-white text-xs gap-1.5">
                 <ShieldOff className="h-3.5 w-3.5" />
                 Mute
               </Button>
-              <Button size="sm" onClick={openMassBanDialog} className="h-7 bg-orange-600 hover:bg-orange-700 text-white text-xs gap-1.5">
+              <Button size="sm" onClick={openMassBanDialog} className="h-7 bg-warning hover:bg-warning text-white text-xs gap-1.5">
                 <BanIcon className="h-3.5 w-3.5" />
                 Bannir
               </Button>
@@ -181,21 +181,21 @@ export function UsersTab(props: UsersTabProps) {
               {filteredUsers.map((u) => (
                 <div
                   key={u.id}
-                  className={cn('py-3', u.isSuperAdmin ? 'bg-amber-500/10' : u.isAdmin ? 'bg-muted/20' : undefined)}
+                  className={cn('py-3', u.isSuperAdmin ? 'bg-warning/10' : u.isAdmin ? 'bg-muted/20' : undefined)}
                 >
                   {(() => {
                     const adminRole = getAdminRole(u);
                     const roleBadgeClassName =
                       adminRole === 'SUPER_ADMIN'
-                        ? 'bg-amber-500/20 text-amber-300 font-medium'
+                        ? 'bg-warning/20 text-warning font-medium'
                         : adminRole === 'ADMIN'
-                          ? 'bg-amber-500/15 text-amber-400'
+                          ? 'bg-warning/15 text-warning'
                           : adminRole === 'BETA_TESTER'
-                            ? 'bg-sky-500/15 text-sky-400'
+                            ? 'bg-muted/15 text-primary'
                             : adminRole === 'FISCAL_INSPECTOR'
-                              ? 'bg-emerald-500/15 text-emerald-400'
+                              ? 'bg-success/15 text-success'
                               : adminRole === 'JUDGE'
-                                ? 'bg-indigo-500/15 text-indigo-400'
+                                ? 'bg-muted/15 text-primary'
                                 : 'bg-muted text-muted-foreground';
 
                     return (
@@ -222,14 +222,14 @@ export function UsersTab(props: UsersTabProps) {
                           {adminRole === 'SUPER_ADMIN' ? <Crown className="h-2.5 w-2.5" /> : <Shield className="h-2.5 w-2.5" />}
                           {ROLE_LABELS[adminRole]}
                         </span>
-                        {u.isChatMuted && <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 shrink-0">muet</span>}
+                        {u.isChatMuted && <span className="text-xs px-1.5 py-0.5 rounded-full bg-warning/20 text-warning shrink-0">muet</span>}
                         {u.schoolLevel && (
                           <span
                             className={cn(
                               'text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0',
-                              u.schoolLevel === 'SECONDE' && 'bg-sky-500/15 text-sky-400',
-                              u.schoolLevel === 'PREMIERE' && 'bg-violet-500/15 text-violet-400',
-                              u.schoolLevel === 'TERMINALE' && 'bg-rose-500/15 text-rose-400',
+                              u.schoolLevel === 'SECONDE' && 'bg-muted/15 text-primary',
+                              u.schoolLevel === 'PREMIERE' && 'bg-muted/15 text-primary',
+                              u.schoolLevel === 'TERMINALE' && 'bg-destructive/15 text-destructive',
                             )}
                           >
                             {u.schoolLevel === 'SECONDE' ? '2nde' : u.schoolLevel === 'PREMIERE' ? '1ère' : 'Tle'}
@@ -243,16 +243,16 @@ export function UsersTab(props: UsersTabProps) {
                     </div>
 
                     <div className="hidden xl:flex items-center gap-1.5 shrink-0">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/15 text-purple-400 text-xs tabular-nums font-medium">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/15 text-primary text-xs tabular-nums font-medium">
                         <CurrencyIcon type="aura" className="h-3 w-3" />
                         {u.aura.toLocaleString()}
                       </span>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/15 text-green-400 text-xs tabular-nums font-medium">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-success/15 text-success text-xs tabular-nums font-medium">
                         <CurrencyIcon type="money" className="h-3 w-3" />
                         {u.money.toLocaleString()}
                       </span>
                       {u.sharedMoney && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-xs tabular-nums font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-success/15 text-success text-xs tabular-nums font-medium">
                           <Wallet className="h-3 w-3" />
                           {u.sharedMoney.coupleBalance.toLocaleString()}
                         </span>
@@ -260,19 +260,19 @@ export function UsersTab(props: UsersTabProps) {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => startEditing(u)} className="h-8 w-8 p-0 border-blue-500/50 text-blue-400 hover:bg-blue-500/10" title="Modifier">
+                      <Button size="sm" variant="outline" onClick={() => startEditing(u)} className="h-8 w-8 p-0 border-border/50 text-primary hover:bg-muted/10" title="Modifier">
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
 
-                      <Button size="sm" variant="outline" onClick={() => openInventory(u)} className="h-8 w-8 p-0 border-purple-500/50 text-purple-400 hover:bg-purple-500/10" title="Inventaire">
+                      <Button size="sm" variant="outline" onClick={() => openInventory(u)} className="h-8 w-8 p-0 border-border/50 text-primary hover:bg-muted/10" title="Inventaire">
                         <Package className="h-3.5 w-3.5" />
                       </Button>
 
-                      <Button size="sm" variant="outline" onClick={() => openSharedMoney(u)} className="h-8 w-8 p-0 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10" title="Compte commun">
+                      <Button size="sm" variant="outline" onClick={() => openSharedMoney(u)} className="h-8 w-8 p-0 border-success/50 text-success hover:bg-success/10" title="Compte commun">
                         <Wallet className="h-3.5 w-3.5" />
                       </Button>
 
-                      <Button size="sm" variant="outline" onClick={() => openBadgeModal(u.id)} className="h-8 w-8 p-0 border-violet-500/50 text-violet-400 hover:bg-violet-500/10" title="Attribuer badge">
+                      <Button size="sm" variant="outline" onClick={() => openBadgeModal(u.id)} className="h-8 w-8 p-0 border-border/50 text-primary hover:bg-muted/10" title="Attribuer badge">
                         <Award className="h-3.5 w-3.5" />
                       </Button>
 
@@ -282,7 +282,7 @@ export function UsersTab(props: UsersTabProps) {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 w-8 p-0 border-rose-500/50 text-rose-400 hover:bg-rose-500/10"
+                              className="h-8 w-8 p-0 border-destructive/50 text-destructive hover:bg-destructive/10"
                               disabled={forcingDivorceUserId === u.id}
                               title="Forcer divorce"
                             >
@@ -292,7 +292,7 @@ export function UsersTab(props: UsersTabProps) {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle className="flex items-center gap-2">
-                                <HeartCrack className="h-5 w-5 text-rose-400" />
+                                <HeartCrack className="h-5 w-5 text-destructive" />
                                 Forcer le divorce de {u.username} et {u.sharedMoney.partner.username} ?
                               </AlertDialogTitle>
                               <AlertDialogDescription>
@@ -301,7 +301,7 @@ export function UsersTab(props: UsersTabProps) {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => void forceDivorceUser(u.id)} className="bg-rose-500 hover:bg-rose-600">
+                              <AlertDialogAction onClick={() => void forceDivorceUser(u.id)} className="bg-destructive hover:bg-destructive">
                                 Forcer le divorce
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -319,8 +319,8 @@ export function UsersTab(props: UsersTabProps) {
                           className={cn(
                             'h-8 w-8 p-0',
                             u.isChatMuted
-                              ? 'border-amber-500/50 text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
-                              : 'border-amber-500/50 text-amber-400 hover:bg-amber-500/10',
+                              ? 'border-warning/50 text-warning bg-warning/10 hover:bg-warning/20'
+                              : 'border-warning/50 text-warning hover:bg-warning/10',
                           )}
                         >
                           {mutingUser === u.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="h-3.5 w-3.5" />}
@@ -332,7 +332,7 @@ export function UsersTab(props: UsersTabProps) {
                           size="sm"
                           variant="outline"
                           onClick={() => openWarningDialog(u.id)}
-                          className="h-8 w-8 p-0 border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                          className="h-8 w-8 p-0 border-warning/50 text-warning hover:bg-warning/10"
                           title="Avertir"
                         >
                           <AlertTriangle className="h-3.5 w-3.5" />
@@ -345,7 +345,7 @@ export function UsersTab(props: UsersTabProps) {
                             size="sm"
                             variant="outline"
                             onClick={() => simulateAltIp(u)}
-                            className="h-8 w-8 p-0 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+                            className="h-8 w-8 p-0 border-border/50 text-primary hover:bg-muted/10"
                             title="Simuler une IP alt"
                           >
                             <TestTube2 className="h-3.5 w-3.5" />
@@ -354,7 +354,7 @@ export function UsersTab(props: UsersTabProps) {
                             size="sm"
                             variant="outline"
                             onClick={() => openBanDialog(u.id)}
-                            className="h-8 w-8 p-0 border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                            className="h-8 w-8 p-0 border-warning/50 text-warning hover:bg-warning/10"
                             title="Bannir"
                           >
                             <BanIcon className="h-3.5 w-3.5" />

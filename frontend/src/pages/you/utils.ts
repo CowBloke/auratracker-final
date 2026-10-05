@@ -18,11 +18,11 @@ export function formatDurationMinutes(value: number) {
 }
 
 export function getRelationshipPill(status: YouRelationship['status']) {
-  if (status === 'MARRIED') return { label: 'Marie(e)', color: 'bg-red-400/15 text-red-400' };
-  if (status === 'DIVORCED') return { label: 'Ex', color: 'bg-slate-400/15 text-slate-300' };
-  if (status === 'FRIEND') return { label: 'Ami(e)', color: 'bg-sky-400/15 text-sky-400' };
-  if (status === 'MISTRESS') return { label: 'Liaison', color: 'bg-purple-400/15 text-purple-400' };
-  return { label: 'En relation', color: 'bg-pink-400/15 text-pink-400' };
+  if (status === 'MARRIED') return { label: 'Marie(e)', color: 'bg-destructive/15 text-destructive' };
+  if (status === 'DIVORCED') return { label: 'Ex', color: 'bg-secondary/15 text-muted-foreground' };
+  if (status === 'FRIEND') return { label: 'Ami(e)', color: 'bg-muted/15 text-primary' };
+  if (status === 'MISTRESS') return { label: 'Liaison', color: 'bg-muted/15 text-primary' };
+  return { label: 'En relation', color: 'bg-muted/15 text-primary' };
 }
 
 export function canUseBusinessAction(business: YouBusiness, action: BusinessAction, userId: string) {
@@ -66,22 +66,22 @@ export function getYouNotificationMeta(notification: Notification) {
   const title = notification.title.toLowerCase();
 
   if (icon === 'briefcase-business' || title.includes('business')) {
-    return { icon: Building2, tone: 'bg-emerald-400/15 text-emerald-300 border-emerald-400/20' };
+    return { icon: Building2, tone: 'bg-success/15 text-success border-success/20' };
   }
 
   if (icon === 'credit-card' || icon === 'landmark' || title.includes('pret')) {
-    return { icon: Landmark, tone: 'bg-amber-400/15 text-amber-300 border-amber-400/20' };
+    return { icon: Landmark, tone: 'bg-warning/15 text-warning border-warning/20' };
   }
 
   if (icon === 'trending-up' || title.includes('invest')) {
-    return { icon: TrendingUp, tone: 'bg-sky-400/15 text-sky-300 border-sky-400/20' };
+    return { icon: TrendingUp, tone: 'bg-muted/15 text-primary border-border/20' };
   }
 
   if (icon === 'heart' || icon === 'heart-crack' || title.includes('mariage') || title.includes('divorce') || title.includes('relation')) {
-    return { icon: Heart, tone: 'bg-pink-400/15 text-pink-300 border-pink-400/20' };
+    return { icon: Heart, tone: 'bg-muted/15 text-primary border-border/20' };
   }
 
-  return { icon: BellRing, tone: 'bg-violet-400/15 text-violet-300 border-violet-400/20' };
+  return { icon: BellRing, tone: 'bg-muted/15 text-primary border-border/20' };
 }
 
 export function relativeTime(date: string): string {

@@ -172,7 +172,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                                 href={resolveImageUrl(msg.imageUrl)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="mt-1 inline-block text-xs text-blue-400 hover:underline"
+                                className="mt-1 inline-block text-xs text-primary hover:underline"
                               >
                                 Ouvrir image
                               </a>

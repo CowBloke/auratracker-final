@@ -175,12 +175,12 @@ export function ClubsTab(props: ClubsTabProps) {
                         <span className="font-medium text-sm">{clan.name}</span>
                         <span className={cn(
                           'text-xs px-1.5 py-0.5 rounded-full shrink-0',
-                          clan.isPublic ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'
+                          clan.isPublic ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
                         )}>
                           {clan.isPublic ? 'Public' : 'Privé'}
                         </span>
                         {clan.activeWar && (
-                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 shrink-0">
+                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive shrink-0">
                             <Swords className="h-2.5 w-2.5" />
                             {clan.activeWar.status === 'ACTIVE' ? 'En guerre' : 'Préparation'}
                           </span>
@@ -207,7 +207,7 @@ export function ClubsTab(props: ClubsTabProps) {
                         size="sm"
                         variant="outline"
                         onClick={() => handleOpenClanModal(clan)}
-                        className="h-8 border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+                        className="h-8 border-border/50 text-primary hover:bg-muted/10"
                       >
                         <Edit2 className="h-3.5 w-3.5 mr-1.5" />
                         Gérer
@@ -324,7 +324,7 @@ export function ClubsTab(props: ClubsTabProps) {
                       className={cn(
                         'h-8',
                         clanForm.tagUnlocked
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/20'
+                          ? 'bg-success/15 text-success border-success/40 hover:bg-success/20'
                           : 'border-border/60'
                       )}
                       onClick={() => setClanForm((prev: any) => ({ ...prev, tagUnlocked: !prev.tagUnlocked }))}
@@ -343,7 +343,7 @@ export function ClubsTab(props: ClubsTabProps) {
 
                   <div className="space-y-3 border-t border-border/40 pt-5">
                     <div className="flex items-center gap-2">
-                      <Crown className="h-4 w-4 text-amber-500" />
+                      <Crown className="h-4 w-4 text-warning" />
                       <h3 className="font-medium">Changer le chef</h3>
                     </div>
                     <div className="space-y-2">
@@ -352,7 +352,7 @@ export function ClubsTab(props: ClubsTabProps) {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{member.user.username}</span>
-                              {member.isLeader && <span className="text-xs text-amber-500">chef actuel</span>}
+                              {member.isLeader && <span className="text-xs text-warning">chef actuel</span>}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {Number(member.user.aura).toLocaleString('fr-FR')} aura • membre depuis {new Date(member.joinedAt).toLocaleDateString('fr-FR')}
@@ -419,7 +419,7 @@ export function ClubsTab(props: ClubsTabProps) {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-base font-medium">{event.title}</h3>
-                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-400">{event.status}</span>
+                          <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">{event.status}</span>
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.quests.length} quête(s)</span>
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.miniGames.length} mini-jeu(x)</span>
                         </div>

@@ -72,18 +72,18 @@ export function BusinessSelectionModal<TBusiness extends SelectableBusiness>({
                 onClick={() => setCurrentId(business.id)}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors',
-                  active ? 'border-cyan-400/50 bg-cyan-400/10' : 'border-border bg-card hover:bg-accent',
+                  active ? 'border-border/50 bg-muted/10' : 'border-border bg-card hover:bg-accent',
                   disabled && 'cursor-not-allowed opacity-45 hover:bg-card',
                 )}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-cyan-400/12 text-cyan-300">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted/12 text-primary">
                   <Building2 className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-sm font-semibold text-foreground">{business.name}</p>
                     {business.avgRating != null && business.ratingCount ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
                         <Star className="h-3 w-3 fill-current" />
                         {business.avgRating.toFixed(1)}
                       </span>
@@ -95,7 +95,7 @@ export function BusinessSelectionModal<TBusiness extends SelectableBusiness>({
                   {renderMeta ? <div className="mt-1">{renderMeta(business)}</div> : null}
                 </div>
                 {active && (
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-400 text-background">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-background">
                     <Check className="h-3.5 w-3.5" />
                   </div>
                 )}

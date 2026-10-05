@@ -1,21 +1,24 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { type Ad, adsApi, auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
 import { AdBanner } from '@/components/ads/AdBanner';
-import { X, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, Bird, Rocket, Zap, Coins, Users } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Check, X, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, Bird, Rocket, Zap, Coins, Users } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { TYPOGRAPHY } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { PageShell } from '@/components/layout/PageShell';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { toClanTagData } from '@/components/clans/ClanTag';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { BadgeData } from '@/components/badges/UserBadges';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
-import { TableSkeleton } from '@/components/ui/loading-skeletons';
 
 type CategoryIcon = React.ComponentType<{ className?: string }>;
 
@@ -369,318 +372,246 @@ export default function Leaderboards() {
     ? 'Nombres'
     : categories.find(c => c.id === activeView)?.name ?? '';
 
+  const navGroups: { heading: string; items: { id: View; name: string; icon: CategoryIcon }[] }[] = [
+    {
+      heading: 'Général',
+      items: [
+        { id: 'overall', name: 'Classement global', icon: Trophy },
+        { id: 'nombres', name: 'Nombres', icon: BarChart2 },
+      ],
+    },
+    { heading: 'Économie', items: categories.filter((c) => economyCategories.includes(c.id)) },
+    { heading: 'Communauté', items: categories.filter((c) => socialCategories.includes(c.id)) },
+    { heading: 'Jeux', items: categories.filter((c) => gameCategories.includes(c.id)) },
+  ];
+
+  const canDelete = Boolean(user?.isAdmin && deletableGameCategories[category]);
+
   return (
     <PageShell>
-      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] h-[calc(100svh-var(--header-height)-4rem)]">
-          {/* Sidebar */}
-          <Card className="h-full overflow-hidden">
-            <ScrollArea className="h-full">
-            <CardContent className="p-2">
-              {/* Classement global — special entry */}
-              <button
-                type="button"
-                onClick={() => setActiveView('overall')}
-                className={cn(
-                  "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
-                  activeView === 'overall' && "bg-muted"
-                )}
-              >
-                <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === 'overall' ? "text-foreground" : "text-muted-foreground")}>
-                  <Trophy className="w-3.5 h-3.5 shrink-0" />
-                  Classement global
-                </span>
-              </button>
+      <PageHeader title="Classement" description="Comparez-vous aux autres joueurs, par catégorie et par période." />
 
-              {/* Nombres — special entry */}
-              <button
-                type="button"
-                onClick={() => setActiveView('nombres')}
-                className={cn(
-                  "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
-                  activeView === 'nombres' && "bg-muted"
-                )}
-              >
-                <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === 'nombres' ? "text-foreground" : "text-muted-foreground")}>
-                  <BarChart2 className="w-3.5 h-3.5 shrink-0" />
-                  Nombres
-                </span>
-              </button>
+      <div className="grid items-start gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        <Card className="gap-0 overflow-hidden py-0">
+          <Command>
+            <CommandInput placeholder="Rechercher un classement" />
+            <CommandList className="max-h-72 lg:max-h-[70vh]">
+              <CommandEmpty>Aucun classement trouvé.</CommandEmpty>
+              {navGroups.map((group) => (
+                <CommandGroup key={group.heading} heading={group.heading}>
+                  {group.items.map((item) => (
+                    <CommandItem key={item.id} value={`${group.heading} ${item.name}`} onSelect={() => setActiveView(item.id)}>
+                      <item.icon />
+                      {item.name}
+                      {activeView === item.id ? <Check className="ml-auto" /> : null}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
+            </CommandList>
+          </Command>
+        </Card>
 
-              {/* Économie group */}
-              <div className="mt-3">
-                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium")}>
-                  Économie
+        <div className="flex min-w-0 flex-col gap-6">
+          {bannerAd && !bannerDismissed && !user?.hasAdblock ? (
+            <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} />
+          ) : null}
+
+          {activeView === 'overall' ? (
+            <Alert>
+              <Info />
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                Comment est calculé ce classement ?
+                <Button variant="outline" size="sm" onClick={() => setShowBreakdown(true)}>
+                  Voir le détail
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <Dialog open={showBreakdown} onOpenChange={setShowBreakdown}>
+            <DialogContent className="sm:max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Comment est calculé le classement global ?</DialogTitle>
+                <DialogDescription>Méthode utilisée pour classer les joueurs.</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 text-sm text-muted-foreground">
+                <p>
+                  Chaque joueur reçoit un rang dans chacune des catégories ci-dessous. Le{' '}
+                  <span className="font-medium text-foreground">score global est la somme de ces rangs</span> ; un score plus bas
+                  signifie un meilleur classement. Les catégories non jouées ajoutent une pénalité de{' '}
+                  <span className="font-medium text-foreground">(N+1) points</span> où N est le nombre de participants dans cette
+                  catégorie.
                 </p>
-                <div className="space-y-0.5">
-                  {categories.filter(c => economyCategories.includes(c.id)).map(cat => {
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setActiveView(cat.id)}
-                        className={cn(
-                          "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
-                          activeView === cat.id && "bg-muted"
-                        )}
-                      >
-                        <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
-                          <cat.icon className="w-3.5 h-3.5 shrink-0" />
-                          {cat.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Communaute group */}
-              <div className="mt-3">
-                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium")}>
-                  Communaute
-                </p>
-                <div className="space-y-0.5">
-                  {categories.filter(c => socialCategories.includes(c.id)).map(cat => {
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setActiveView(cat.id)}
-                        className={cn(
-                          "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
-                          activeView === cat.id && "bg-muted"
-                        )}
-                      >
-                        <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
-                          <cat.icon className="w-3.5 h-3.5 shrink-0" />
-                          {cat.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Jeux group */}
-              <div className="mt-3">
-                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium")}>
-                  Jeux
-                </p>
-                <div className="space-y-0.5">
-                  {categories.filter(c => gameCategories.includes(c.id)).map(cat => {
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setActiveView(cat.id)}
-                        className={cn(
-                          "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
-                          activeView === cat.id && "bg-muted"
-                        )}
-                      >
-                        <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
-                          <cat.icon className="w-3.5 h-3.5 shrink-0" />
-                          {cat.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </CardContent>
-            </ScrollArea>
-          </Card>
-
-          {/* Main content */}
-          <ScrollArea className="h-full">
-          <div className="space-y-4">
-            <h2 className={TYPOGRAPHY.H3}>{activeTitle}</h2>
-
-            {bannerAd && !bannerDismissed && !user?.hasAdblock ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
-
-            {activeView === 'overall' && (
-              <div className="rounded-lg border border-border/40 bg-muted/20">
-                <button
-                  type="button"
-                  onClick={() => setShowBreakdown(true)}
-                  className="flex w-full items-center px-4 py-3 text-left"
-                >
-                  <span className={cn("flex items-center gap-1.5", TYPOGRAPHY.SMALL, "text-muted-foreground")}>
-                    <Info className="w-3.5 h-3.5 shrink-0" />
-                    Comment est calculé ce classement ?
-                  </span>
-                </button>
-              </div>
-            )}
-
-            <Dialog open={showBreakdown} onOpenChange={setShowBreakdown}>
-              <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Info className="h-4 w-4" />
-                    Comment est calcule le classement global ?
-                  </DialogTitle>
-                  <DialogDescription>
-                    Details de la methode utilisee pour classer les joueurs.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3 text-[11px] text-muted-foreground">
-                  <p>
-                    Chaque joueur recoit un rang dans chacune des categories ci-dessous.
-                    Le <span className="text-foreground/80 font-medium">score global est la somme de ces rangs</span> ; un score plus bas signifie un meilleur classement.
-                    Les categories non jouees ajoutent une penalite de <span className="text-foreground/80 font-medium">(N+1) points</span> ou N est le nombre de participants dans cette categorie.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div>
-                      <p className="text-foreground/70 font-medium mb-1.5">Economie</p>
-                      <ul className="space-y-0.5 text-muted-foreground/80">
-                        <li>Aura</li>
-                        <li>Argent</li>
-                        <li>Valeur totale (argent + AuraCoin)</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <p className="text-foreground/70 font-medium mb-1.5">Jeux - score</p>
-                      <ul className="space-y-0.5 text-muted-foreground/80">
-                        <li>Doodle Jump, 2048, Flappy Bird</li>
-                        <li>Chrome Dino, Crossy Road, Stack Tower</li>
-                        <li>Geometry Dash, QS Watermelon, Solitaire, Racer, HexGL</li>
-                        <li>Tetris, Knife Hit, Demineur</li>
-                        <li>Fruit Ninja, Goyave Empire, Sudoku</li>
-                        <li>Casino (gain max)</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <p className="text-foreground/70 font-medium mb-1.5">Jeux - victoires</p>
-                      <ul className="space-y-0.5 text-muted-foreground/80">
-                        <li>Echecs, Petit Bac, Puissance 4</li>
-                        <li>Arene des balles, Poker, Bataille Navale</li>
-                        <li>Roulette Russe, Uno, Morpion</li>
-                        <li>Bombe de mots</li>
-                      </ul>
-                      <p className="text-foreground/70 font-medium mb-1.5 mt-3">Divers</p>
-                      <ul className="space-y-0.5 text-muted-foreground/80">
-                        <li>Parties jouees (tous jeux)</li>
-                        <li>Polymarket (ratio V/D)</li>
-                        <li>Pertes Casino (totales)</li>
-                      </ul>
-                    </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="flex flex-col gap-1">
+                    <p className="font-medium text-foreground">Économie</p>
+                    <ul className="list-disc pl-4">
+                      <li>Aura</li>
+                      <li>Argent</li>
+                      <li>Valeur totale (argent + AuraCoin)</li>
+                    </ul>
                   </div>
-                  <p className="text-muted-foreground/50 text-[10px]">Mis a jour automatiquement toutes les 15 minutes.</p>
+                  <div className="flex flex-col gap-1">
+                    <p className="font-medium text-foreground">Jeux : score</p>
+                    <ul className="list-disc pl-4">
+                      <li>Doodle Jump, 2048, Flappy Bird</li>
+                      <li>Chrome Dino, Crossy Road, Stack Tower</li>
+                      <li>Geometry Dash, QS Watermelon, Solitaire, Racer, HexGL</li>
+                      <li>Tetris, Knife Hit, Démineur</li>
+                      <li>Fruit Ninja, Goyave Empire, Sudoku</li>
+                      <li>Casino (gain max)</li>
+                    </ul>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="font-medium text-foreground">Jeux : victoires</p>
+                    <ul className="list-disc pl-4">
+                      <li>Échecs, Petit Bac, Puissance 4</li>
+                      <li>Arène des balles, Poker, Bataille Navale</li>
+                      <li>Roulette Russe, Uno, Morpion</li>
+                      <li>Bombe de mots</li>
+                    </ul>
+                    <p className="pt-2 font-medium text-foreground">Divers</p>
+                    <ul className="list-disc pl-4">
+                      <li>Parties jouées (tous jeux)</li>
+                      <li>Polymarket (ratio V/D)</li>
+                      <li>Pertes Casino (totales)</li>
+                    </ul>
+                  </div>
                 </div>
-              </DialogContent>
-            </Dialog>
+                <p className="text-xs">Mis à jour automatiquement toutes les 15 minutes.</p>
+              </div>
+            </DialogContent>
+          </Dialog>
 
-            {activeView !== 'nombres' && PERIOD_CATEGORIES.has(category) && (
-              <div className="flex gap-1">
-                {PERIOD_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setPeriod(opt.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                      period === opt.id
-                        ? "bg-muted text-foreground"
-                        : "text-muted-foreground hover:bg-muted/40"
-                    )}
-                  >
-                    {opt.label}
-                  </button>
+          {activeView === 'nombres' ? (
+            nombresLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {Array.from({ length: 8 }, (_, index) => (
+                  <Skeleton key={index} className="h-28" />
                 ))}
               </div>
-            )}
-
-            {activeView === 'nombres' ? (
-              nombresLoading ? (
-                <TableSkeleton rows={3} />
-              ) : nombresSections.length === 0 ? (
-                <div className="py-12" />
-              ) : (
-                <div className="space-y-8">
-                  {nombresSections.map((section) => (
-                    <div key={section.title} className="space-y-3">
-                      <h3 className={cn(TYPOGRAPHY.XS, "text-muted-foreground/60 font-medium")}>
-                        {section.title}
-                      </h3>
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {section.items.map((item) => (
-                          <Card key={item.label}>
-                            <CardContent className="p-4 md:p-5 space-y-2">
-                              <p className={cn(TYPOGRAPHY.H2, "md:text-4xl tabular-nums")}>{item.value}</p>
-                              <p className={TYPOGRAPHY.SMALL}>{item.label}</p>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
             ) : (
-              <>
+              <div className="flex flex-col gap-8">
+                {nombresSections.map((section) => (
+                  <section key={section.title} className="flex flex-col gap-3">
+                    <h2 className="text-lg font-semibold tracking-tight">{section.title}</h2>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      {section.items.map((item) => (
+                        <Card key={item.label}>
+                          <CardHeader>
+                            <CardDescription>{item.label}</CardDescription>
+                            <CardTitle className="text-3xl tabular-nums">{item.value}</CardTitle>
+                          </CardHeader>
+                          {item.hint ? (
+                            <CardContent>
+                              <p className="text-xs text-muted-foreground">{item.hint}</p>
+                            </CardContent>
+                          ) : null}
+                        </Card>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>{activeTitle}</CardTitle>
+                <CardDescription>Top 50 des joueurs</CardDescription>
+                {PERIOD_CATEGORIES.has(category) ? (
+                  <CardAction>
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      size="sm"
+                      value={period}
+                      onValueChange={(value) => value && setPeriod(value as Period)}
+                    >
+                      {PERIOD_OPTIONS.map((option) => (
+                        <ToggleGroupItem key={option.id} value={option.id}>
+                          {option.label}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                  </CardAction>
+                ) : null}
+              </CardHeader>
+              <CardContent>
                 {loading ? (
-                  <TableSkeleton rows={8} />
+                  <div className="flex flex-col gap-2">
+                    {Array.from({ length: 8 }, (_, index) => (
+                      <Skeleton key={index} className="h-10 w-full" />
+                    ))}
+                  </div>
                 ) : rankings.length === 0 ? (
-                  <div className="py-12" />
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyTitle>Aucun résultat</EmptyTitle>
+                      <EmptyDescription>Ce classement est vide pour le moment.</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 ) : (
-                  <Card>
-                    <CardContent className="p-0">
-                      <div className="divide-y divide-border/30">
-                        {rankings.map((ranking) => (
-                          <div
-                            key={ranking.userId}
-                            className={cn(
-                              "group flex items-center justify-between py-4 px-6",
-                              ranking.userId === user?.id && "bg-muted/30"
-                            )}
-                          >
-                            <div className="flex items-center gap-4">
-                              <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-8 tabular-nums shrink-0")}>
-                                {ranking.rank}
-                              </span>
-                              <PlayerHoverCard
-                                userId={ranking.userId}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Joueur</TableHead>
+                        <TableHead className="text-right">Valeur</TableHead>
+                        {canDelete ? <TableHead className="w-12" /> : null}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rankings.map((ranking) => (
+                        <TableRow key={ranking.userId} data-state={ranking.userId === user?.id ? 'selected' : undefined}>
+                          <TableCell className="tabular-nums text-muted-foreground">{ranking.rank}</TableCell>
+                          <TableCell>
+                            <PlayerHoverCard
+                              userId={ranking.userId}
+                              username={ranking.username}
+                              usernameColor={ranking.usernameColor}
+                              clanTag={toClanTagData(ranking.clanTag)}
+                            >
+                              <UsernameDisplay
                                 username={ranking.username}
+                                userId={ranking.userId}
                                 usernameColor={ranking.usernameColor}
+                                badges={ranking.badges}
                                 clanTag={toClanTagData(ranking.clanTag)}
-                                className={cn(TYPOGRAPHY.BODY, "font-medium", ranking.userId === user?.id && "text-foreground")}
-                              >
-                                <UsernameDisplay 
-                                  username={ranking.username} 
-                                  userId={ranking.userId}
-                                  usernameColor={ranking.usernameColor} 
-                                  badges={ranking.badges}
-                                  clanTag={toClanTagData(ranking.clanTag)}
-                                  clickable={true}
-                                  badgeSize="xs"
-                                />
-                              </PlayerHoverCard>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={cn("tabular-nums", TYPOGRAPHY.MUTED)}>
-                                {formatValue(ranking)}
-                              </span>
-                              {user?.isAdmin && deletableGameCategories[category] && (
-                                <Button
-                                  variant="ghost"
-                                  onClick={() => handleDeleteScore(ranking.userId, ranking.username)}
-                                  className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100 text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                                  title="Supprimer ce score"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                                clickable
+                                badgeSize="xs"
+                                usernameClassName="font-medium"
+                              />
+                            </PlayerHoverCard>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{formatValue(ranking)}</TableCell>
+                          {canDelete ? (
+                            <TableCell className="p-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    aria-label="Supprimer ce score"
+                                    onClick={() => handleDeleteScore(ranking.userId, ranking.username)}
+                                  >
+                                    <X />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Supprimer ce score</TooltipContent>
+                              </Tooltip>
+                            </TableCell>
+                          ) : null}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
-              </>
-            )}
-          </div>
-          </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </PageShell>
   );

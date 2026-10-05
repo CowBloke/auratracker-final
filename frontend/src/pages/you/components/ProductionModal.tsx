@@ -59,7 +59,7 @@ function TimingGame({ onResult }: { onResult: (success: boolean) => void }) {
     <div className="space-y-4">
       <p className="text-center text-sm text-muted-foreground">Cliquez quand l'indicateur est dans la zone verte</p>
       <div className="relative h-10 overflow-hidden rounded-xl border border-border/60 bg-muted/30">
-        <div className="absolute inset-y-0 border-x border-emerald-500/40 bg-emerald-500/25" style={{ left: '35%', width: '30%' }} />
+        <div className="absolute inset-y-0 border-x border-success/40 bg-success/25" style={{ left: '35%', width: '30%' }} />
         <div className="absolute top-1 h-8 w-2 rounded-full bg-white shadow-md transition-none" style={{ left: `calc(${pos}% - 4px)` }} />
       </div>
       <Button className="w-full" onClick={hit} disabled={done} size="lg">Frapper !</Button>
@@ -87,9 +87,9 @@ function FinanceGame({ onResult }: { onResult: (success: boolean) => void }) {
             onClick={() => { if (!selected) { setSelected(o.label); onResult(o.label === best.label); } }}
             className={cn('rounded-xl border p-3 text-left text-sm transition-colors',
               selected === o.label
-                ? o.label === best.label ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-red-500/40 bg-red-500/10'
+                ? o.label === best.label ? 'border-success/60 bg-success/10' : 'border-destructive/40 bg-destructive/10'
                 : selected
-                  ? o.label === best.label ? 'border-emerald-500/60 bg-emerald-500/10' : 'border-border/40 opacity-40'
+                  ? o.label === best.label ? 'border-success/60 bg-success/10' : 'border-border/40 opacity-40'
                   : 'border-border/60 bg-muted/10 hover:bg-muted/20',
             )}
           >
@@ -141,7 +141,7 @@ function MemoryGame({ onResult }: { onResult: (success: boolean) => void }) {
           <button key={card.id} type="button" onClick={() => flip(card.id)}
             className={cn('h-12 rounded-xl border text-xl transition-all',
               card.flipped || card.matched
-                ? card.matched ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/60 bg-muted/30'
+                ? card.matched ? 'border-success/40 bg-success/10' : 'border-border/60 bg-muted/30'
                 : 'border-border/40 bg-muted/10 hover:bg-muted/20',
             )}
           >
@@ -183,7 +183,7 @@ function TypingGame({ onResult }: { onResult: (success: boolean) => void }) {
       <p className="text-center text-sm text-muted-foreground">Tapez le mot avant la fin du chrono</p>
       <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
         <span className="text-2xl font-bold tracking-wider text-foreground">{word}</span>
-        <span className={cn('text-lg font-mono font-bold', timeLeft <= 2 ? 'text-red-400' : 'text-muted-foreground')}>{timeLeft}s</span>
+        <span className={cn('text-lg font-mono font-bold', timeLeft <= 2 ? 'text-destructive' : 'text-muted-foreground')}>{timeLeft}s</span>
       </div>
       <input
         autoFocus
@@ -331,10 +331,10 @@ function MiniGameModal({
         <div className="p-5">
           {result ? (
             <div className={cn('flex flex-col items-center gap-3 rounded-2xl border py-8',
-              result.success ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5'
+              result.success ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'
             )}>
               <span className="text-4xl">{result.success ? '✅' : '⚡'}</span>
-              <p className={cn('text-lg font-bold', result.success ? 'text-emerald-400' : 'text-amber-400')}>
+              <p className={cn('text-lg font-bold', result.success ? 'text-success' : 'text-warning')}>
                 {result.success ? 'Succès !' : 'Effort partiel'}
               </p>
               <p className="text-sm text-muted-foreground">Travail enregistré</p>
@@ -415,13 +415,13 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
         <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Production du jour</span>
-            <span className={cn('font-bold tabular-nums', workRatio >= 1 ? 'text-emerald-400' : workRatio > 0 ? 'text-amber-400' : 'text-red-400')}>
+            <span className={cn('font-bold tabular-nums', workRatio >= 1 ? 'text-success' : workRatio > 0 ? 'text-warning' : 'text-destructive')}>
               {workRatio >= 1.25 ? '125%' : `${Math.round(workRatio * 100)}%`}
             </span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-muted/40">
             <div
-              className={cn('h-full rounded-full transition-all', workRatio >= 1 ? 'bg-emerald-500' : workRatio > 0 ? 'bg-amber-500' : 'bg-red-500')}
+              className={cn('h-full rounded-full transition-all', workRatio >= 1 ? 'bg-success' : workRatio > 0 ? 'bg-warning' : 'bg-destructive')}
               style={{ width: `${Math.min(100, Math.round(workRatio * 100))}%` }}
             />
           </div>
@@ -448,7 +448,7 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
           return (
             <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/10 px-4 py-3">
               <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
-                isMe ? 'bg-blue-500/20 text-blue-400' : 'bg-violet-500/20 text-violet-400',
+                isMe ? 'bg-muted/20 text-primary' : 'bg-muted/20 text-primary',
               )}>
                 {member.user.username.slice(0, 1).toUpperCase()}
               </div>
@@ -461,7 +461,7 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
               </div>
               <div className="shrink-0 flex items-center gap-2">
                 {member.workedToday ? (
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-500">
+                  <div className="flex items-center gap-1.5 text-xs text-success">
                     <CheckCircle2 className="h-4 w-4" />
                     Fait
                   </div>
@@ -479,7 +479,7 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
                     onClick={() => void handleReminder(member.id)}
                     disabled={sending === member.id}
                     title="Envoyer un rappel"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 disabled:opacity-50"
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50"
                   >
                     {sending === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
                   </button>
@@ -519,7 +519,7 @@ function StockTab({ stock, storage }: { stock: StockEntry[]; storage: StorageSta
           <span className="tabular-nums">{storage.used} / {capacity} u.</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-muted/40">
-          <div className={cn('h-full rounded-full transition-all', pct > 85 ? 'bg-red-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: `${pct}%` }} />
+          <div className={cn('h-full rounded-full transition-all', pct > 85 ? 'bg-destructive' : pct > 60 ? 'bg-warning' : 'bg-success')} style={{ width: `${pct}%` }} />
         </div>
       </div>
 
@@ -604,7 +604,7 @@ function CraftingTab({ business, stock }: { business: YouBusiness; stock: StockE
                     const ok = held >= inp.qty;
                     return (
                       <div key={inp.resource} className={cn('flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs',
-                        ok ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-border/50 bg-muted/20 text-muted-foreground'
+                        ok ? 'border-success/30 bg-success/10 text-success' : 'border-border/50 bg-muted/20 text-muted-foreground'
                       )}>
                         <Icon className="h-3 w-3" />
                         <span>{meta.label}</span>
@@ -613,7 +613,7 @@ function CraftingTab({ business, stock }: { business: YouBusiness; stock: StockE
                     );
                   })}
                   {recipe.moneyCost > 0 && (
-                    <div className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-600 dark:text-amber-400">
+                    <div className="flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs text-warning">
                       💰 {recipe.moneyCost.toLocaleString('fr-FR')} €
                     </div>
                   )}
@@ -661,7 +661,7 @@ function StorageTab({ storage, setStorage }: {
           <p className="text-sm font-bold tabular-nums">{storage.used} / {capacity} u.</p>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-muted/40">
-          <div className={cn('h-full rounded-full', pct > 85 ? 'bg-red-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500')} style={{ width: `${pct}%` }} />
+          <div className={cn('h-full rounded-full', pct > 85 ? 'bg-destructive' : pct > 60 ? 'bg-warning' : 'bg-success')} style={{ width: `${pct}%` }} />
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div className="rounded-lg bg-muted/20 px-2 py-2"><p className="text-muted-foreground">Base</p><p className="font-semibold">{storage.base} u.</p></div>
@@ -672,8 +672,8 @@ function StorageTab({ storage, setStorage }: {
 
       <Card className={cn('border-border/60 shadow-none', storage.silos >= 3 && 'opacity-50')}>
         <CardContent className="flex items-center gap-4 p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
-            <Warehouse className="h-5 w-5 text-amber-500" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-warning/15">
+            <Warehouse className="h-5 w-5 text-warning" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Silo ({storage.silos}/3)</p>
@@ -688,8 +688,8 @@ function StorageTab({ storage, setStorage }: {
 
       <Card className={cn('border-border/60 shadow-none', storage.hasWarehouse && 'opacity-50')}>
         <CardContent className="flex items-center gap-4 p-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/15">
-            <Warehouse className="h-5 w-5 text-blue-500" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/15">
+            <Warehouse className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Entrepôt</p>

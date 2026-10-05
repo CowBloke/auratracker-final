@@ -457,7 +457,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                             <span className={cn(
                               'rounded-full px-2 py-1 text-[10px] font-semibold',
                               survey.status === 'ACTIVE'
-                                ? 'bg-emerald-500/15 text-emerald-400'
+                                ? 'bg-success/15 text-success'
                                 : 'bg-muted text-muted-foreground'
                             )}>
                               {survey.status === 'ACTIVE' ? 'Actif' : 'Archivé'}
@@ -579,7 +579,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                       <p className="text-sm font-semibold">{report.conversationTitle || report.conversationType || 'Conversation'}</p>
                       <p className="text-xs text-muted-foreground">Signale par {report.reporter.username} • {new Date(report.createdAt).toLocaleString('fr-FR')}</p>
                     </div>
-                    <span className={cn('rounded-full px-2 py-1 text-[10px] font-semibold', report.status === 'PENDING' ? 'bg-amber-500/15 text-amber-400' : report.status === 'ACTION_TAKEN' ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400')}>
+                    <span className={cn('rounded-full px-2 py-1 text-[10px] font-semibold', report.status === 'PENDING' ? 'bg-warning/15 text-warning' : report.status === 'ACTION_TAKEN' ? 'bg-destructive/15 text-destructive' : 'bg-success/15 text-success')}>
                       {report.status}
                     </span>
                   </div>
@@ -643,7 +643,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                         {thread.user?.username ?? thread.userId}
                       </span>
                       {thread.unreadCount > 0 && (
-                        <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold shrink-0">
+                        <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold shrink-0">
                           {thread.unreadCount}
                         </span>
                       )}
@@ -716,7 +716,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                           <button
                             type="button"
                             onClick={() => removeSupportReplyImage(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute -top-2 -right-2 bg-destructive text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                             title="Supprimer l'image"
                           >
                             <X className="h-3 w-3" />

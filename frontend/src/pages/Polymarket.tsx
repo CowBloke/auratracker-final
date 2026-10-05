@@ -1069,9 +1069,9 @@ export default function Polymarket() {
                       <div className="rounded-xl border p-3 space-y-1">
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Résultats</div>
                         <div className="text-2xl font-bold tabular-nums">
-                          <span className="text-green-500">{wonBets.length}W</span>
+                          <span className="text-success">{wonBets.length}W</span>
                           <span className="text-muted-foreground mx-1 text-lg">·</span>
-                          <span className="text-red-500">{lostBets.length}L</span>
+                          <span className="text-destructive">{lostBets.length}L</span>
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {resolvedBets.length > 0 ? `${betWinRate.toFixed(0)}% réussite` : 'Aucun résolu'}
@@ -1089,7 +1089,7 @@ export default function Polymarket() {
                         } : undefined}
                       >
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Résultat net</div>
-                        <div className={cn('text-2xl font-bold tabular-nums', netPnL > 0 ? 'text-green-500' : netPnL < 0 ? 'text-red-500' : '')}>
+                        <div className={cn('text-2xl font-bold tabular-nums', netPnL > 0 ? 'text-success' : netPnL < 0 ? 'text-destructive' : '')}>
                           {netPnL > 0 ? '+' : ''}{netPnL.toLocaleString('fr-FR')}
                         </div>
                         <div className="text-xs text-muted-foreground">sur paris résolus</div>
@@ -1157,7 +1157,7 @@ export default function Polymarket() {
                                   </div>
                                   {isResolved ? (
                                     <>
-                                      <div className={cn('text-lg font-bold tabular-nums leading-tight', isWinner ? 'text-green-500' : 'text-red-500')}>
+                                      <div className={cn('text-lg font-bold tabular-nums leading-tight', isWinner ? 'text-success' : 'text-destructive')}>
                                         {netResult > 0 ? '+' : ''}{netResult.toLocaleString('fr-FR')}
                                       </div>
                                       <div
@@ -1201,28 +1201,28 @@ export default function Polymarket() {
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                       <div className="rounded-xl border p-4 space-y-1">
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Net total</div>
-                        <div className={cn('text-3xl font-bold tabular-nums', netPnL > 0 ? 'text-green-500' : netPnL < 0 ? 'text-red-500' : '')}>
+                        <div className={cn('text-3xl font-bold tabular-nums', netPnL > 0 ? 'text-success' : netPnL < 0 ? 'text-destructive' : '')}>
                           {netPnL > 0 ? '+' : ''}{netPnL.toLocaleString('fr-FR')}
                         </div>
                         <div className="text-xs text-muted-foreground">Paris résolus uniquement</div>
                       </div>
                       <div className="rounded-xl border p-4 space-y-1">
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total gagné</div>
-                        <div className="text-3xl font-bold tabular-nums text-green-500">
+                        <div className="text-3xl font-bold tabular-nums text-success">
                           {totalGained.toLocaleString('fr-FR')}
                         </div>
                         <div className="text-xs text-muted-foreground">Retours encaissés</div>
                       </div>
                       <div className="rounded-xl border p-4 space-y-1">
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ROI</div>
-                        <div className={cn('text-3xl font-bold tabular-nums', roi > 0 ? 'text-green-500' : roi < 0 ? 'text-red-500' : '')}>
+                        <div className={cn('text-3xl font-bold tabular-nums', roi > 0 ? 'text-success' : roi < 0 ? 'text-destructive' : '')}>
                           {roi > 0 ? '+' : ''}{roi.toFixed(1)}%
                         </div>
                         <div className="text-xs text-muted-foreground">Sur {resolvedWagered.toLocaleString('fr-FR')} misés</div>
                       </div>
                       <div className="rounded-xl border p-4 space-y-1">
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Moyenne / pari</div>
-                        <div className={cn('text-3xl font-bold tabular-nums', averageNetPerResolvedBet > 0 ? 'text-green-500' : averageNetPerResolvedBet < 0 ? 'text-red-500' : '')}>
+                        <div className={cn('text-3xl font-bold tabular-nums', averageNetPerResolvedBet > 0 ? 'text-success' : averageNetPerResolvedBet < 0 ? 'text-destructive' : '')}>
                           {averageNetPerResolvedBet > 0 ? '+' : ''}{averageNetPerResolvedBet.toFixed(0)}
                         </div>
                         <div className="text-xs text-muted-foreground">Sur {resolvedBets.length} paris résolus</div>
@@ -1238,7 +1238,7 @@ export default function Polymarket() {
                           {biggestWin ? (
                             <div className="space-y-1.5">
                               <div className="font-semibold leading-snug">{biggestWin.bet.event?.title || 'Événement supprimé'}</div>
-                              <div className="text-2xl font-bold text-green-500 tabular-nums">+{biggestWin.net.toLocaleString('fr-FR')}</div>
+                              <div className="text-2xl font-bold text-success tabular-nums">+{biggestWin.net.toLocaleString('fr-FR')}</div>
                               <div className="text-xs text-muted-foreground">
                                 Fin {biggestWin.bet.event?.eventDate ? new Date(biggestWin.bet.event.eventDate).toLocaleDateString('fr-FR') : 'inconnue'}
                               </div>
@@ -1257,7 +1257,7 @@ export default function Polymarket() {
                           {biggestLoss ? (
                             <div className="space-y-1.5">
                               <div className="font-semibold leading-snug">{biggestLoss.bet.event?.title || 'Événement supprimé'}</div>
-                              <div className="text-2xl font-bold text-red-500 tabular-nums">{biggestLoss.net.toLocaleString('fr-FR')}</div>
+                              <div className="text-2xl font-bold text-destructive tabular-nums">{biggestLoss.net.toLocaleString('fr-FR')}</div>
                               <div className="text-xs text-muted-foreground">
                                 Fin {biggestLoss.bet.event?.eventDate ? new Date(biggestLoss.bet.event.eventDate).toLocaleDateString('fr-FR') : 'inconnue'}
                               </div>
@@ -1298,11 +1298,11 @@ export default function Polymarket() {
                       <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
                         <div className="rounded-lg bg-muted/40 p-3">
                           <div className="text-xs uppercase tracking-wide text-muted-foreground">Paris gagnés</div>
-                          <div className="mt-1 text-2xl font-bold text-green-500 tabular-nums">{wonBets.length}</div>
+                          <div className="mt-1 text-2xl font-bold text-success tabular-nums">{wonBets.length}</div>
                         </div>
                         <div className="rounded-lg bg-muted/40 p-3">
                           <div className="text-xs uppercase tracking-wide text-muted-foreground">Paris perdus</div>
-                          <div className="mt-1 text-2xl font-bold text-red-500 tabular-nums">{lostBets.length}</div>
+                          <div className="mt-1 text-2xl font-bold text-destructive tabular-nums">{lostBets.length}</div>
                         </div>
                         <div className="rounded-lg bg-muted/40 p-3">
                           <div className="text-xs uppercase tracking-wide text-muted-foreground">En cours</div>
@@ -1358,7 +1358,7 @@ export default function Polymarket() {
                               </div>
                               <p className="text-xs text-muted-foreground">{new Date(bet.createdAt).toLocaleString('fr-FR')}</p>
                               {isResolved && (
-                                <p className={cn('text-xs font-medium mt-1', isWinner ? 'text-green-500' : 'text-red-500')}>
+                                <p className={cn('text-xs font-medium mt-1', isWinner ? 'text-success' : 'text-destructive')}>
                                   {isWinner ? <>Gain: {bet.payout} reçu</> : <>Perte: {bet.amount} perdu</>}
                                 </p>
                               )}
@@ -1844,7 +1844,7 @@ export default function Polymarket() {
               <span className="font-semibold text-foreground">"{selectedEventForDelete?.title}"</span> ?
             </p>
             {(selectedEventForDelete?.betCount || 0) > 0 && (
-              <p className="text-sm text-amber-500">
+              <p className="text-sm text-warning">
                 ⚠ {selectedEventForDelete?.betCount} pari{(selectedEventForDelete?.betCount || 0) > 1 ? 's' : ''} seront remboursés.
               </p>
             )}
@@ -2037,11 +2037,11 @@ export default function Polymarket() {
                                 />
                                 <Tooltip
                                   contentStyle={{
-                                    background: 'hsl(var(--popover))',
-                                    border: '1px solid hsl(var(--border))',
+                                    background: 'var(--popover)',
+                                    border: '1px solid var(--border)',
                                     borderRadius: '8px',
                                     fontSize: '12px',
-                                    color: 'hsl(var(--popover-foreground))',
+                                    color: 'var(--popover-foreground)',
                                     padding: '8px 12px',
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                                   }}

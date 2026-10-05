@@ -182,7 +182,7 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
                       <p className="text-sm text-muted-foreground">{company.category}</p>
                       <p className="text-sm text-muted-foreground">{company.description}</p>
                     </div>
-                    <div className="flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                    <div className="flex items-center gap-2 rounded-full bg-warning/10 px-3 py-1.5 text-sm font-semibold text-warning">
                       <Wallet className="h-4 w-4" />
                       {company.totalMoneyCost > 0 ? `${formatMoney(company.totalMoneyCost)}€` : 'Sans cout financier'}
                     </div>
@@ -203,7 +203,7 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
                             key={`${company.typeKey}-${material.resourceType}`}
                             className={cn(
                               'flex items-center gap-3 rounded-xl border px-3 py-3',
-                              isMissing ? 'border-red-500/30 bg-red-500/5' : 'border-emerald-500/20 bg-emerald-500/5',
+                              isMissing ? 'border-destructive/30 bg-destructive/5' : 'border-success/20 bg-success/5',
                             )}
                           >
                             <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', meta?.bg ?? 'bg-muted')}>
@@ -211,7 +211,7 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-foreground">{meta?.label ?? material.resourceType}</p>
-                              <p className={cn('text-xs font-medium', isMissing ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400')}>
+                              <p className={cn('text-xs font-medium', isMissing ? 'text-destructive' : 'text-success')}>
                                 {available} / {material.quantity}
                               </p>
                             </div>
@@ -224,7 +224,7 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1 text-sm">
                       {missing.length > 0 ? (
-                        <p className="text-red-500">
+                        <p className="text-destructive">
                           Il manque{' '}
                           {missing
                             .map((material) => {
@@ -235,10 +235,10 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
                           .
                         </p>
                       ) : (
-                        <p className="text-emerald-600 dark:text-emerald-400">Toutes les ressources sont disponibles.</p>
+                        <p className="text-success">Toutes les ressources sont disponibles.</p>
                       )}
                       {missingMoney > 0 ? (
-                        <p className="text-red-500">Il manque {formatMoney(missingMoney)}€ pour lancer cette construction.</p>
+                        <p className="text-destructive">Il manque {formatMoney(missingMoney)}€ pour lancer cette construction.</p>
                       ) : company.totalMoneyCost > 0 ? (
                         <p className="text-muted-foreground">Cout total: {formatMoney(company.totalMoneyCost)}€.</p>
                       ) : null}

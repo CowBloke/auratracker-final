@@ -1,19 +1,23 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { type Ad, adsApi, marketplaceApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
 import { AdCard } from '@/components/ads/AdCard';
 import { useAuth } from '../contexts/AuthContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { PageShell } from '@/components/layout/PageShell';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { DoodleJumpSkinPreview } from '@/components/shop/DoodleJumpSkinPreview';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from 'sonner';
-import {
-  Loader2, Package, ShoppingBasket,
-  Timer, Gamepad2, RotateCcw, ShoppingCart,
-} from 'lucide-react';
+import { Gamepad2, Package, RotateCcw, ShoppingBasket, ShoppingCart, Timer } from 'lucide-react';
 
 // Effect types that are now craftable and sold on the items market — hidden from shop
 const CRAFTABLE_EFFECT_TYPES = new Set([
@@ -75,116 +79,6 @@ const isDoodleJumpSkin = (item: { effect: string | null }) => parseEffectType(it
 
 // ─── Doodle Jump Canvas Preview ────────────────────────────────────────────────
 
-const DJ_COLORS = {
-  background: '#0a0a0a',
-  platformNormal: '#e5e7eb',
-  platformBounce: '#7c3aed',
-  platformMoving: '#9ca3af',
-};
-const PW = 80;
-const PH = 15;
-
-function drawPlatform(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
-  const r = 5;
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + PW - r, y);
-  ctx.arcTo(x + PW, y, x + PW, y + PH, r);
-  ctx.lineTo(x + PW, y + PH);
-  ctx.arcTo(x + PW, y + PH, x, y + PH, r);
-  ctx.lineTo(x + r, y + PH);
-  ctx.arcTo(x, y + PH, x, y, r);
-  ctx.arcTo(x, y, x + PW, y, r);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function DoodleJumpSkinPreview({ skinImageUrl }: { skinImageUrl: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const CW = 400;
-  const CH = 220;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    const draw = (skinImg: HTMLImageElement | null) => {
-      ctx.fillStyle = DJ_COLORS.background;
-      ctx.fillRect(0, 0, CW, CH);
-
-      // Subtle grid
-      ctx.strokeStyle = 'rgba(255,255,255,0.025)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < CW; x += 32) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CH); ctx.stroke();
-      }
-
-      const platY1 = CH - 28;
-      const platY2 = CH - 90;
-      const platY3 = CH - 152;
-      const p1x = 40;
-      const p2x = CW / 2 - PW / 2;
-      const p3x = CW - 40 - PW;
-
-      drawPlatform(ctx, p1x, platY1, DJ_COLORS.platformNormal);
-      drawPlatform(ctx, p2x, platY2, DJ_COLORS.platformBounce);
-      drawPlatform(ctx, p3x, platY3, DJ_COLORS.platformMoving);
-
-      // Jump arc
-      ctx.setLineDash([4, 6]);
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      const arcStartX = p2x + PW / 2;
-      const arcEndX = p3x + PW / 2;
-      ctx.moveTo(arcStartX, platY2);
-      ctx.quadraticCurveTo((arcStartX + arcEndX) / 2, Math.min(platY2, platY3) - 50, arcEndX, platY3);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Character
-      const charSize = 70;
-      const charX = p2x + PW / 2 - charSize / 2;
-      const charY = platY2 - charSize;
-      if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
-        ctx.drawImage(skinImg, charX, charY, charSize, charSize);
-      } else {
-        ctx.fillStyle = '#374151';
-        ctx.beginPath();
-        ctx.arc(p2x + PW / 2, platY2 - charSize / 2, charSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.font = 'bold 11px monospace';
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.textAlign = 'right';
-      ctx.fillText('Doodle Jump', CW - 12, 18);
-      ctx.textAlign = 'left';
-    };
-
-    draw(null);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => draw(img);
-    img.src = resolveImageUrl(skinImageUrl);
-  }, [skinImageUrl]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={CW}
-      height={CH}
-      className="w-full"
-      style={{ display: 'block', height: '180px' }}
-    />
-  );
-}
-
 // ─── Countdown hook ────────────────────────────────────────────────────────────
 
 function useCountdown(targetIso: string | null): string {
@@ -208,10 +102,80 @@ function useCountdown(targetIso: string | null): string {
   return display;
 }
 
-// ─── Price color helper ────────────────────────────────────────────────────────
+// ─── ProductCard ──────────────────────────────────────────────────────────────
 
-function priceColor(price: number) {
-  return price === 0 ? 'text-foreground' : 'text-muted-foreground';
+type ProductCardProps = {
+  media: React.ReactNode;
+  title: string;
+  badge?: string | null;
+  price: number;
+  description: string;
+  action: React.ReactNode;
+};
+
+function ProductCard({ media, title, badge, price, description, action }: ProductCardProps) {
+  return (
+    <Card className="gap-4 overflow-hidden pt-0">
+      {media}
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-2">
+          <span className="truncate">{title}</span>
+          <Badge variant="outline" className="tabular-nums">
+            ${price}
+          </Badge>
+        </CardTitle>
+        {badge ? (
+          <CardDescription>
+            <Badge variant="secondary">{badge}</Badge>
+          </CardDescription>
+        ) : null}
+      </CardHeader>
+      <CardContent>
+        <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p>
+      </CardContent>
+      <CardFooter>{action}</CardFooter>
+    </Card>
+  );
+}
+
+function PurchaseButton({
+  onClick,
+  disabled,
+  isBuying,
+  label,
+  icon,
+  unavailableLabel,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  isBuying: boolean;
+  label: string;
+  icon: React.ReactNode;
+  unavailableLabel: string | null;
+}) {
+  return (
+    <Button onClick={onClick} disabled={disabled} className="w-full">
+      {isBuying ? (
+        <>
+          <Spinner /> Achat…
+        </>
+      ) : unavailableLabel ? (
+        unavailableLabel
+      ) : (
+        <>
+          {icon} {label}
+        </>
+      )}
+    </Button>
+  );
+}
+
+function ProductPlaceholder({ icon }: { icon: React.ReactNode }) {
+  return (
+    <AspectRatio ratio={16 / 9} className="flex items-center justify-center bg-muted text-muted-foreground [&_svg]:size-10">
+      {icon}
+    </AspectRatio>
+  );
 }
 
 // ─── ShopCard ─────────────────────────────────────────────────────────────────
@@ -234,90 +198,47 @@ function ShopCard({
   const effectType = parseEffectType(item.effect);
   const isClanTagUnlock = effectType === 'CLAN_TAG_UNLOCK';
   const isClanSlotUpgrade = effectType === 'CLAN_SLOT_UPGRADE';
-  const isClanMoneyBoost = effectType === 'CLAN_GAME_MONEY_BOOST';
-  const isClanProfilePicture = effectType === 'CLAN_PROFILE_PICTURE';
-  const isClanBanner = effectType === 'CLAN_BANNER';
-  const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanMoneyBoost || isClanProfilePicture || isClanBanner;
+  const isClanUpgrade =
+    isClanTagUnlock ||
+    isClanSlotUpgrade ||
+    effectType === 'CLAN_GAME_MONEY_BOOST' ||
+    effectType === 'CLAN_PROFILE_PICTURE' ||
+    effectType === 'CLAN_BANNER';
   const isAlreadyPurchased =
-    (isClanTagUnlock && !!clanStatus?.tagUnlocked) ||
-    (isClanSlotUpgrade && (clanStatus?.maxMembers ?? 0) >= 7);
-  const effectLabel = getEffectLabel(item.effect);
-  const canAfford = isClanUpgrade
-    ? (clanStatus?.clanBankMoney ?? 0) >= item.price
-    : (user?.money ?? 0) >= item.price;
+    (isClanTagUnlock && !!clanStatus?.tagUnlocked) || (isClanSlotUpgrade && (clanStatus?.maxMembers ?? 0) >= 7);
+  const canAfford = isClanUpgrade ? (clanStatus?.clanBankMoney ?? 0) >= item.price : (user?.money ?? 0) >= item.price;
   const skinUrl = getSkinImageUrl(item.effect);
   const isBuying = buyingItemId === item.id;
   const isOwnedSkin = isDoodleJumpSkin(item) && ownedSkinItemIds.has(item.id);
 
-  const renderMedia = () => {
-    if (skinUrl) return <DoodleJumpSkinPreview skinImageUrl={skinUrl} />;
-    if (item.imageUrl) {
-      return (
-        <div className="relative overflow-hidden">
-          <img
-            src={resolveImageUrl(item.imageUrl)}
-            alt={item.name}
-            className="h-44 w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-        </div>
-      );
-    }
-    return (
-      <div className="flex h-36 w-full items-center justify-center bg-muted/20">
-        <Package className="h-12 w-12 opacity-30 text-muted-foreground" />
-      </div>
-    );
-  };
+  const media = skinUrl ? (
+    <DoodleJumpSkinPreview skinImageUrl={skinUrl} />
+  ) : item.imageUrl ? (
+    <AspectRatio ratio={16 / 9}>
+      <img src={resolveImageUrl(item.imageUrl)} alt={item.name} className="size-full object-cover" />
+    </AspectRatio>
+  ) : (
+    <ProductPlaceholder icon={<Package />} />
+  );
 
   return (
-    <Card className="overflow-hidden border-border/60 bg-card shadow-none">
-      <CardContent className="p-0">
-        {renderMedia()}
-        <div className="space-y-3 p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <h3 className="truncate font-semibold text-foreground">{item.name}</h3>
-              {effectLabel && (
-                <span className="mt-1 inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  {effectLabel}
-                </span>
-              )}
-            </div>
-            <div className="shrink-0 rounded-lg border border-border/60 px-2.5 py-1 text-sm font-medium tabular-nums text-muted-foreground">
-              ${item.price}
-            </div>
-          </div>
-
-          <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">{item.description}</p>
-
-          <Button
-            onClick={() => onPurchase(item)}
-            disabled={!canAfford || isBuying || isOwnedSkin || isAlreadyPurchased}
-            className={cn(
-              'w-full rounded-lg border text-sm font-medium',
-              canAfford && !isBuying && !isOwnedSkin && !isAlreadyPurchased
-                ? 'border-border/60 bg-transparent text-foreground'
-                : 'border-border/40 bg-muted/20 text-muted-foreground/50',
-            )}
-          >
-            <span className="flex items-center justify-center gap-2">
-              {isBuying ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Achat...</>
-              ) : isAlreadyPurchased ? (
-                'Déjà acheté'
-              ) : isOwnedSkin ? (
-                'Deja possede'
-              ) : canAfford ? (
-                <><ShoppingCart className="h-4 w-4" /> Acheter</>
-              ) : (
-                'Solde insuffisant'
-              )}
-            </span>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <ProductCard
+      media={media}
+      title={item.name}
+      badge={getEffectLabel(item.effect)}
+      price={item.price}
+      description={item.description}
+      action={
+        <PurchaseButton
+          onClick={() => onPurchase(item)}
+          disabled={!canAfford || isBuying || isOwnedSkin || isAlreadyPurchased}
+          isBuying={isBuying}
+          label="Acheter"
+          icon={<ShoppingCart />}
+          unavailableLabel={isAlreadyPurchased ? 'Déjà acheté' : isOwnedSkin ? 'Déjà possédé' : !canAfford ? 'Solde insuffisant' : null}
+        />
+      }
+    />
   );
 }
 
@@ -342,46 +263,34 @@ function DjSkinCard({
   const isOwnedSkin = ownedSkinItemIds.has(item.id);
 
   return (
-    <Card className="overflow-hidden border-border/60 bg-card shadow-none">
-      <CardContent className="p-0">
-        {skinUrl
-          ? <DoodleJumpSkinPreview skinImageUrl={skinUrl} />
-          : <div className="flex h-36 items-center justify-center bg-muted/20">
-              <Gamepad2 className="h-12 w-12 text-muted-foreground/40" />
-            </div>
-        }
-        <div className="space-y-3 p-4">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-foreground truncate">{item.name}</h3>
-            <span className={cn('shrink-0 text-sm font-bold tabular-nums', priceColor(item.price))}>
-              ${item.price}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-          <Button
-            onClick={() => onPurchase(item)}
-            disabled={!canAfford || isBuying || isOwnedSkin}
-            className={cn(
-              'w-full rounded-lg border text-sm font-medium',
-              canAfford && !isBuying && !isOwnedSkin
-                ? 'border-border/60 bg-transparent text-foreground'
-                : 'border-border/40 bg-muted/20 text-muted-foreground/50',
-            )}
-          >
-            <span className="flex items-center justify-center gap-2">
-              {isBuying
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Achat...</>
-                : isOwnedSkin
-                  ? 'Deja possede'
-                : canAfford
-                  ? <><Gamepad2 className="h-4 w-4" /> Débloquer</>
-                  : 'Solde insuffisant'
-              }
-            </span>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <ProductCard
+      media={skinUrl ? <DoodleJumpSkinPreview skinImageUrl={skinUrl} /> : <ProductPlaceholder icon={<Gamepad2 />} />}
+      title={item.name}
+      price={item.price}
+      description={item.description}
+      action={
+        <PurchaseButton
+          onClick={() => onPurchase(item)}
+          disabled={!canAfford || isBuying || isOwnedSkin}
+          isBuying={isBuying}
+          label="Débloquer"
+          icon={<Gamepad2 />}
+          unavailableLabel={isOwnedSkin ? 'Déjà possédé' : !canAfford ? 'Solde insuffisant' : null}
+        />
+      }
+    />
+  );
+}
+
+// ─── Section heading ──────────────────────────────────────────────────────────
+
+function SectionHeading({ title, aside }: { title: string; aside?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-4">
+      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      <Separator className="flex-1" />
+      {aside}
+    </div>
   );
 }
 
@@ -422,68 +331,64 @@ function DoodleJumpShopSection({
 
   if (!loading && !hasStatic && !hasRotating) return null;
 
+  const renderGrid = (skins: ShopItem[], adEvery: number, adKeyPrefix: string) => (
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      {skins.flatMap((item, i) => {
+        const el = (
+          <DjSkinCard
+            key={item.id}
+            item={item}
+            user={user}
+            buyingItemId={buyingItemId}
+            ownedSkinItemIds={ownedSkinItemIds}
+            onPurchase={onPurchase}
+          />
+        );
+        const adIdx = Math.floor(i / adEvery);
+        if ((i + 1) % adEvery === 0 && adIdx < cardAds.length) {
+          return [el, <AdCard key={`${adKeyPrefix}-${i}`} ad={cardAds[adIdx]!} />];
+        }
+        return [el];
+      })}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }, (_, index) => (
+          <Skeleton key={index} className="h-80" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 rounded-xl border border-border/60 bg-card p-5 shadow-none md:p-6">
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <div className="space-y-8">
+    <div className="flex flex-col gap-8">
+      {hasRotating ? (
+        <section className="flex flex-col gap-4">
+          <SectionHeading
+            title="Apparences du jour"
+            aside={
+              countdown ? (
+                <Badge variant="outline">
+                  <Timer />
+                  Renouvellement dans {countdown}
+                  <RotateCcw />
+                </Badge>
+              ) : null
+            }
+          />
+          {renderGrid(rotatingSkins, 3, 'dj-rot-ad')}
+        </section>
+      ) : null}
 
-          {/* Rotating / daily skins — first */}
-          {hasRotating && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
-                  Apparences du jour
-                </h3>
-                <div className="h-px flex-1 bg-border/70" />
-                {countdown && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/50 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground">
-                    <Timer className="h-3 w-3" />
-                    Renouvellement dans {countdown}
-                    <RotateCcw className="h-3 w-3" />
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {rotatingSkins.flatMap((item, i) => {
-                  const el = <DjSkinCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} onPurchase={onPurchase} />;
-                  const rotAdIdx = Math.floor(i / 3);
-                  if ((i + 1) % 3 === 0 && rotAdIdx < cardAds.length) {
-                    return [el, <AdCard key={`dj-rot-ad-${i}`} ad={cardAds[rotAdIdx]!} />];
-                  }
-                  return [el];
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Static / permanent skins — below */}
-          {hasStatic && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
-                  Apparences permanentes
-                </h3>
-                <div className="h-px flex-1 bg-border/70" />
-                <span className="text-xs text-muted-foreground">Toujours disponibles</span>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {staticSkins.flatMap((item, i) => {
-                  const el = <DjSkinCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} onPurchase={onPurchase} />;
-                  const staticAdIdx = Math.floor(i / 6);
-                  if ((i + 1) % 6 === 0 && staticAdIdx < cardAds.length) {
-                    return [el, <AdCard key={`dj-static-ad-${i}`} ad={cardAds[staticAdIdx]!} />];
-                  }
-                  return [el];
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {hasStatic ? (
+        <section className="flex flex-col gap-4">
+          <SectionHeading title="Apparences permanentes" aside={<Badge variant="secondary">Toujours disponibles</Badge>} />
+          {renderGrid(staticSkins, 6, 'dj-static-ad')}
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -665,101 +570,104 @@ export default function Shop() {
     }
   };
 
+  const renderItemGrid = (list: ShopItem[], adKeyPrefix: string) => (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {list.flatMap((item, i) => {
+        const el = (
+          <ShopCard
+            key={item.id}
+            item={item}
+            user={user}
+            buyingItemId={buyingItemId}
+            ownedSkinItemIds={ownedSkinItemIds}
+            clanStatus={clanStatus}
+            onPurchase={handlePurchase}
+          />
+        );
+        if ((i + 1) % 6 === 0 && effectiveCardAds.length > 0) {
+          return [el, <AdCard key={`${adKeyPrefix}-${i}`} ad={effectiveCardAds[Math.floor(i / 6) % effectiveCardAds.length]!} />];
+        }
+        return [el];
+      })}
+    </div>
+  );
+
+  const doodleSection = (
+    <DoodleJumpShopSection
+      user={user}
+      buyingItemId={buyingItemId}
+      ownedSkinItemIds={ownedSkinItemIds}
+      onPurchase={handlePurchase}
+      cardAds={effectiveCardAds}
+    />
+  );
+
   return (
     <PageShell>
-      {/* Items market banner */}
-      <Link
-        to="/you?tab=salle-de-marche"
-        className="flex items-center gap-3 rounded-xl border border-pink-500/25 bg-pink-500/5 px-4 py-3 text-sm text-pink-700 dark:text-pink-300 transition hover:bg-pink-500/10 mb-6"
-      >
-        <ShoppingBasket className="h-5 w-5 shrink-0 text-pink-500" />
-        <span>
-          <strong>Jus, ADblock et items fonctionnels</strong> sont désormais craftés par des entreprises et vendus sur le{' '}
-          <span className="underline underline-offset-2">Marché des Items</span> — disponible dans l'onglet <em>Salle de marché</em> de ta page <em>You</em>.
-        </span>
-      </Link>
+      <PageHeader title="Boutique" description="Cosmétiques, objets et améliorations à acheter avec votre argent." />
 
-      <Tabs value={filter} onValueChange={setFilter} className="space-y-6">
-        <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
-          {VIRTUAL_FILTERS.map(entry => (
-            <TabsTrigger
-              key={entry.value}
-              value={entry.value}
-              className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground"
-            >
+      <Alert>
+        <ShoppingBasket />
+        <AlertTitle>Jus, AdBlock et items fonctionnels</AlertTitle>
+        <AlertDescription>
+          <span>
+            Ils sont désormais craftés par des entreprises et vendus sur le Marché des Items, dans l&apos;onglet Salle de marché de
+            votre page You.
+          </span>
+          <Button asChild variant="link" size="sm" className="h-auto p-0">
+            <Link to="/you?tab=salle-de-marche">Ouvrir le Marché des Items</Link>
+          </Button>
+        </AlertDescription>
+      </Alert>
+
+      <Tabs value={filter} onValueChange={setFilter} className="gap-6">
+        <TabsList className="h-auto flex-wrap justify-start">
+          {VIRTUAL_FILTERS.map((entry) => (
+            <TabsTrigger key={entry.value} value={entry.value}>
               {entry.label}
             </TabsTrigger>
           ))}
         </TabsList>
 
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }, (_, index) => (
+              <Skeleton key={index} className="h-80" />
+            ))}
           </div>
         ) : (
           <>
-            <TabsContent value="ALL" className="space-y-8">
-              <DoodleJumpShopSection
-                user={user}
-                buyingItemId={buyingItemId}
-                ownedSkinItemIds={ownedSkinItemIds}
-                onPurchase={handlePurchase}
-                cardAds={effectiveCardAds}
-              />
-
-              {sections.map(section => {
-                return (
-                  <div key={section.id} className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
-                        {section.label}
-                      </h2>
-                      <div className="h-px flex-1 bg-border/70" />
-                      <span className="text-xs text-muted-foreground">
-                        {section.items.length}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {section.items.flatMap((item, i) => {
-                        const el = <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} clanStatus={clanStatus} onPurchase={handlePurchase} />;
-                        if ((i + 1) % 6 === 0 && effectiveCardAds.length > 0) {
-                          return [el, <AdCard key={`shop-ad-${section.id}-${i}`} ad={effectiveCardAds[Math.floor(i / 6) % effectiveCardAds.length]!} />];
-                        }
-                        return [el];
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+            <TabsContent value="ALL" className="flex flex-col gap-8">
+              {doodleSection}
+              {sections.map((section) => (
+                <section key={section.id} className="flex flex-col gap-4">
+                  <SectionHeading title={section.label} aside={<Badge variant="secondary">{section.items.length}</Badge>} />
+                  {renderItemGrid(section.items, `shop-ad-${section.id}`)}
+                </section>
+              ))}
             </TabsContent>
 
-            <TabsContent value="DOODLE_JUMP" className="space-y-8">
-              <DoodleJumpShopSection
-                user={user}
-                buyingItemId={buyingItemId}
-                ownedSkinItemIds={ownedSkinItemIds}
-                onPurchase={handlePurchase}
-                cardAds={effectiveCardAds}
-              />
+            <TabsContent value="DOODLE_JUMP" className="flex flex-col gap-8">
+              {doodleSection}
             </TabsContent>
 
-            {visibleCategories.map(category => {
-              const categoryItems = nonDjItems.filter(item => item.type === category.id);
+            {visibleCategories.map((category) => {
+              const categoryItems = nonDjItems.filter((item) => item.type === category.id);
 
               return (
-                <TabsContent key={category.id} value={category.id} className="space-y-8">
+                <TabsContent key={category.id} value={category.id} className="flex flex-col gap-8">
                   {categoryItems.length === 0 ? (
-                    <p className="py-12 text-center text-sm text-muted-foreground">Aucun objet dans cette catégorie.</p>
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Package />
+                        </EmptyMedia>
+                        <EmptyTitle>Aucun objet</EmptyTitle>
+                        <EmptyDescription>Aucun objet dans cette catégorie.</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   ) : (
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {categoryItems.flatMap((item, i) => {
-                        const el = <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} clanStatus={clanStatus} onPurchase={handlePurchase} />;
-                        if ((i + 1) % 6 === 0 && effectiveCardAds.length > 0) {
-                          return [el, <AdCard key={`cat-ad-${category.id}-${i}`} ad={effectiveCardAds[Math.floor(i / 6) % effectiveCardAds.length]!} />];
-                        }
-                        return [el];
-                      })}
-                    </div>
+                    renderItemGrid(categoryItems, `cat-ad-${category.id}`)
                   )}
                 </TabsContent>
               );
@@ -767,7 +675,6 @@ export default function Shop() {
           </>
         )}
       </Tabs>
-
     </PageShell>
   );
 }

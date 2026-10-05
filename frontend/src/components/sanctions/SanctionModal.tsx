@@ -93,14 +93,14 @@ export default function SanctionModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Gavel className="w-4 h-4 text-amber-500" />
+            <Gavel className="w-4 h-4 text-warning" />
             {issuerRole === 'JUDGE' ? 'Proposer une sanction judiciaire' : 'Demande de récupération fiscale'}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {issuerRole === 'FISCAL_INSPECTOR' && (
-            <p className="text-xs text-muted-foreground border border-amber-500/30 bg-amber-500/5 rounded-md px-3 py-2">
+            <p className="text-xs text-muted-foreground border border-warning/30 bg-warning/5 rounded-md px-3 py-2">
               En tant qu'agent du fisc, votre demande sera transmise à l'administration pour validation avant exécution.
             </p>
           )}
@@ -114,7 +114,7 @@ export default function SanctionModal({
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors',
                   type === 'AMENDE'
-                    ? 'border-amber-500/60 bg-amber-500/10 text-amber-600 font-medium'
+                    ? 'border-warning/60 bg-warning/10 text-warning font-medium'
                     : 'border-border/60 text-muted-foreground hover:bg-muted/50'
                 )}
               >
@@ -126,7 +126,7 @@ export default function SanctionModal({
                 className={cn(
                   'flex-1 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors',
                   type === 'PAYMENT'
-                    ? 'border-sky-500/60 bg-sky-500/10 text-sky-600 font-medium'
+                    ? 'border-border/60 bg-muted/10 text-primary font-medium'
                     : 'border-border/60 text-muted-foreground hover:bg-muted/50'
                 )}
               >

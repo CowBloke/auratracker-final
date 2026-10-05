@@ -369,14 +369,14 @@ export default function Quests() {
               const isClaimed = userQuest.isClaimed;
 
               return (
-                <Card key={userQuest.id} className={isCompleted && !isClaimed ? 'border-green-500' : ''}>
+                <Card key={userQuest.id} className={isCompleted && !isClaimed ? 'border-success' : ''}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className={TYPOGRAPHY.H5}>{userQuest.quest.title}</CardTitle>
                       </div>
                       {isCompleted && !isClaimed && (
-                        <Badge variant="default" className="bg-green-500">
+                        <Badge variant="default" className="bg-success">
                           <CheckCircle2 className="w-4 h-4 mr-1" />
                           {t('quests_completed')}
                         </Badge>

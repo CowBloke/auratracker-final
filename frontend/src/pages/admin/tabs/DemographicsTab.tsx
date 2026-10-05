@@ -99,10 +99,10 @@ export function DemographicsTab({
             {levelDistributionData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={levelDistributionData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-                  <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
+                  <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
                   <RechartsTooltip
-                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                    contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                     formatter={(value: number, _name: string, props: any) => [`${value} utilisateurs (${formatPercent(props.payload.share)})`, 'Niveau']}
                   />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>
@@ -129,10 +129,10 @@ export function DemographicsTab({
             {classDistributionData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={classDistributionData.slice(0, 12)} layout="vertical" margin={{ top: 4, right: 8, left: 20, bottom: 4 }}>
-                  <XAxis type="number" allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="label" width={100} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="label" width={100} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <RechartsTooltip
-                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                    contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                     formatter={(value: number, _name: string, props: any) => [`${value} utilisateurs (${formatPercent(props.payload.share)})`, 'Classe']}
                   />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} fill="#3b82f6" isAnimationActive={false} />
@@ -158,11 +158,11 @@ export function DemographicsTab({
               <div className="space-y-3">
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={classAveragesData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-                    <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={64} />
-                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(value: number) => formatBigNumber(value)} />
+                    <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={64} />
+                    <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(value: number) => formatBigNumber(value)} />
                     <Legend wrapperStyle={{ fontSize: '11px' }} />
                     <RechartsTooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                      contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
                       formatter={(value: number, name: string, props: any) => [
                         `${Math.round(value).toLocaleString('fr-FR')} (n=${props.payload.count})`,
                           name === 'avgAura' ? 'Aura moyenne' : 'Argent moyen',

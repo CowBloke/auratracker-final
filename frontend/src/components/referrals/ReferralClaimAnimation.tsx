@@ -80,10 +80,10 @@ export default function ReferralClaimAnimation({
             style={{ ['--claim-progress' as string]: `${clicks / CLICKS_NEEDED}` }}
           >
             <div className="referral-claim-ring absolute inset-0 rounded-[2rem]" />
-            <Ticket className="h-14 w-14 text-amber-200 transition-transform group-hover:scale-110" />
+            <Ticket className="h-14 w-14 text-warning transition-transform group-hover:scale-110" />
             <div className="absolute inset-x-5 bottom-5 h-2 overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-amber-300 via-yellow-300 to-orange-400 transition-all duration-300"
+                className="h-full rounded-full bg-gradient-to-r from-warning via-warning to-warning transition-all duration-300"
                 style={{ width: `${(clicks / CLICKS_NEEDED) * 100}%` }}
               />
             </div>
@@ -94,7 +94,7 @@ export default function ReferralClaimAnimation({
               <span
                 key={index}
                 className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
-                  index < clicks ? 'bg-amber-300 shadow-[0_0_16px_rgba(252,211,77,0.9)]' : 'bg-white/20'
+                  index < clicks ? 'bg-warning shadow-[0_0_16px_rgba(252,211,77,0.9)]' : 'bg-white/20'
                 }`}
               />
             ))}
@@ -104,7 +104,7 @@ export default function ReferralClaimAnimation({
 
       {phase === 'burst' && (
         <div className="referral-burst relative flex h-48 w-48 items-center justify-center rounded-full bg-white/90">
-          <Sparkles className="h-14 w-14 text-amber-500" />
+          <Sparkles className="h-14 w-14 text-warning" />
         </div>
       )}
 
@@ -121,13 +121,13 @@ export default function ReferralClaimAnimation({
           </Button>
 
           <div className="space-y-5 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-400/15 text-amber-300">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-warning/15 text-warning">
               <Ticket className="h-8 w-8" />
             </div>
 
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.35em] text-white/50">Parrainage</p>
-              <p className="text-3xl font-semibold tracking-[0.34em] text-amber-200">{code}</p>
+              <p className="text-3xl font-semibold tracking-[0.34em] text-warning">{code}</p>
               <p className="text-sm text-white/65">
                 Copie automatique terminee. Chaque validation rapporte {rewardAmount} money aux deux comptes.
               </p>
@@ -140,7 +140,7 @@ export default function ReferralClaimAnimation({
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/45">Copie</p>
-                <p className="mt-2 flex items-center gap-2 text-lg font-medium text-emerald-300">
+                <p className="mt-2 flex items-center gap-2 text-lg font-medium text-success">
                   <Copy className="h-4 w-4" />
                   {copied ? 'Confirmee' : 'En cours'}
                 </p>
@@ -150,7 +150,7 @@ export default function ReferralClaimAnimation({
             <Button
               type="button"
               onClick={onClose}
-              className="w-full bg-amber-300 text-slate-950 hover:bg-amber-200"
+              className="w-full bg-warning text-foreground hover:bg-warning"
             >
               Fermer
             </Button>

@@ -14,56 +14,56 @@ const getTier = (rank: number): BadgeTier => {
   if (rank <= 3) {
     return {
       label: 'LEGEND',
-      colorClassName: 'text-amber-400',
+      colorClassName: 'text-warning',
       description: 'Top 3 mondial',
       ringClassName: 'shadow-[0_0_34px_rgba(251,191,36,0.55)]',
       coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(255,247,229,0.96),rgba(251,191,36,0.84)_46%,rgba(180,83,9,0.96)_100%)]',
-      glowClassName: 'bg-amber-200/35',
-      orbitClassName: 'bg-amber-200/30',
+      glowClassName: 'bg-warning/35',
+      orbitClassName: 'bg-warning/30',
     };
   }
   if (rank <= 10) {
     return {
       label: 'MASTER',
-      colorClassName: 'text-cyan-400',
+      colorClassName: 'text-primary',
       description: 'Top 10 mondial',
       ringClassName: 'shadow-[0_0_26px_rgba(56,189,248,0.44)]',
       coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(236,254,255,0.94),rgba(56,189,248,0.78)_50%,rgba(30,64,175,0.94)_100%)]',
-      glowClassName: 'bg-cyan-300/25',
-      orbitClassName: 'bg-cyan-100/24',
+      glowClassName: 'bg-muted/25',
+      orbitClassName: 'bg-muted/24',
     };
   }
   if (rank <= 25) {
     return {
       label: 'ELITE',
-      colorClassName: 'text-emerald-400',
+      colorClassName: 'text-success',
       description: 'Top 25 mondial',
       ringClassName: 'shadow-[0_0_22px_rgba(16,185,129,0.38)]',
       coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(236,253,245,0.92),rgba(16,185,129,0.78)_52%,rgba(6,95,70,0.94)_100%)]',
-      glowClassName: 'bg-emerald-300/20',
-      orbitClassName: 'bg-emerald-100/18',
+      glowClassName: 'bg-success/20',
+      orbitClassName: 'bg-success/18',
     };
   }
   if (rank <= 50) {
     return {
       label: 'PRO',
-      colorClassName: 'text-violet-400',
+      colorClassName: 'text-primary',
       description: 'Top 50 mondial',
       ringClassName: 'shadow-[0_0_18px_rgba(192,132,252,0.35)]',
       coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(250,245,255,0.9),rgba(192,132,252,0.72)_52%,rgba(88,28,135,0.94)_100%)]',
-      glowClassName: 'bg-violet-300/15',
-      orbitClassName: 'bg-violet-100/16',
+      glowClassName: 'bg-muted/15',
+      orbitClassName: 'bg-muted/16',
     };
   }
 
   return {
     label: 'TOP',
-    colorClassName: 'text-slate-400',
+    colorClassName: 'text-muted-foreground',
     description: 'Classement global',
     ringClassName: 'shadow-[0_0_12px_rgba(148,163,184,0.22)]',
     coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(248,250,252,0.9),rgba(148,163,184,0.62)_56%,rgba(71,85,105,0.95)_100%)]',
-    glowClassName: 'bg-slate-300/12',
-    orbitClassName: 'bg-slate-100/14',
+    glowClassName: 'bg-muted/12',
+    orbitClassName: 'bg-muted/14',
   };
 };
 

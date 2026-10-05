@@ -316,58 +316,58 @@ export function InboxTab(props: InboxTabProps) {
                         title = u.username;
                         subtitle = u.email;
                         badgeLabel = u.registrationStatus === 'APPROVED' ? 'Approuvé' : u.registrationStatus === 'REJECTED' ? 'Rejeté' : 'Inscription';
-                        badgeColor = u.registrationStatus === 'APPROVED' ? 'bg-green-500/20 text-green-400' : u.registrationStatus === 'REJECTED' ? 'bg-zinc-500/20 text-zinc-400' : 'bg-blue-500/20 text-blue-400';
-                        borderAccent = u.registrationStatus === 'APPROVED' ? 'border-l-green-500' : u.registrationStatus === 'REJECTED' ? 'border-l-zinc-500' : 'border-l-blue-500';
+                        badgeColor = u.registrationStatus === 'APPROVED' ? 'bg-success/20 text-success' : u.registrationStatus === 'REJECTED' ? 'bg-secondary/20 text-muted-foreground' : 'bg-muted/20 text-primary';
+                        borderAccent = u.registrationStatus === 'APPROVED' ? 'border-l-success' : u.registrationStatus === 'REJECTED' ? 'border-l-border' : 'border-l-border';
                       } else if (item.type === 'bug') {
                         const b = item.data as BugReport;
                         title = b.title;
                         subtitle = b.user.username;
                         const done = b.status === 'DONE';
                         badgeLabel = done ? 'Résolu' : 'Bug';
-                        badgeColor = done ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400';
-                        borderAccent = done ? 'border-l-green-500' : 'border-l-amber-500';
+                        badgeColor = done ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning';
+                        borderAccent = done ? 'border-l-success' : 'border-l-warning';
                       } else if (item.type === 'appeal') {
                         const a = item.data as BanAppeal;
                         title = a.user.username;
                         subtitle = a.ban.reason;
                         badgeLabel = a.status === 'PENDING' ? 'Appel' : a.status === 'APPROVED' ? 'Accepté' : 'Rejeté';
-                        badgeColor = a.status === 'PENDING' ? 'bg-red-500/20 text-red-400' : a.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
-                        borderAccent = 'border-l-red-500';
+                        badgeColor = a.status === 'PENDING' ? 'bg-destructive/20 text-destructive' : a.status === 'APPROVED' ? 'bg-success/20 text-success' : 'bg-secondary/20 text-muted-foreground';
+                        borderAccent = 'border-l-destructive';
                       } else if (item.type === 'namechange') {
                         const n = item.data as NameChangeRequest;
                         title = n.requestedUsername;
                         subtitle = `de ${n.currentUsername}`;
                         badgeLabel = n.status === 'PENDING' ? 'Pseudo' : n.status === 'APPROVED' ? 'Accepté' : 'Rejeté';
-                        badgeColor = n.status === 'PENDING' ? 'bg-purple-500/20 text-purple-400' : n.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
-                        borderAccent = 'border-l-purple-500';
+                        badgeColor = n.status === 'PENDING' ? 'bg-muted/20 text-primary' : n.status === 'APPROVED' ? 'bg-success/20 text-success' : 'bg-secondary/20 text-muted-foreground';
+                        borderAccent = 'border-l-border';
                       } else if (item.type === 'formation') {
                         const p = item.data as PendingFormationReviewItem;
                         title = p.title;
                         subtitle = `${p.business.name} · ${p.business.owner.username}`;
                         badgeLabel = 'Formation';
-                        badgeColor = 'bg-sky-500/20 text-sky-400';
-                        borderAccent = 'border-l-sky-500';
+                        badgeColor = 'bg-muted/20 text-primary';
+                        borderAccent = 'border-l-border';
                       } else if (item.type === 'sanction') {
                         const s = item.data as PendingSanction;
                         title = `${s.type === 'AMENDE' ? 'Amende' : 'Paiement forcé'} pour ${s.targetUser.username}`;
                         subtitle = `par ${s.requestedBy.username}`;
                         badgeLabel = s.status === 'PENDING' ? 'Sanction' : s.status === 'APPROVED' ? 'Approuvée' : 'Refusée';
-                        badgeColor = s.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' : s.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
-                        borderAccent = s.status === 'PENDING' ? 'border-l-amber-500' : s.status === 'APPROVED' ? 'border-l-green-500' : 'border-l-zinc-500';
+                        badgeColor = s.status === 'PENDING' ? 'bg-warning/20 text-warning' : s.status === 'APPROVED' ? 'bg-success/20 text-success' : 'bg-secondary/20 text-muted-foreground';
+                        borderAccent = s.status === 'PENDING' ? 'border-l-warning' : s.status === 'APPROVED' ? 'border-l-success' : 'border-l-border';
                       } else if (item.type === 'moderation') {
                         const event = item.data as AdminChatModerationEvent;
                         title = event.type === 'appeal' ? `Appel mute : ${event.username}` : `Mute auto : ${event.username}`;
                         subtitle = event.type === 'appeal' ? (event.details.message || 'Contestation utilisateur') : (event.details.discussion || 'Chat general');
                         badgeLabel = event.type === 'appeal' ? 'Appel mute' : 'Mute';
-                        badgeColor = 'bg-red-500/20 text-red-400';
-                        borderAccent = 'border-l-red-500';
+                        badgeColor = 'bg-destructive/20 text-destructive';
+                        borderAccent = 'border-l-destructive';
                       } else {
                         const req = item.data as CustomBadgeRequest;
                         title = req.name;
                         subtitle = req.user?.username ? `par ${req.user.username}` : 'Demande de badge';
                         badgeLabel = 'Badge';
-                        badgeColor = 'bg-yellow-500/20 text-yellow-400';
-                        borderAccent = 'border-l-yellow-500';
+                        badgeColor = 'bg-warning/20 text-warning';
+                        borderAccent = 'border-l-warning';
                       }
 
                       return (
@@ -415,7 +415,7 @@ export function InboxTab(props: InboxTabProps) {
                       <div className="p-6 space-y-5">
                         <div>
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400">{isAppeal ? 'Appel de mute' : 'Mute automatique'}</span>
+                            <span className="text-xs px-2 py-0.5 rounded bg-destructive/20 text-destructive">{isAppeal ? 'Appel de mute' : 'Mute automatique'}</span>
                             <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{event.details.discussion || 'Chat general'}</span>
                             <span className="text-xs text-muted-foreground/60">
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -429,7 +429,7 @@ export function InboxTab(props: InboxTabProps) {
                         </div>
 
                         {isAppeal ? (
-                          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
+                          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 space-y-3">
                             <div>
                               <p className="text-xs font-medium text-muted-foreground/70 mb-1">Message d'appel</p>
                               <p className="text-sm whitespace-pre-wrap break-words">{event.details.message || 'Message indisponible'}</p>
@@ -442,12 +442,12 @@ export function InboxTab(props: InboxTabProps) {
                             )}
                           </div>
                         ) : (
-                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
+                        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 space-y-3">
                           <div>
                             <p className="text-xs font-medium text-muted-foreground/70 mb-2">Termes detectes</p>
                             <div className="flex flex-wrap gap-2">
                               {terms.length > 0 ? terms.map((term, index) => (
-                                <span key={`${term}-${index}`} className="rounded bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-300">
+                                <span key={`${term}-${index}`} className="rounded bg-destructive/20 px-2 py-0.5 text-xs font-semibold text-destructive">
                                   {term}
                                 </span>
                               )) : <span className="text-sm text-muted-foreground">Aucun terme enregistre</span>}
@@ -489,7 +489,7 @@ export function InboxTab(props: InboxTabProps) {
                       <div className="p-6 space-y-5">
                         <div>
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs px-2 py-0.5 rounded bg-sky-500/20 text-sky-400">Formation en attente</span>
+                            <span className="text-xs px-2 py-0.5 rounded bg-muted/20 text-primary">Formation en attente</span>
                             <span className="text-xs text-muted-foreground/60">
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -497,13 +497,13 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{product.title}</h3>
                           <p className="text-sm text-muted-foreground">{product.business.name} · par {product.business.owner.username}</p>
                         </div>
-                        <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-4 space-y-3">
+                        <div className="rounded-lg border border-border/20 bg-muted/5 p-4 space-y-3">
                           <p className="text-sm font-medium">{product.price.toLocaleString('fr-FR')} €</p>
                           {product.description && (
                             <p className="text-sm whitespace-pre-wrap break-words">{product.description}</p>
                           )}
                           {product.url && (
-                            <a href={product.url} target="_blank" rel="noreferrer" className="text-xs text-sky-400 underline underline-offset-2 break-all">
+                            <a href={product.url} target="_blank" rel="noreferrer" className="text-xs text-primary underline underline-offset-2 break-all">
                               {product.url}
                             </a>
                           )}
@@ -530,7 +530,7 @@ export function InboxTab(props: InboxTabProps) {
                             size="sm"
                             onClick={() => reviewFormationProduct(product.businessId, product.id, 'approve')}
                             disabled={reviewingFormationProductId === product.id}
-                            className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                            className="h-8 border-success/50 text-success hover:bg-success/10"
                             variant="outline"
                           >
                             {reviewingFormationProductId === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
@@ -556,11 +556,11 @@ export function InboxTab(props: InboxTabProps) {
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             {u.registrationStatus === 'APPROVED' ? (
-                              <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">Approuvé</span>
+                              <span className="text-xs px-2 py-0.5 rounded bg-success/20 text-success">Approuvé</span>
                             ) : u.registrationStatus === 'REJECTED' ? (
-                              <span className="text-xs px-2 py-0.5 rounded bg-zinc-500/20 text-zinc-400">Rejeté</span>
+                              <span className="text-xs px-2 py-0.5 rounded bg-secondary/20 text-muted-foreground">Rejeté</span>
                             ) : (
-                              <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">Inscription</span>
+                              <span className="text-xs px-2 py-0.5 rounded bg-muted/20 text-primary">Inscription</span>
                             )}
                             <span className="text-xs text-muted-foreground/60">
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -584,7 +584,7 @@ export function InboxTab(props: InboxTabProps) {
                         </div>
                         {!u.registrationStatus && (
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => approveUser(u.id)} disabled={approvingUser === u.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                            <Button size="sm" variant="outline" onClick={() => approveUser(u.id)} disabled={approvingUser === u.id} className="h-8 border-success/50 text-success hover:bg-success/10">
                               {approvingUser === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
                             </Button>
                             <AlertDialog>
@@ -625,7 +625,7 @@ export function InboxTab(props: InboxTabProps) {
                         {/* Header */}
                         <div className="px-5 py-4 border-b border-border/40 shrink-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={cn('text-xs px-2 py-0.5 rounded', isArchived ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400')}>
+                            <span className={cn('text-xs px-2 py-0.5 rounded', isArchived ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning')}>
                               {isArchived ? 'Résolu' : 'En cours'}
                             </span>
                             <span className="text-xs text-muted-foreground/60">
@@ -647,7 +647,7 @@ export function InboxTab(props: InboxTabProps) {
                               <div className={cn(
                                 'max-w-[80%] rounded-lg px-3 py-2 text-sm',
                                 msg.isAdmin
-                                  ? 'bg-indigo-500/10 border border-indigo-500/20'
+                                  ? 'bg-muted/10 border border-border/20'
                                   : 'bg-muted/40 border border-border/40'
                               )}>
                                 <p className="text-[10px] text-muted-foreground/60 mb-1">
@@ -675,7 +675,7 @@ export function InboxTab(props: InboxTabProps) {
                         {/* Compose */}
                         <div className="px-5 py-4 border-t border-border/40 shrink-0 space-y-2">
                           <textarea
-                            className="w-full rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-muted-foreground/40"
+                            className="w-full rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring/50 placeholder:text-muted-foreground/40"
                             rows={3}
                             placeholder="Répondre… La réponse sera notifiée par e-mail."
                             value={replyValue}
@@ -690,12 +690,12 @@ export function InboxTab(props: InboxTabProps) {
                           <div className="flex items-center gap-2">
                             {replyValue.trim() && (
                               <Button size="sm" variant="outline" onClick={() => sendBugReply(bug)} disabled={updatingBug === bug.id}
-                                className="h-8 border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10">
+                                className="h-8 border-border/50 text-primary hover:bg-muted/10">
                                 {updatingBug === bug.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1" />Envoyer</>}
                               </Button>
                             )}
                             <Button size="sm" variant="outline" onClick={() => toggleBugStatus(bug)} disabled={updatingBug === bug.id}
-                              className={cn('h-8', isArchived ? 'border-amber-500/50 text-amber-500 hover:bg-amber-500/10' : 'border-green-500/50 text-green-500 hover:bg-green-500/10')}>
+                              className={cn('h-8', isArchived ? 'border-warning/50 text-warning hover:bg-warning/10' : 'border-success/50 text-success hover:bg-success/10')}>
                               {updatingBug === bug.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isArchived ? <><X className="h-4 w-4 mr-1" />Rouvrir</> : <><Check className="h-4 w-4 mr-1" />Résolu</>}
                             </Button>
                           </div>
@@ -712,9 +712,9 @@ export function InboxTab(props: InboxTabProps) {
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             <span className={cn('text-xs px-2 py-0.5 rounded',
-                              appeal.status === 'PENDING' ? 'bg-red-500/20 text-red-400' :
-                              appeal.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
-                              'bg-zinc-500/20 text-zinc-400')}>
+                              appeal.status === 'PENDING' ? 'bg-destructive/20 text-destructive' :
+                              appeal.status === 'APPROVED' ? 'bg-success/20 text-success' :
+                              'bg-secondary/20 text-muted-foreground')}>
                               {appeal.status === 'PENDING' ? 'Appel en attente' : appeal.status === 'APPROVED' ? 'Accepté' : 'Rejeté'}
                             </span>
                             <span className="text-xs text-muted-foreground/60">
@@ -724,7 +724,7 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{appeal.user.username}</h3>
                           <p className="text-sm text-muted-foreground">{appeal.user.email}</p>
                         </div>
-                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+                        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-1.5">Motif du bannissement</p>
                           <p className="text-sm font-medium">{appeal.ban.reason}</p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -737,7 +737,7 @@ export function InboxTab(props: InboxTabProps) {
                         </div>
                         {isPending && (
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => reviewBanAppeal(appeal.id, 'approve')} disabled={reviewingAppeal === appeal.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                            <Button size="sm" variant="outline" onClick={() => reviewBanAppeal(appeal.id, 'approve')} disabled={reviewingAppeal === appeal.id} className="h-8 border-success/50 text-success hover:bg-success/10">
                               {reviewingAppeal === appeal.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Lever le ban</>}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => reviewBanAppeal(appeal.id, 'reject')} disabled={reviewingAppeal === appeal.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">
@@ -755,7 +755,7 @@ export function InboxTab(props: InboxTabProps) {
                       <div className="p-6 space-y-5">
                         <div>
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400">Badge personnalisé</span>
+                            <span className="text-xs px-2 py-0.5 rounded bg-warning/20 text-warning">Badge personnalisé</span>
                             <span className="text-xs text-muted-foreground/60">
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -763,7 +763,7 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{req.name}</h3>
                           <p className="text-sm text-muted-foreground">{req.user?.username ? `Demande par ${req.user.username}` : 'Auteur inconnu'}</p>
                         </div>
-                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
+                        <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-3">Aperçu</p>
                           <div className="flex items-start gap-4">
                             <BadgeIcon
@@ -784,7 +784,7 @@ export function InboxTab(props: InboxTabProps) {
                             <div className="flex-1 min-w-0 space-y-1">
                               <p className="text-sm font-medium">{req.name}</p>
                               <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{req.description}</p>
-                              <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded-full border border-yellow-500/30 text-yellow-400">
+                              <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded-full border border-warning/30 text-warning">
                                 {req.rarity}
                               </span>
                             </div>
@@ -821,12 +821,12 @@ export function InboxTab(props: InboxTabProps) {
                         <div>
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className={cn('text-xs px-2 py-0.5 rounded',
-                              sanction.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' :
-                              sanction.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
-                              'bg-zinc-500/20 text-zinc-400')}>
+                              sanction.status === 'PENDING' ? 'bg-warning/20 text-warning' :
+                              sanction.status === 'APPROVED' ? 'bg-success/20 text-success' :
+                              'bg-secondary/20 text-muted-foreground')}>
                               {sanction.status === 'PENDING' ? 'Sanction en attente' : sanction.status === 'APPROVED' ? 'Approuvée' : 'Refusée'}
                             </span>
-                            <span className={cn('text-xs px-2 py-0.5 rounded', sanction.requestedByRole === 'JUDGE' ? 'bg-purple-500/20 text-purple-400' : 'bg-sky-500/20 text-sky-400')}>
+                            <span className={cn('text-xs px-2 py-0.5 rounded', sanction.requestedByRole === 'JUDGE' ? 'bg-muted/20 text-primary' : 'bg-muted/20 text-primary')}>
                               {sanction.requestedByRole === 'JUDGE' ? '⚖️ Juge' : '🏛️ Agent du fisc'}
                             </span>
                             <span className="text-xs text-muted-foreground/60">
@@ -838,7 +838,7 @@ export function InboxTab(props: InboxTabProps) {
                         </div>
                         <div className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-2">
                           <p className="text-sm font-medium">
-                            <span className="text-amber-400">{sanction.amount.toLocaleString('fr-FR')}€</span>
+                            <span className="text-warning">{sanction.amount.toLocaleString('fr-FR')}€</span>
                             {sanction.type === 'AMENDE'
                               ? <> à prélever sur <span className="font-semibold">{sanction.targetUser.username}</span></>
                               : <> à transférer de <span className="font-semibold">{sanction.targetUser.username}</span> vers <span className="font-semibold">{sanction.beneficiary?.username ?? '?'}</span></>}
@@ -857,7 +857,7 @@ export function InboxTab(props: InboxTabProps) {
                         )}
                         {isPending && (
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => approveSanction(sanction.id)} disabled={approvingSanction === sanction.id || rejectingSanction === sanction.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                            <Button size="sm" variant="outline" onClick={() => approveSanction(sanction.id)} disabled={approvingSanction === sanction.id || rejectingSanction === sanction.id} className="h-8 border-success/50 text-success hover:bg-success/10">
                               {approvingSanction === sanction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => rejectSanction(sanction.id)} disabled={rejectingSanction === sanction.id || approvingSanction === sanction.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">
@@ -877,9 +877,9 @@ export function InboxTab(props: InboxTabProps) {
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             <span className={cn('text-xs px-2 py-0.5 rounded',
-                              req.status === 'PENDING' ? 'bg-purple-500/20 text-purple-400' :
-                              req.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
-                              'bg-zinc-500/20 text-zinc-400')}>
+                              req.status === 'PENDING' ? 'bg-muted/20 text-primary' :
+                              req.status === 'APPROVED' ? 'bg-success/20 text-success' :
+                              'bg-secondary/20 text-muted-foreground')}>
                               {req.status === 'PENDING' ? 'Changement de pseudo' : req.status === 'APPROVED' ? 'Accepté' : 'Rejeté'}
                             </span>
                             <span className="text-xs text-muted-foreground/60">
@@ -889,7 +889,7 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{req.user.username}</h3>
                           <p className="text-sm text-muted-foreground">{req.user.email}</p>
                         </div>
-                        <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-4">
+                        <div className="rounded-lg border border-border/20 bg-muted/5 p-4">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-3">Changement demandé</p>
                           <div className="flex items-center gap-4">
                             <div>
@@ -899,7 +899,7 @@ export function InboxTab(props: InboxTabProps) {
                             <span className="text-muted-foreground/50 text-lg">→</span>
                             <div>
                               <p className="text-[11px] text-muted-foreground/60 mb-0.5">Demandé</p>
-                              <p className="text-sm font-semibold text-purple-400">{req.requestedUsername}</p>
+                              <p className="text-sm font-semibold text-primary">{req.requestedUsername}</p>
                             </div>
                           </div>
                         </div>
@@ -911,7 +911,7 @@ export function InboxTab(props: InboxTabProps) {
                         )}
                         {isPending && (
                           <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => reviewNameChangeRequest(req.id, 'approve')} disabled={reviewingNameChange === req.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                            <Button size="sm" variant="outline" onClick={() => reviewNameChangeRequest(req.id, 'approve')} disabled={reviewingNameChange === req.id} className="h-8 border-success/50 text-success hover:bg-success/10">
                               {reviewingNameChange === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => reviewNameChangeRequest(req.id, 'reject')} disabled={reviewingNameChange === req.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">

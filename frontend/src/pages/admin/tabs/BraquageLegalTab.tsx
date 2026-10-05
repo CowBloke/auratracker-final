@@ -327,7 +327,7 @@ export function BraquageLegalTab({ users }: Props) {
                     <p className="text-sm text-muted-foreground">{new Date(entry.endTime).toLocaleString('fr-FR')}</p>
                   </div>
                   <div className="text-right text-sm">
-                    <p className="font-semibold tabular-nums text-amber-200">{entry.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
+                    <p className="font-semibold tabular-nums text-warning">{entry.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
                     <p className="text-muted-foreground">{entry.totalPool.toLocaleString('fr-FR')} € pool</p>
                   </div>
                 </div>

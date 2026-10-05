@@ -37,7 +37,7 @@ function VoteButtons({
         onClick={() => onVote(userVote === 1 ? 0 : 1)}
         className={cn(
           'rounded p-1 transition-colors hover:bg-muted',
-          userVote === 1 ? 'text-orange-500' : 'text-muted-foreground'
+          userVote === 1 ? 'text-warning' : 'text-muted-foreground'
         )}
       >
         <ChevronUp className="h-5 w-5" />
@@ -45,7 +45,7 @@ function VoteButtons({
       <span
         className={cn(
           'text-sm font-bold',
-          userVote === 1 ? 'text-orange-500' : userVote === -1 ? 'text-blue-500' : 'text-foreground'
+          userVote === 1 ? 'text-warning' : userVote === -1 ? 'text-primary' : 'text-foreground'
         )}
       >
         {score}
@@ -54,7 +54,7 @@ function VoteButtons({
         onClick={() => onVote(userVote === -1 ? 0 : -1)}
         className={cn(
           'rounded p-1 transition-colors hover:bg-muted',
-          userVote === -1 ? 'text-blue-500' : 'text-muted-foreground'
+          userVote === -1 ? 'text-primary' : 'text-muted-foreground'
         )}
       >
         <ChevronDown className="h-5 w-5" />
@@ -385,7 +385,7 @@ export default function ForumPost() {
                   href={post.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 flex items-center gap-1 text-sm text-blue-500 hover:underline"
+                  className="mt-2 flex items-center gap-1 text-sm text-primary hover:underline"
                 >
                   <ExternalLink className="h-4 w-4" />
                   {post.url}

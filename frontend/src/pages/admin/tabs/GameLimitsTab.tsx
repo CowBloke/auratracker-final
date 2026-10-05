@@ -78,7 +78,7 @@ export function GameLimitsTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-border/40 bg-card/50 p-4 space-y-4 hover:border-primary/20 transition-colors shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500">
+                <div className="h-10 w-10 rounded-xl bg-muted/10 flex items-center justify-center text-primary">
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
@@ -97,13 +97,13 @@ export function GameLimitsTab() {
                   />
                   <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                 </div>
-                <Badge variant="outline" className="h-10 px-3 bg-purple-500/5 text-purple-500 border-purple-500/10">Default</Badge>
+                <Badge variant="outline" className="h-10 px-3 bg-muted/5 text-primary border-border/10">Default</Badge>
               </div>
             </div>
 
             <div className="rounded-2xl border border-border/40 bg-card/50 p-4 space-y-4 hover:border-primary/20 transition-colors shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <div className="h-10 w-10 rounded-xl bg-warning/10 flex items-center justify-center text-warning">
                   <Coins className="h-5 w-5" />
                 </div>
                 <div>
@@ -122,7 +122,7 @@ export function GameLimitsTab() {
                   />
                   <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                 </div>
-                <Badge variant="outline" className="h-10 px-3 bg-amber-500/5 text-amber-500 border-amber-500/10">Default</Badge>
+                <Badge variant="outline" className="h-10 px-3 bg-warning/5 text-warning border-warning/10">Default</Badge>
               </div>
             </div>
           </div>
@@ -183,7 +183,7 @@ export function GameLimitsTab() {
                               onChange={(e) => updateLimit(`game_limit_aura:${game.value}`, e.target.value)}
                               className="h-9 pl-8 text-xs font-mono bg-transparent hover:bg-background/80 transition-colors"
                             />
-                            <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-purple-500/40" />
+                            <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-primary/40" />
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -196,7 +196,7 @@ export function GameLimitsTab() {
                               onChange={(e) => updateLimit(`game_limit_money:${game.value}`, e.target.value)}
                               className="h-9 pl-8 text-xs font-mono bg-transparent hover:bg-background/80 transition-colors"
                             />
-                            <Coins className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-amber-500/40" />
+                            <Coins className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-warning/40" />
                           </div>
                         </td>
                       </tr>

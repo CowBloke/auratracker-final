@@ -99,32 +99,32 @@ export function EditUserModal({
           {/* Identity */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-blue-400 flex items-center gap-1">
+              <label className="text-xs font-medium text-primary flex items-center gap-1">
                 <UserCog className="h-3 w-3" />
                 Pseudo
               </label>
               <div className="relative">
-                <UserCog className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400/60 pointer-events-none" />
+                <UserCog className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary/60 pointer-events-none" />
                 <Input
                   type="text"
                   value={editValues.username}
                   onChange={(e) => setEditValues((prev) => ({ ...prev, username: e.target.value }))}
-                  className="h-9 bg-transparent border-blue-500/30 focus-visible:ring-blue-500/30 pl-8"
+                  className="h-9 bg-transparent border-border/30 focus-visible:ring-ring/30 pl-8"
                 />
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-blue-400 flex items-center gap-1">
+              <label className="text-xs font-medium text-primary flex items-center gap-1">
                 <Users className="h-3 w-3" />
                 Prénom
               </label>
               <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400/60 pointer-events-none" />
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary/60 pointer-events-none" />
                 <Input
                   type="text"
                   value={editValues.firstName}
                   onChange={(e) => setEditValues((prev) => ({ ...prev, firstName: e.target.value }))}
-                  className="h-9 bg-transparent border-blue-500/30 focus-visible:ring-blue-500/30 pl-8"
+                  className="h-9 bg-transparent border-border/30 focus-visible:ring-ring/30 pl-8"
                   placeholder="Non défini"
                 />
               </div>
@@ -133,7 +133,7 @@ export function EditUserModal({
 
           {/* Role */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-amber-400 flex items-center gap-1">
+            <label className="text-xs font-medium text-warning flex items-center gap-1">
               <Shield className="h-3 w-3" />
               Rôle
             </label>
@@ -142,8 +142,8 @@ export function EditUserModal({
               onValueChange={(value) => editModalUser && void onUpdateUserRole(editModalUser, value as any)}
               disabled={updatingRoleUserId === editModalUser?.id || user?.id === editModalUser?.id}
             >
-              <SelectTrigger className="h-9 border-amber-500/30 bg-transparent">
-                <Shield className="h-3.5 w-3.5 text-amber-400/60 mr-2" />
+              <SelectTrigger className="h-9 border-warning/30 bg-transparent">
+                <Shield className="h-3.5 w-3.5 text-warning/60 mr-2" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -160,54 +160,54 @@ export function EditUserModal({
           {/* Economy */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-purple-400 flex items-center gap-1">
+              <label className="text-xs font-medium text-primary flex items-center gap-1">
                 <TrendingUp className="h-3 w-3" />
                 Aura (solde direct)
               </label>
               <div className="relative">
-                <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400/60 pointer-events-none" />
+                <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary/60 pointer-events-none" />
                 <Input
                   type="number"
                   min={0}
                   value={editValues.aura}
                   onChange={(e) => setEditValues((prev) => ({ ...prev, aura: Number.parseInt(e.target.value, 10) || 0 }))}
-                  className="h-9 bg-transparent border-purple-500/30 focus-visible:ring-purple-500/30 pl-8"
+                  className="h-9 bg-transparent border-border/30 focus-visible:ring-ring/30 pl-8"
                   placeholder="Solde aura"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="relative">
-                  <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400/70 pointer-events-none" />
+                  <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-success/70 pointer-events-none" />
                   <Input
                     type="number"
                     min={0}
                     value={editAuraAddAmount}
                     onChange={(e) => setEditAuraAddAmount(Number.parseInt(e.target.value, 10) || 0)}
-                    className="h-9 bg-transparent border-emerald-500/30 focus-visible:ring-emerald-500/30 pl-8"
+                    className="h-9 bg-transparent border-success/30 focus-visible:ring-success/30 pl-8"
                     placeholder="Ajouter"
                   />
                 </div>
                 <div className="relative">
-                  <Minus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rose-400/70 pointer-events-none" />
+                  <Minus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-destructive/70 pointer-events-none" />
                   <Input
                     type="number"
                     min={0}
                     value={editAuraRemoveAmount}
                     onChange={(e) => setEditAuraRemoveAmount(Number.parseInt(e.target.value, 10) || 0)}
-                    className="h-9 bg-transparent border-rose-500/30 focus-visible:ring-rose-500/30 pl-8"
+                    className="h-9 bg-transparent border-destructive/30 focus-visible:ring-destructive/30 pl-8"
                     placeholder="Enlever"
                   />
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
                 Actuel: {baseEditAura.toLocaleString()} • Base: {toSafeNumber(editValues.aura).toLocaleString()} • Resultat:{' '}
-                <span className={cn(nextEditAura < 0 ? 'text-rose-400' : 'text-purple-300')}>
+                <span className={cn(nextEditAura < 0 ? 'text-destructive' : 'text-primary')}>
                   {nextEditAura.toLocaleString()}
                 </span>
               </p>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-green-400 flex items-center gap-1">
+              <label className="text-xs font-medium text-success flex items-center gap-1">
                 <CurrencyIcon type="money" className="h-3 w-3" />
                 Argent (solde direct)
               </label>
@@ -218,43 +218,43 @@ export function EditUserModal({
                   min={0}
                   value={editValues.money}
                   onChange={(e) => setEditValues((prev) => ({ ...prev, money: Number.parseInt(e.target.value, 10) || 0 }))}
-                  className="h-9 bg-transparent border-green-500/30 focus-visible:ring-green-500/30 pl-8"
+                  className="h-9 bg-transparent border-success/30 focus-visible:ring-success/30 pl-8"
                   placeholder="Solde argent"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="relative">
-                  <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400/70 pointer-events-none" />
+                  <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-success/70 pointer-events-none" />
                   <Input
                     type="number"
                     min={0}
                     value={editMoneyAddAmount}
                     onChange={(e) => setEditMoneyAddAmount(Number.parseInt(e.target.value, 10) || 0)}
-                    className="h-9 bg-transparent border-emerald-500/30 focus-visible:ring-emerald-500/30 pl-8"
+                    className="h-9 bg-transparent border-success/30 focus-visible:ring-success/30 pl-8"
                     placeholder="Ajouter"
                   />
                 </div>
                 <div className="relative">
-                  <Minus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rose-400/70 pointer-events-none" />
+                  <Minus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-destructive/70 pointer-events-none" />
                   <Input
                     type="number"
                     min={0}
                     value={editMoneyRemoveAmount}
                     onChange={(e) => setEditMoneyRemoveAmount(Number.parseInt(e.target.value, 10) || 0)}
-                    className="h-9 bg-transparent border-rose-500/30 focus-visible:ring-rose-500/30 pl-8"
+                    className="h-9 bg-transparent border-destructive/30 focus-visible:ring-destructive/30 pl-8"
                     placeholder="Enlever"
                   />
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground">
                 Actuel: {baseEditMoney.toLocaleString()} • Base: {toSafeNumber(editValues.money).toLocaleString()} • Resultat:{' '}
-                <span className={cn(nextEditMoney < 0 ? 'text-rose-400' : 'text-green-300')}>
+                <span className={cn(nextEditMoney < 0 ? 'text-destructive' : 'text-success')}>
                   {nextEditMoney.toLocaleString()}
                 </span>
               </p>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-yellow-400 flex items-center gap-1">
+              <label className="text-xs font-medium text-warning flex items-center gap-1">
                 <CurrencyIcon type="money" className="h-3 w-3" />
                 AuraCoin
               </label>
@@ -265,7 +265,7 @@ export function EditUserModal({
                   step="0.01"
                   value={editValues.auraCoinBalance}
                   onChange={(e) => setEditValues((prev) => ({ ...prev, auraCoinBalance: parseFloat(e.target.value) || 0 }))}
-                  className="h-9 bg-transparent border-yellow-500/30 focus-visible:ring-yellow-500/30 pl-8"
+                  className="h-9 bg-transparent border-warning/30 focus-visible:ring-warning/30 pl-8"
                 />
               </div>
             </div>

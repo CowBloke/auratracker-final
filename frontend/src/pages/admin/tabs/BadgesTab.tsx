@@ -86,10 +86,10 @@ export function BadgesTab(props: BadgesTabProps) {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{badge.name}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
-                          badge.rarity === 'legendary' ? 'border-yellow-500/40 text-yellow-400' :
-                          badge.rarity === 'epic' ? 'border-purple-500/40 text-purple-400' :
-                          badge.rarity === 'rare' ? 'border-blue-500/40 text-blue-400' :
-                          badge.rarity === 'uncommon' ? 'border-green-500/40 text-green-400' :
+                          badge.rarity === 'legendary' ? 'border-warning/40 text-warning' :
+                          badge.rarity === 'epic' ? 'border-border/40 text-primary' :
+                          badge.rarity === 'rare' ? 'border-border/40 text-primary' :
+                          badge.rarity === 'uncommon' ? 'border-success/40 text-success' :
                           'border-border/40 text-muted-foreground'
                         }`}>{badge.rarity}</span>
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">{badge.category}</span>

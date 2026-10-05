@@ -71,15 +71,15 @@ export function getLoanStatusLabel(status: string) {
 export function getLoanStatusPillColor(status: string) {
   switch (status) {
     case 'PENDING':
-      return 'bg-sky-400/15 text-sky-300';
+      return 'bg-muted/15 text-primary';
     case 'ACTIVE':
-      return 'bg-amber-400/15 text-amber-300';
+      return 'bg-warning/15 text-warning';
     case 'REPAID':
-      return 'bg-emerald-400/15 text-emerald-300';
+      return 'bg-success/15 text-success';
     case 'DEFAULTED':
-      return 'bg-rose-400/15 text-rose-300';
+      return 'bg-destructive/15 text-destructive';
     case 'REJECTED':
-      return 'bg-zinc-400/20 text-zinc-300';
+      return 'bg-secondary/20 text-muted-foreground';
     default:
       return 'bg-muted/30 text-muted-foreground';
   }

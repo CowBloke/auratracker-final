@@ -25,7 +25,7 @@ export const TONES: Record<AppModalTone, { fg: string; bg: string; ring: string 
   green:   { fg: '#4ade80', bg: 'rgba(74,222,128,0.13)',  ring: 'rgba(74,222,128,0.32)'  },
   red:     { fg: '#f87171', bg: 'rgba(248,113,113,0.14)', ring: 'rgba(248,113,113,0.34)' },
   blue:    { fg: '#60a5fa', bg: 'rgba(96,165,250,0.13)',  ring: 'rgba(96,165,250,0.32)'  },
-  neutral: { fg: 'hsl(var(--foreground))', bg: 'hsl(var(--muted))', ring: 'hsl(var(--border))' },
+  neutral: { fg: 'var(--foreground)', bg: 'var(--muted)', ring: 'var(--border)' },
 };
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ function AppModalRoot({
           )}
           style={{
             boxShadow:
-              '0 24px 60px -20px rgba(0,0,0,0.4), 0 0 0 1px hsl(var(--border) / 0.5) inset',
+              '0 24px 60px -20px rgba(0,0,0,0.4), 0 0 0 1px color-mix(in oklab, var(--border) 50%, transparent) inset',
           }}
         >
           {accentColor && (
@@ -535,7 +535,7 @@ function AppModalChip({ children, tone = 'neutral', active, onClick, icon }: App
           : {
               background: 'transparent',
               color: 'var(--muted-foreground)',
-              boxShadow: 'inset 0 0 0 1px hsl(var(--border))',
+              boxShadow: 'inset 0 0 0 1px var(--border)',
             }
       }
     >
@@ -566,7 +566,7 @@ function AppModalToggle({ on, onChange, tone = 'aura' }: AppModalToggleProps) {
       style={{
         width: 32,
         height: 18,
-        background: on ? t.fg : 'hsl(var(--input))',
+        background: on ? t.fg : 'var(--input)',
       }}
     >
       <div
@@ -637,11 +637,11 @@ function AppModalButton({
 
   let bg = 'transparent';
   let color = 'var(--muted-foreground)';
-  let boxShadow = 'inset 0 0 0 1px hsl(var(--border))';
+  let boxShadow = 'inset 0 0 0 1px var(--border)';
 
   if (variant === 'solid') {
-    bg = tone === 'neutral' ? 'hsl(var(--foreground))' : t.fg;
-    color = 'hsl(var(--background))';
+    bg = tone === 'neutral' ? 'var(--foreground)' : t.fg;
+    color = 'var(--background)';
     boxShadow = 'none';
   } else if (variant === 'soft') {
     bg = t.bg;
@@ -650,7 +650,7 @@ function AppModalButton({
   } else if (variant === 'ghost') {
     bg = 'transparent';
     color = 'var(--muted-foreground)';
-    boxShadow = 'inset 0 0 0 1px hsl(var(--border))';
+    boxShadow = 'inset 0 0 0 1px var(--border)';
   } else if (variant === 'outline') {
     bg = 'transparent';
     color = t.fg;

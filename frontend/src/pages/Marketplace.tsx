@@ -1,17 +1,7 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  BellRing,
-  CheckCircle2,
-  ChevronRight,
-  Loader2,
-  Package,
-  Search,
-  Tag,
-  TrendingUp,
-  X,
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowDownRight, ArrowUpRight, BellRing, CheckCircle2, Package, Search, Tag, TrendingUp, X } from 'lucide-react';
+import { Area, AreaChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import {
   marketplaceApi,
@@ -20,30 +10,28 @@ import {
   type MarketplaceProductStats,
   type MarketplaceProductStatsPoint,
 } from '../services/api';
-import { PageShell } from '@/components/layout/PageShell';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { DoodleJumpSkinPreview } from '@/components/shop/DoodleJumpSkinPreview';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from '@/components/ui/item';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { toast } from 'sonner';
-import { GridSkeleton } from '@/components/ui/loading-skeletons';
-
-// ── Canvas constants ─────────────────────────────────────
-const DJ_COLORS = {
-  background: '#0a0a0a',
-  platformNormal: '#e5e7eb',
-  platformBounce: '#7c3aed',
-  platformMoving: '#9ca3af',
-};
-const PW = 80;
-const PH = 15;
 
 // ── Types ────────────────────────────────────────────────
 interface InventoryItem {
@@ -95,8 +83,8 @@ function formatEvolution(value: number | null) {
 
 function evolutionTone(value: number | null) {
   if (value === null) return 'text-muted-foreground';
-  if (value > 0) return 'text-emerald-600 dark:text-emerald-400';
-  if (value < 0) return 'text-rose-600 dark:text-rose-400';
+  if (value > 0) return 'text-success';
+  if (value < 0) return 'text-destructive';
   return 'text-muted-foreground';
 }
 
@@ -113,12 +101,12 @@ function getStatusLabel(status: MarketplaceListing['status']) {
   }
 }
 
-function statusTone(status: MarketplaceListing['status']) {
+function statusVariant(status: MarketplaceListing['status']): 'success' | 'secondary' | 'warning' | 'outline' {
   switch (status) {
-    case 'ACTIVE': return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20';
-    case 'SOLD': return 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20';
-    case 'CANCELLED': return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20';
-    default: return 'bg-muted text-muted-foreground';
+    case 'ACTIVE': return 'success';
+    case 'SOLD': return 'secondary';
+    case 'CANCELLED': return 'warning';
+    default: return 'outline';
   }
 }
 
@@ -142,208 +130,94 @@ function getSkinImageUrl(effect?: string | null): string | null {
   return null;
 }
 
-// ── DoodleJump canvas preview ────────────────────────────
-function drawPlatform(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
-  const r = 5;
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + PW - r, y);
-  ctx.arcTo(x + PW, y, x + PW, y + PH, r);
-  ctx.lineTo(x + PW, y + PH);
-  ctx.arcTo(x + PW, y + PH, x, y + PH, r);
-  ctx.lineTo(x + r, y + PH);
-  ctx.arcTo(x, y + PH, x, y, r);
-  ctx.arcTo(x, y, x + PW, y, r);
-  ctx.closePath();
-  ctx.fill();
-}
 
-function DoodleJumpSkinPreview({ skinImageUrl, className, height }: { skinImageUrl: string; className?: string; height?: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const CW = 400;
-  const CH = 220;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    const draw = (skinImg: HTMLImageElement | null) => {
-      ctx.fillStyle = DJ_COLORS.background;
-      ctx.fillRect(0, 0, CW, CH);
-      ctx.strokeStyle = 'rgba(255,255,255,0.025)';
-      ctx.lineWidth = 1;
-      for (let x = 0; x < CW; x += 32) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CH); ctx.stroke();
-      }
-      const platY1 = CH - 28, platY2 = CH - 90, platY3 = CH - 152;
-      const p1x = 40, p2x = CW / 2 - PW / 2, p3x = CW - 40 - PW;
-      drawPlatform(ctx, p1x, platY1, DJ_COLORS.platformNormal);
-      drawPlatform(ctx, p2x, platY2, DJ_COLORS.platformBounce);
-      drawPlatform(ctx, p3x, platY3, DJ_COLORS.platformMoving);
-      ctx.setLineDash([4, 6]);
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(p2x + PW / 2, platY2);
-      ctx.quadraticCurveTo((p2x + PW / 2 + p3x + PW / 2) / 2, Math.min(platY2, platY3) - 50, p3x + PW / 2, platY3);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      const charSize = 70;
-      const charX = p2x + PW / 2 - charSize / 2;
-      const charY = platY2 - charSize;
-      if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
-        ctx.drawImage(skinImg, charX, charY, charSize, charSize);
-      } else {
-        ctx.fillStyle = '#374151';
-        ctx.beginPath();
-        ctx.arc(p2x + PW / 2, platY2 - charSize / 2, charSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.font = 'bold 11px monospace';
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.textAlign = 'right';
-      ctx.fillText('Doodle Jump', CW - 12, 18);
-      ctx.textAlign = 'left';
-    };
-
-    draw(null);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => draw(img);
-    img.src = resolveImageUrl(skinImageUrl);
-  }, [skinImageUrl]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={CW}
-      height={CH}
-      className={cn('w-full', className)}
-      style={{ display: 'block', height: height ?? '180px' }}
-    />
-  );
-}
+const priceChartConfig = { price: { label: 'Prix moyen', color: 'var(--chart-1)' } } satisfies ChartConfig;
 
 // ── Price history chart ───────────────────────────────────
 function PriceHistoryChart({ timeline }: { timeline: MarketplaceProductStatsPoint[] }) {
-  const values = timeline.map((p) => p.averageUnitPrice).filter((v): v is number => v !== null);
+  const hasData = timeline.some((point) => point.averageUnitPrice !== null);
 
-  if (values.length === 0) {
+  if (!hasData) {
     return (
-      <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-border/60 text-xs text-muted-foreground">
-        Pas de ventes enregistrées sur 30 jours
-      </div>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyDescription>Pas de ventes enregistrées sur 30 jours.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const W = 460, H = 120;
-  const PAD = { top: 14, right: 12, bottom: 24, left: 52 };
-  const plotW = W - PAD.left - PAD.right;
-  const plotH = H - PAD.top - PAD.bottom;
-
-  const pts = timeline.map((point, i) => {
-    const x = PAD.left + (i / Math.max(timeline.length - 1, 1)) * plotW;
-    const fallback = values[values.length - 1] ?? 0;
-    const v = point.averageUnitPrice ?? fallback;
-    const y = PAD.top + (1 - (v - min) / range) * plotH;
-    return { x, y, hasData: point.averageUnitPrice !== null };
-  });
-
-  const linePoints = pts.map((p) => `${p.x},${p.y}`).join(' ');
-  const areaPoints = `${pts[0].x},${H - PAD.bottom} ${linePoints} ${pts[pts.length - 1].x},${H - PAD.bottom}`;
+  const data = timeline.map((point) => ({ date: point.date, price: point.averageUnitPrice }));
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: '120px' }}>
-      <defs>
-        <linearGradient id="price-grad" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      {[0, 0.5, 1].map((t) => {
-        const y = PAD.top + t * plotH;
-        return (
-          <g key={t}>
-            <line x1={PAD.left} y1={y} x2={PAD.left + plotW} y2={y} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" />
-            <text x={PAD.left - 5} y={y + 4} textAnchor="end" fontSize="8" fill="currentColor" fillOpacity="0.4" fontFamily="monospace">
-              {formatMoney(Math.round(max - t * range))}
-            </text>
-          </g>
-        );
-      })}
-      <polygon points={areaPoints} fill="url(#price-grad)" />
-      <polyline fill="none" stroke="#f59e0b" strokeWidth="1.75" strokeLinejoin="round" points={linePoints} />
-      {pts.filter((p) => p.hasData).map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#f59e0b" />
-      ))}
-      {timeline.length > 1 && (
-        <>
-          <text x={PAD.left} y={H - 6} fontSize="8" fill="currentColor" fillOpacity="0.4" fontFamily="monospace">
-            {new Date(timeline[0].date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-          </text>
-          <text x={PAD.left + plotW} y={H - 6} textAnchor="end" fontSize="8" fill="currentColor" fillOpacity="0.4" fontFamily="monospace">
-            {new Date(timeline[timeline.length - 1].date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-          </text>
-        </>
-      )}
-    </svg>
+    <ChartContainer config={priceChartConfig} className="h-32 w-full">
+      <AreaChart data={data} margin={{ left: 4, right: 4, top: 8 }}>
+        <CartesianGrid vertical={false} />
+        <XAxis
+          dataKey="date"
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => new Date(value).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+          minTickGap={32}
+        />
+        <YAxis width={48} tickLine={false} axisLine={false} tickFormatter={(value) => formatMoney(Math.round(value))} />
+        <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatMoney(Math.round(Number(value)))} />} />
+        <Area dataKey="price" type="monotone" stroke="var(--color-price)" fill="var(--color-price)" fillOpacity={0.2} connectNulls />
+      </AreaChart>
+    </ChartContainer>
   );
 }
 
 // ── Sparkline (stats tab) ────────────────────────────────
 function MarketplaceTrendSparkline({ timeline }: { timeline: MarketplaceProductStats['timeline'] }) {
-  const values = timeline.map((p) => p.averageUnitPrice).filter((v): v is number => v !== null);
-  if (values.length === 0) {
-    return (
-      <div className="flex h-14 items-center justify-center rounded-md border border-dashed border-border/60 text-xs text-muted-foreground">
-        Pas de ventes sur 30 jours
-      </div>
-    );
+  if (!timeline.some((point) => point.averageUnitPrice !== null)) {
+    return <p className="text-xs text-muted-foreground">Pas de ventes sur 30 jours.</p>;
   }
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const points = timeline.map((point, index) => {
-    const x = (index / Math.max(timeline.length - 1, 1)) * 100;
-    const fallback = values[values.length - 1] ?? 0;
-    const v = point.averageUnitPrice ?? fallback;
-    const normalized = max === min ? 0.5 : (v - min) / (max - min);
-    return `${x},${100 - normalized * 100}`;
-  }).join(' ');
 
   return (
-    <div className="h-14 w-full rounded-md border border-border/60 bg-muted/20 px-2 py-1">
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
-        <polyline fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-600 dark:text-amber-400" points={points} />
-      </svg>
-    </div>
+    <ChartContainer config={priceChartConfig} className="h-14 w-full">
+      <LineChart data={timeline.map((point) => ({ date: point.date, price: point.averageUnitPrice }))}>
+        <Line dataKey="price" type="monotone" stroke="var(--color-price)" strokeWidth={2} dot={false} connectNulls />
+      </LineChart>
+    </ChartContainer>
   );
 }
 
 // ── Item thumbnail ────────────────────────────────────────
-function ItemThumb({ item, size = 'md' }: { item: MarketplaceListingItem; size?: 'sm' | 'md' | 'lg' }) {
+function ItemThumb({ item }: { item: MarketplaceListingItem }) {
   const skinImageUrl = getSkinImageUrl(item.effect);
   const imageUrl = item.imageUrl ? resolveImageUrl(item.imageUrl) : null;
-  const dim = size === 'sm' ? 'h-10 w-10' : size === 'lg' ? 'h-20 w-20' : 'h-12 w-12';
 
   return (
-    <div className={cn(dim, 'shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted/30')}>
+    <ItemMedia variant={skinImageUrl || imageUrl ? 'image' : 'icon'}>
       {skinImageUrl ? (
         <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
       ) : imageUrl ? (
-        <img src={imageUrl} alt={item.name} className="h-full w-full object-cover" />
+        <img src={imageUrl} alt={item.name} />
       ) : (
-        <div className="flex h-full items-center justify-center">
-          <Package className="h-4 w-4 text-muted-foreground/40" />
-        </div>
+        <Package />
       )}
+    </ItemMedia>
+  );
+}
+
+function SellerAvatar({ seller }: { seller: MarketplaceListing['seller'] }) {
+  return (
+    <Avatar className="size-6">
+      {seller.profilePicture ? <AvatarImage src={resolveImageUrl(seller.profilePicture)} alt={seller.username} /> : null}
+      <AvatarFallback className="text-xs">{seller.username.slice(0, 1).toUpperCase()}</AvatarFallback>
+    </Avatar>
+  );
+}
+
+function StatTile({ label, value, tone, icon }: { label: string; value: string; tone?: string; icon?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border p-3">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={cn('flex items-center gap-1 text-sm font-semibold tabular-nums', tone)}>
+        {icon}
+        {value}
+      </span>
     </div>
   );
 }
@@ -368,141 +242,141 @@ function ItemDetailModal({
 }) {
   const effectLabel = parseEffectLabel(listing.item.effect);
   const isOwner = currentUserId === listing.sellerId;
+  const evolution = stat?.priceEvolutionPct30d ?? null;
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
-        <div className="flex gap-4 p-5 pb-4">
-          <ItemThumb item={listing.item} size="lg" />
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="secondary" className="border-border/60 bg-background text-[11px]">
-                {getTypeLabel(listing.item.type)}
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">{getTypeLabel(listing.item.type)}</Badge>
+            {effectLabel ? (
+              <Badge variant="outline">
+                <Tag />
+                {effectLabel}
               </Badge>
-              {effectLabel ? (
-                <Badge variant="outline" className="gap-1 text-[11px]">
-                  <Tag className="h-3 w-3" />
-                  {effectLabel}
-                </Badge>
-              ) : null}
-            </div>
-            <h2 className="text-base font-bold leading-tight">{listing.item.name}</h2>
-            <p className="line-clamp-2 text-xs text-muted-foreground">{listing.item.description}</p>
+            ) : null}
           </div>
-        </div>
+          <DialogTitle>{listing.item.name}</DialogTitle>
+          <DialogDescription>{listing.item.description}</DialogDescription>
+        </DialogHeader>
 
-        <Tabs defaultValue="listing" className="border-t border-border/60">
-          <TabsList className="grid h-10 w-full grid-cols-3 rounded-none border-b border-border/60 bg-muted/20 p-0">
-            {(['listing', 'others', 'trend'] as const).map((v, i) => (
-              <TabsTrigger
-                key={v}
-                value={v}
-                className={cn(
-                  'h-10 rounded-none text-xs data-[state=active]:bg-background data-[state=active]:shadow-none',
-                  i < 2 && 'border-r border-border/60',
-                )}
-              >
-                {v === 'listing' ? 'Cette annonce' : v === 'others' ? (
-                  <>Autres offres{otherListings.length > 0 ? <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums">{otherListings.length}</span> : null}</>
-                ) : 'Tendance 30j'}
-              </TabsTrigger>
-            ))}
+        <Tabs defaultValue="listing" className="gap-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="listing">Cette annonce</TabsTrigger>
+            <TabsTrigger value="others">
+              Autres offres
+              {otherListings.length > 0 ? <Badge variant="secondary">{otherListings.length}</Badge> : null}
+            </TabsTrigger>
+            <TabsTrigger value="trend">Tendance 30j</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="listing" className="mt-0 space-y-3 p-5">
-            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-              <Avatar className="h-8 w-8 shrink-0">
-                {listing.seller.profilePicture ? <AvatarImage src={resolveImageUrl(listing.seller.profilePicture)} alt={listing.seller.username} /> : null}
-                <AvatarFallback className="bg-background text-xs font-medium">{listing.seller.username.slice(0, 1).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-muted-foreground">Vendeur</p>
-                <p className="truncate text-sm font-medium" style={listing.seller.usernameColor ? { color: listing.seller.usernameColor } : undefined}>{listing.seller.username}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[11px] text-muted-foreground">Publié</p>
-                <p className="text-xs font-medium">{formatRelativeDate(listing.createdAt)}</p>
-              </div>
-            </div>
+          <TabsContent value="listing" className="flex flex-col gap-4">
+            <Item variant="outline" size="sm">
+              <ItemMedia>
+                <SellerAvatar seller={listing.seller} />
+              </ItemMedia>
+              <ItemContent>
+                <ItemDescription>Vendeur</ItemDescription>
+                <ItemTitle style={listing.seller.usernameColor ? { color: listing.seller.usernameColor } : undefined}>
+                  {listing.seller.username}
+                </ItemTitle>
+              </ItemContent>
+              <ItemActions>
+                <span className="text-xs text-muted-foreground">Publié {formatRelativeDate(listing.createdAt)}</span>
+              </ItemActions>
+            </Item>
             <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Prix / unité', value: formatMoney(listing.unitPrice) },
-                { label: 'Quantité', value: `x${listing.quantity}` },
-                { label: 'Total', value: formatMoney(listing.totalPrice) },
-              ].map(({ label, value }) => (
-                <div key={label} className="rounded-lg border border-border/60 bg-muted/20 p-3 text-center">
-                  <p className="text-[11px] text-muted-foreground">{label}</p>
-                  <p className="mt-1 text-sm font-bold tabular-nums">{value}</p>
-                </div>
-              ))}
+              <StatTile label="Prix / unité" value={formatMoney(listing.unitPrice)} />
+              <StatTile label="Quantité" value={`x${listing.quantity}`} />
+              <StatTile label="Total" value={formatMoney(listing.totalPrice)} />
             </div>
             {isOwner ? (
-              <div className="rounded-lg border border-border/60 bg-muted/10 px-4 py-3 text-center text-sm text-muted-foreground">C'est votre annonce</div>
+              <p className="text-center text-sm text-muted-foreground">C&apos;est votre annonce.</p>
             ) : (
-              <Button className="w-full" onClick={() => onBuy(listing)} disabled={!!buyingListingId}>
-                {buyingListingId === listing.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              <Button onClick={() => onBuy(listing)} disabled={!!buyingListingId}>
+                {buyingListingId === listing.id ? <Spinner /> : null}
                 Acheter · {formatMoney(listing.totalPrice)}
               </Button>
             )}
           </TabsContent>
 
-          <TabsContent value="others" className="mt-0">
+          <TabsContent value="others">
             {otherListings.length === 0 ? (
-              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">Aucune autre offre pour cet objet.</div>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyDescription>Aucune autre offre pour cet objet.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
-              <ScrollArea className="h-56">
-                <div className="space-y-0">
-                  {otherListings.map((other, idx) => {
+              <ScrollArea className="h-60">
+                <ItemGroup>
+                  {otherListings.map((other, index) => {
                     const isMine = currentUserId === other.sellerId;
-                    const busy = buyingListingId === other.id;
                     return (
-                      <div key={other.id} className={cn('flex items-center gap-3 px-4 py-3 text-sm', idx !== 0 && 'border-t border-border/50')}>
-                        <Avatar className="h-7 w-7 shrink-0">
-                          {other.seller.profilePicture ? <AvatarImage src={resolveImageUrl(other.seller.profilePicture)} alt={other.seller.username} /> : null}
-                          <AvatarFallback className="bg-background text-xs font-medium">{other.seller.username.slice(0, 1).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium" style={other.seller.usernameColor ? { color: other.seller.usernameColor } : undefined}>{other.seller.username}</span>
-                        <span className="shrink-0 text-xs text-muted-foreground">x<span className="font-medium text-foreground">{other.quantity}</span></span>
-                        <span className="w-20 shrink-0 text-right text-sm font-semibold tabular-nums">{formatMoney(other.unitPrice)}</span>
-                        {!isMine ? (
-                          <Button size="sm" variant="outline" className="shrink-0" onClick={() => onBuy(other)} disabled={!!buyingListingId}>
-                            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Acheter'}
-                          </Button>
-                        ) : <Badge variant="outline" className="shrink-0 text-[10px]">Vous</Badge>}
+                      <div key={other.id}>
+                        {index > 0 ? <ItemSeparator /> : null}
+                        <Item size="sm">
+                          <ItemMedia>
+                            <SellerAvatar seller={other.seller} />
+                          </ItemMedia>
+                          <ItemContent>
+                            <ItemTitle style={other.seller.usernameColor ? { color: other.seller.usernameColor } : undefined}>
+                              {other.seller.username}
+                            </ItemTitle>
+                            <ItemDescription>
+                              x{other.quantity} · {formatMoney(other.unitPrice)} / u.
+                            </ItemDescription>
+                          </ItemContent>
+                          <ItemActions>
+                            {isMine ? (
+                              <Badge variant="outline">Vous</Badge>
+                            ) : (
+                              <Button size="sm" variant="outline" onClick={() => onBuy(other)} disabled={!!buyingListingId}>
+                                {buyingListingId === other.id ? <Spinner /> : 'Acheter'}
+                              </Button>
+                            )}
+                          </ItemActions>
+                        </Item>
                       </div>
                     );
                   })}
-                </div>
+                </ItemGroup>
               </ScrollArea>
             )}
           </TabsContent>
 
-          <TabsContent value="trend" className="mt-0 space-y-3 p-5">
+          <TabsContent value="trend" className="flex flex-col gap-4">
             {stat ? (
               <>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: 'Prix moyen 30j', value: stat.averageUnitPrice30d === null ? 'N/A' : formatMoney(Math.round(stat.averageUnitPrice30d)) },
-                    { label: 'Évolution 30j', value: formatEvolution(stat.priceEvolutionPct30d), tone: evolutionTone(stat.priceEvolutionPct30d), icon: (stat.priceEvolutionPct30d ?? 0) > 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : (stat.priceEvolutionPct30d ?? 0) < 0 ? <ArrowDownRight className="h-3.5 w-3.5" /> : null },
-                    { label: 'Offre la plus basse', value: stat.lowestOffer === null ? 'Aucune' : formatMoney(stat.lowestOffer) },
-                    { label: 'Ventes 30j', value: `${stat.soldUnits30d.toLocaleString('fr-FR')} u.` },
-                  ].map(({ label, value, tone, icon }) => (
-                    <div key={label} className="rounded-lg border border-border/60 bg-muted/20 p-2.5">
-                      <p className="text-[11px] text-muted-foreground">{label}</p>
-                      <p className={cn('mt-0.5 flex items-center gap-1 text-sm font-semibold', tone)}>{icon}{value}</p>
-                    </div>
-                  ))}
+                  <StatTile
+                    label="Prix moyen 30j"
+                    value={stat.averageUnitPrice30d === null ? 'N/A' : formatMoney(Math.round(stat.averageUnitPrice30d))}
+                  />
+                  <StatTile
+                    label="Évolution 30j"
+                    value={formatEvolution(evolution)}
+                    tone={evolutionTone(evolution)}
+                    icon={(evolution ?? 0) > 0 ? <ArrowUpRight className="size-3.5" /> : (evolution ?? 0) < 0 ? <ArrowDownRight className="size-3.5" /> : null}
+                  />
+                  <StatTile label="Offre la plus basse" value={stat.lowestOffer === null ? 'Aucune' : formatMoney(stat.lowestOffer)} />
+                  <StatTile label="Ventes 30j" value={`${stat.soldUnits30d.toLocaleString('fr-FR')} u.`} />
                 </div>
-                <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2">
-                  <div className="mb-1.5 flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-amber-500" />
-                    <span className="text-xs font-medium text-muted-foreground">Prix moyen journalier</span>
-                  </div>
+                <div className="flex flex-col gap-2">
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <TrendingUp className="size-4" />
+                    Prix moyen journalier
+                  </span>
                   <PriceHistoryChart timeline={stat.timeline} />
                 </div>
               </>
             ) : (
-              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">Aucune donnée disponible pour cet objet.</div>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyDescription>Aucune donnée disponible pour cet objet.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
           </TabsContent>
         </Tabs>
@@ -511,77 +385,53 @@ function ItemDetailModal({
   );
 }
 
-// ── Market list row (items) ───────────────────────────────
-function MarketListRow({ listing, onClick }: { listing: MarketplaceListing; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex w-full items-center gap-3 border-b border-border/50 px-4 py-3 text-left last:border-0 transition-colors hover:bg-muted/30"
-    >
-      <ItemThumb item={listing.item} size="sm" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold leading-snug">{listing.item.name}</p>
-        <p className="text-xs text-muted-foreground">{getTypeLabel(listing.item.type)}</p>
-      </div>
-      <div className="hidden w-24 shrink-0 text-right sm:block">
-        <p className="text-sm font-bold tabular-nums">{formatMoney(listing.unitPrice)}</p>
-        <p className="text-[11px] text-muted-foreground">/ unité</p>
-      </div>
-      <div className="hidden min-w-0 w-32 shrink-0 md:flex md:items-center md:gap-2">
-        <Avatar className="h-6 w-6 shrink-0">
-          {listing.seller.profilePicture ? <AvatarImage src={resolveImageUrl(listing.seller.profilePicture)} alt={listing.seller.username} /> : null}
-          <AvatarFallback className="bg-muted text-[10px] font-medium">{listing.seller.username.slice(0, 1).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <span className="truncate text-xs font-medium" style={listing.seller.usernameColor ? { color: listing.seller.usernameColor } : undefined}>{listing.seller.username}</span>
-      </div>
-      <div className="hidden w-14 shrink-0 text-right lg:block">
-        <p className="text-sm font-medium tabular-nums">x{listing.quantity}</p>
-        <p className="text-[11px] text-muted-foreground">dispo</p>
-      </div>
-      <div className="hidden w-20 shrink-0 text-right xl:block">
-        <p className="text-xs text-muted-foreground">{formatRelativeDate(listing.createdAt)}</p>
-      </div>
-      <div className="shrink-0 text-right sm:hidden">
-        <p className="text-sm font-bold tabular-nums">{formatMoney(listing.unitPrice)}</p>
-      </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
-    </button>
-  );
-}
-
 // ── Inventory listing card (sell tab) ─────────────────────
 function InventoryListingCard({ item, selected, onSelect }: { item: InventoryItem; selected: boolean; onSelect: (item: InventoryItem) => void }) {
   const effectLabel = parseEffectLabel(item.item.effect);
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(item)}
-      className={cn('group w-full rounded-xl border p-3 text-left', selected ? 'border-primary/50 bg-primary/5 shadow-sm' : 'border-border/60 bg-card')}
-    >
-      <div className="flex gap-3">
-        <ItemThumb item={item.item} size="md" />
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{item.item.name}</p>
-              <p className="text-xs text-muted-foreground">{getTypeLabel(item.item.type)}</p>
-            </div>
-            <Badge variant="secondary" className="shrink-0 border-border/60 bg-background text-[11px]">x{item.quantity}</Badge>
-          </div>
-          <p className="line-clamp-2 text-xs text-muted-foreground">{item.item.description}</p>
+    <Item asChild variant={selected ? 'muted' : 'outline'} size="sm" className={cn(selected && 'border-primary')}>
+      <button type="button" aria-pressed={selected} onClick={() => onSelect(item)} className="text-left">
+        <ItemThumb item={item.item} />
+        <ItemContent>
+          <ItemTitle>
+            {item.item.name}
+            <Badge variant="secondary">x{item.quantity}</Badge>
+          </ItemTitle>
+          <ItemDescription>{getTypeLabel(item.item.type)}</ItemDescription>
           {effectLabel ? (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Tag className="h-3.5 w-3.5" />{effectLabel}
-            </div>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Tag className="size-3" />
+              {effectLabel}
+            </span>
           ) : null}
-        </div>
-      </div>
-    </button>
+        </ItemContent>
+      </button>
+    </Item>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────
+function GridLoading({ cards }: { cards: number }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: cards }, (_, index) => (
+        <Skeleton key={index} className="h-32" />
+      ))}
+    </div>
+  );
+}
+
+function EmptyBlock({ icon, title, description }: { icon?: React.ReactNode; title: string; description?: string }) {
+  return (
+    <Empty className="border">
+      <EmptyHeader>
+        {icon ? <EmptyMedia variant="icon">{icon}</EmptyMedia> : null}
+        <EmptyTitle>{title}</EmptyTitle>
+        {description ? <EmptyDescription>{description}</EmptyDescription> : null}
+      </EmptyHeader>
+    </Empty>
+  );
+}
+
 export default function Marketplace() {
   const { user, updateBalance } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -728,347 +578,395 @@ export default function Marketplace() {
     }
   };
 
+
   const selectedMaxQuantity = selectedInventoryItem?.quantity ?? 0;
-  const selectedInventorySkinImageUrl = getSkinImageUrl(selectedInventoryItem?.item.effect);
 
   return (
     <PageShell>
-      <div className="space-y-6">
-        <Tabs value={topTab} onValueChange={(v) => setTopTab(v as TopTab)} className="space-y-6">
-          <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
-            {([
-              { value: 'items', label: 'Objets' },
-              { value: 'sell', label: 'Vendre' },
-              { value: 'mine', label: 'Mes annonces' },
-            ] as const).map(({ value, label }) => (
-              <TabsTrigger key={value} value={value} className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-                {label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+      <PageHeader title="Marché" description="Achetez et vendez des objets entre joueurs." />
 
-          {/* ── ITEMS TAB ─────────────────────────────── */}
-          <TabsContent value="items" className="space-y-4">
-            {loading ? (
-              <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
-                <GridSkeleton cards={6} />
-              </div>
-            ) : (
-              <Tabs value={itemsSubTab} onValueChange={(v) => setItemsSubTab(v as ItemsSubTab)} className="space-y-4">
-                <TabsList className="h-auto border-border/60 bg-muted/20">
-                  {([
-                    { value: 'market', label: 'Marché' },
-                    { value: 'history', label: 'Historique ventes' },
-                    { value: 'stats', label: 'Tendances 30j' },
-                  ] as const).map(({ value, label }) => (
-                    <TabsTrigger key={value} value={value} className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-                      {label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+      <Tabs value={topTab} onValueChange={(value) => setTopTab(value as TopTab)} className="gap-6">
+        <TabsList>
+          <TabsTrigger value="items">Objets</TabsTrigger>
+          <TabsTrigger value="sell">Vendre</TabsTrigger>
+          <TabsTrigger value="mine">Mes annonces</TabsTrigger>
+        </TabsList>
 
-                {/* Market sub-tab */}
-                <TabsContent value="market" className="space-y-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap gap-2">
-                      {(Object.keys(TYPE_LABELS) as ItemTypeFilter[]).map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setTypeFilter(value)}
-                          className={cn(
-                            'rounded-full border px-3 py-1 text-sm transition-colors',
-                            typeFilter === value ? 'border-primary/60 bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground',
-                          )}
-                        >
-                          {TYPE_LABELS[value]}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher objet ou vendeur…" className="pl-9 sm:w-56" />
-                      </div>
-                      <Select value={sortMode} onValueChange={(v) => setSortMode(v as MarketplaceSortMode)}>
-                        <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Trier" /></SelectTrigger>
-                        <SelectContent>
-                          {SORT_OPTIONS.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+        {/* ── ITEMS TAB ─────────────────────────────── */}
+        <TabsContent value="items" className="flex flex-col gap-6">
+          {loading ? (
+            <GridLoading cards={6} />
+          ) : (
+            <Tabs value={itemsSubTab} onValueChange={(value) => setItemsSubTab(value as ItemsSubTab)} className="gap-6">
+              <TabsList>
+                <TabsTrigger value="market">Marché</TabsTrigger>
+                <TabsTrigger value="history">Historique ventes</TabsTrigger>
+                <TabsTrigger value="stats">Tendances 30j</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="market" className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <ToggleGroup
+                    type="single"
+                    variant="outline"
+                    value={typeFilter}
+                    onValueChange={(value) => value && setTypeFilter(value as ItemTypeFilter)}
+                    className="flex-wrap"
+                  >
+                    {(Object.keys(TYPE_LABELS) as ItemTypeFilter[]).map((value) => (
+                      <ToggleGroupItem key={value} value={value}>
+                        {TYPE_LABELS[value]}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <InputGroup className="sm:w-64">
+                      <InputGroupAddon>
+                        <Search />
+                      </InputGroupAddon>
+                      <InputGroupInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher objet ou vendeur…" />
+                    </InputGroup>
+                    <Select value={sortMode} onValueChange={(value) => setSortMode(value as MarketplaceSortMode)}>
+                      <SelectTrigger className="w-full sm:w-48">
+                        <SelectValue placeholder="Trier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SORT_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                </div>
 
-                  {filteredMarketListings.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-10 text-center">
-                      <BellRing className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
-                      <p className="text-sm text-muted-foreground">Aucune annonce ne correspond à ces filtres.</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-hidden rounded-xl border border-border/60 bg-card/80">
-                      <div className="hidden border-b border-border/60 bg-muted/30 px-4 py-2 sm:flex sm:items-center sm:gap-3">
-                        <div className="w-10 shrink-0" />
-                        <div className="min-w-0 flex-1 text-xs font-medium text-muted-foreground">Objet</div>
-                        <div className="hidden w-24 shrink-0 text-right text-xs font-medium text-muted-foreground sm:block">Prix</div>
-                        <div className="hidden w-32 shrink-0 text-xs font-medium text-muted-foreground md:block">Vendeur</div>
-                        <div className="hidden w-14 shrink-0 text-right text-xs font-medium text-muted-foreground lg:block">Qté</div>
-                        <div className="hidden w-20 shrink-0 text-right text-xs font-medium text-muted-foreground xl:block">Publié</div>
-                        <div className="w-4 shrink-0" />
-                      </div>
-                      {filteredMarketListings.map((listing) => (
-                        <MarketListRow key={listing.id} listing={listing} onClick={() => setSelectedListingId(listing.id)} />
-                      ))}
-                    </div>
-                  )}
-                  {filteredMarketListings.length > 0 && (
-                    <p className="text-right text-xs text-muted-foreground">{filteredMarketListings.length} annonce{filteredMarketListings.length > 1 ? 's' : ''}</p>
-                  )}
-                </TabsContent>
-
-                {/* History sub-tab */}
-                <TabsContent value="history" className="space-y-6">
-                  {sortedSalesHistoryListings.length === 0 ? (
-                    <Card><CardContent className="py-12 text-center text-muted-foreground">Aucune vente enregistrée pour le moment.</CardContent></Card>
-                  ) : (
-                    <div className="space-y-2">
-                      {sortedSalesHistoryListings.map((listing) => (
-                        <Card key={listing.id} className="border-border/60 bg-card/80 shadow-none">
-                          <CardContent className="flex items-center gap-3 py-3">
-                            <ItemThumb item={listing.item} size="md" />
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold">{listing.item.name}</div>
-                              <div className="mt-1 flex flex-wrap items-center gap-2">
-                                <Badge variant="secondary">Vendue</Badge>
-                                <span className="text-xs text-muted-foreground">Vendeur: {listing.seller.username}</span>
-                                <span className="text-xs text-muted-foreground">Achat vendeur: {formatMoney(listing.item.price)}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {listing.soldAt
-                                    ? `Vendue le ${new Date(listing.soldAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
-                                    : `Publiée le ${new Date(listing.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                {filteredMarketListings.length === 0 ? (
+                  <EmptyBlock icon={<BellRing />} title="Aucune annonce" description="Aucune annonce ne correspond à ces filtres." />
+                ) : (
+                  <Card className="py-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Objet</TableHead>
+                          <TableHead className="text-right">Prix</TableHead>
+                          <TableHead className="hidden md:table-cell">Vendeur</TableHead>
+                          <TableHead className="hidden text-right lg:table-cell">Qté</TableHead>
+                          <TableHead className="hidden text-right xl:table-cell">Publié</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredMarketListings.map((listing) => (
+                          <TableRow key={listing.id} className="cursor-pointer" onClick={() => setSelectedListingId(listing.id)}>
+                            <TableCell>
+                              <Item size="sm" className="p-0">
+                                <ItemThumb item={listing.item} />
+                                <ItemContent>
+                                  <ItemTitle>{listing.item.name}</ItemTitle>
+                                  <ItemDescription>{getTypeLabel(listing.item.type)}</ItemDescription>
+                                </ItemContent>
+                              </Item>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums">{formatMoney(listing.unitPrice)}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <span className="flex items-center gap-2">
+                                <SellerAvatar seller={listing.seller} />
+                                <span style={listing.seller.usernameColor ? { color: listing.seller.usernameColor } : undefined}>
+                                  {listing.seller.username}
                                 </span>
-                              </div>
+                              </span>
+                            </TableCell>
+                            <TableCell className="hidden text-right tabular-nums lg:table-cell">x{listing.quantity}</TableCell>
+                            <TableCell className="hidden text-right text-muted-foreground xl:table-cell">
+                              {formatRelativeDate(listing.createdAt)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                )}
+                {filteredMarketListings.length > 0 ? (
+                  <p className="text-right text-xs text-muted-foreground">
+                    {filteredMarketListings.length} annonce{filteredMarketListings.length > 1 ? 's' : ''}
+                  </p>
+                ) : null}
+              </TabsContent>
+
+              <TabsContent value="history">
+                {sortedSalesHistoryListings.length === 0 ? (
+                  <EmptyBlock title="Aucune vente" description="Aucune vente enregistrée pour le moment." />
+                ) : (
+                  <Card className="py-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Objet</TableHead>
+                          <TableHead className="hidden md:table-cell">Vendeur</TableHead>
+                          <TableHead className="hidden lg:table-cell">Date</TableHead>
+                          <TableHead className="text-right">Qté</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedSalesHistoryListings.map((listing) => (
+                          <TableRow key={listing.id}>
+                            <TableCell>
+                              <Item size="sm" className="p-0">
+                                <ItemThumb item={listing.item} />
+                                <ItemContent>
+                                  <ItemTitle>{listing.item.name}</ItemTitle>
+                                  <ItemDescription>Achat vendeur : {formatMoney(listing.item.price)}</ItemDescription>
+                                </ItemContent>
+                              </Item>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">{listing.seller.username}</TableCell>
+                            <TableCell className="hidden text-muted-foreground lg:table-cell">
+                              {new Date(listing.soldAt ?? listing.createdAt).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">{listing.quantity.toLocaleString('fr-FR')}</TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums">{formatMoney(listing.totalPrice)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="stats">
+                {marketStats.length === 0 ? (
+                  <EmptyBlock title="Aucune donnée" description="Aucune donnée marché disponible pour les 30 derniers jours." />
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {marketStats.map((stat) => {
+                      const evolution = stat.priceEvolutionPct30d;
+                      return (
+                        <Card key={stat.itemId}>
+                          <CardHeader>
+                            <Item size="sm" className="p-0">
+                              <ItemMedia variant={stat.imageUrl ? 'image' : 'icon'}>
+                                {stat.imageUrl ? <img src={resolveImageUrl(stat.imageUrl)} alt={stat.itemName} /> : <Package />}
+                              </ItemMedia>
+                              <ItemContent>
+                                <ItemTitle>{stat.itemName}</ItemTitle>
+                                <ItemDescription>
+                                  {getTypeLabel(stat.itemType)} · {stat.soldUnits30d.toLocaleString('fr-FR')} unités vendues
+                                </ItemDescription>
+                              </ItemContent>
+                            </Item>
+                          </CardHeader>
+                          <CardContent className="flex flex-col gap-4">
+                            <div className="grid grid-cols-2 gap-2">
+                              <StatTile label="Prix moyen 30j" value={stat.averageUnitPrice30d === null ? 'N/A' : formatMoney(stat.averageUnitPrice30d)} />
+                              <StatTile
+                                label="Évolution 30j"
+                                value={formatEvolution(evolution)}
+                                tone={evolutionTone(evolution)}
+                                icon={(evolution ?? 0) > 0 ? <ArrowUpRight className="size-3.5" /> : (evolution ?? 0) < 0 ? <ArrowDownRight className="size-3.5" /> : null}
+                              />
+                              <StatTile label="Offre la plus basse" value={stat.lowestOffer === null ? 'Aucune' : formatMoney(stat.lowestOffer)} />
+                              <StatTile label="Offre la plus haute" value={stat.highestOffer === null ? 'Aucune' : formatMoney(stat.highestOffer)} />
                             </div>
-                            <div className="shrink-0 text-right">
-                              <div className="text-xs text-muted-foreground">Quantité</div>
-                              <div className="text-lg font-bold tabular-nums">{listing.quantity.toLocaleString('fr-FR')}</div>
-                              <div className="mt-1 text-xs text-muted-foreground">Montant total</div>
-                              <div className="text-sm font-semibold tabular-nums">{formatMoney(listing.totalPrice)}</div>
-                            </div>
+                            <MarketplaceTrendSparkline timeline={stat.timeline} />
                           </CardContent>
                         </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+        </TabsContent>
+
+        {/* ── SELL TAB ──────────────────────────────── */}
+        <TabsContent value="sell">
+          {loading ? (
+            <GridLoading cards={6} />
+          ) : (
+            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Votre inventaire</CardTitle>
+                  <CardDescription>Sélectionnez l&apos;objet à vendre.</CardDescription>
+                  <Badge variant="secondary" className="w-fit">
+                    {inventory.length} objet{inventory.length > 1 ? 's' : ''}
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  {inventory.length === 0 ? (
+                    <EmptyBlock title="Inventaire vide" description="Aucun objet vendable dans votre inventaire." />
+                  ) : (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {inventory.map((item) => (
+                        <InventoryListingCard
+                          key={item.id}
+                          item={item}
+                          selected={selectedInventoryId === item.id}
+                          onSelect={(next) => setSelectedInventoryId(next.id)}
+                        />
                       ))}
                     </div>
                   )}
-                </TabsContent>
+                </CardContent>
+              </Card>
 
-                {/* Stats sub-tab */}
-                <TabsContent value="stats" className="space-y-6">
-                  {marketStats.length === 0 ? (
-                    <Card><CardContent className="py-12 text-center text-muted-foreground">Aucune donnée marché disponible pour les 30 derniers jours.</CardContent></Card>
+              <Card className="lg:sticky lg:top-20">
+                <CardHeader>
+                  <CardTitle>Créer une annonce</CardTitle>
+                  <CardDescription>L&apos;objet est retiré de l&apos;inventaire tant que l&apos;annonce reste active.</CardDescription>
+                </CardHeader>
+                {selectedInventoryItem ? (
+                  <>
+                    <CardContent className="flex flex-col gap-4">
+                      <Item variant="outline" size="sm">
+                        <ItemThumb item={selectedInventoryItem.item} />
+                        <ItemContent>
+                          <ItemTitle>
+                            {selectedInventoryItem.item.name}
+                            <Badge variant="secondary">{getTypeLabel(selectedInventoryItem.item.type)}</Badge>
+                          </ItemTitle>
+                          <ItemDescription>{selectedInventoryItem.item.description}</ItemDescription>
+                          <span className="text-xs text-muted-foreground">Prix de base : {formatMoney(selectedInventoryItem.item.price)}</span>
+                        </ItemContent>
+                      </Item>
+                      <FieldGroup className="sm:grid sm:grid-cols-2">
+                        <Field>
+                          <FieldLabel htmlFor="sell-quantity">Quantité</FieldLabel>
+                          <Input
+                            id="sell-quantity"
+                            type="number"
+                            min="1"
+                            max={selectedMaxQuantity}
+                            value={sellQuantity}
+                            onChange={(event) => setSellQuantity(event.target.value)}
+                          />
+                          <FieldDescription>Maximum disponible : {selectedMaxQuantity}</FieldDescription>
+                        </Field>
+                        <Field>
+                          <FieldLabel htmlFor="sell-price">Prix unitaire</FieldLabel>
+                          <Input id="sell-price" type="number" min="1" value={sellPrice} onChange={(event) => setSellPrice(event.target.value)} />
+                          <FieldDescription>
+                            Montant reçu : {formatMoney(Number.parseInt(sellPrice || '0', 10) * Number.parseInt(sellQuantity || '1', 10))}
+                          </FieldDescription>
+                        </Field>
+                      </FieldGroup>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedInventoryItem.quantity > 1
+                          ? 'Vous pouvez vendre une partie de votre pile ou la totalité.'
+                          : "Cet objet sera retiré de votre inventaire dès la mise en vente."}
+                      </p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button className="w-full" onClick={handleCreateListing} disabled={submittingListing}>
+                        {submittingListing ? <Spinner /> : <CheckCircle2 />}
+                        Mettre en vente
+                      </Button>
+                    </CardFooter>
+                  </>
+                ) : (
+                  <CardContent>
+                    <EmptyBlock title="Aucun objet sélectionné" description="Sélectionnez un objet dans votre inventaire pour préparer une annonce." />
+                  </CardContent>
+                )}
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── MINE TAB ──────────────────────────────── */}
+        <TabsContent value="mine">
+          {loading ? (
+            <GridLoading cards={4} />
+          ) : (
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Annonces actives</CardTitle>
+                  <CardDescription>Annulez ou gardez vos objets en vente.</CardDescription>
+                  <Badge variant="secondary" className="w-fit">
+                    {myActiveListings.length}
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  {myActiveListings.length === 0 ? (
+                    <EmptyBlock title="Aucune annonce" description="Aucune annonce active pour le moment." />
                   ) : (
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {marketStats.map((stat) => {
-                        const isPositive = (stat.priceEvolutionPct30d ?? 0) > 0;
-                        const isNegative = (stat.priceEvolutionPct30d ?? 0) < 0;
-                        return (
-                          <Card key={stat.itemId} className="border-border/60 bg-card/85 shadow-none">
-                            <CardContent className="space-y-4 p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/30">
-                                  {stat.imageUrl ? <img src={resolveImageUrl(stat.imageUrl)} alt={stat.itemName} className="h-full w-full object-cover" /> : <Package className="h-6 w-6 text-muted-foreground/50" />}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold">{stat.itemName}</p>
-                                  <div className="mt-1 flex items-center gap-2">
-                                    <Badge variant="secondary" className="border-border/60 bg-background text-[11px]">{getTypeLabel(stat.itemType)}</Badge>
-                                    <span className="text-xs text-muted-foreground">{stat.soldUnits30d.toLocaleString('fr-FR')} unités vendues</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3 text-sm">
-                                {[
-                                  { label: 'Prix moyen 30j', value: stat.averageUnitPrice30d === null ? 'N/A' : formatMoney(stat.averageUnitPrice30d) },
-                                  { label: 'Evolution 30j', value: formatEvolution(stat.priceEvolutionPct30d), extra: <>{isPositive ? <ArrowUpRight className="h-3.5 w-3.5" /> : null}{isNegative ? <ArrowDownRight className="h-3.5 w-3.5" /> : null}</>, tone: evolutionTone(stat.priceEvolutionPct30d) },
-                                  { label: 'Offre la plus basse', value: stat.lowestOffer === null ? 'Aucune' : formatMoney(stat.lowestOffer) },
-                                  { label: 'Offre la plus haute', value: stat.highestOffer === null ? 'Aucune' : formatMoney(stat.highestOffer) },
-                                ].map(({ label, value, extra, tone }) => (
-                                  <div key={label} className="rounded-lg border border-border/60 bg-background p-2">
-                                    <p className="text-xs text-muted-foreground">{label}</p>
-                                    <p className={cn('mt-1 flex items-center gap-1 font-semibold', tone)}>{extra}{value}</p>
-                                  </div>
-                                ))}
-                              </div>
-                              <MarketplaceTrendSparkline timeline={stat.timeline} />
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            )}
-          </TabsContent>
-
-          {/* ── SELL TAB ──────────────────────────────── */}
-          <TabsContent value="sell" className="space-y-4">
-            {loading ? (
-              <div className="rounded-2xl border border-border/60 bg-card/70 p-4"><GridSkeleton cards={6} /></div>
-            ) : (
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-                <Card className="border-border/60 bg-card/80 shadow-none">
-                  <CardContent className="space-y-4 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <h2 className="text-lg font-semibold tracking-tight">Ton inventaire</h2>
-                        <p className="text-sm text-muted-foreground">Sélectionne l'objet à vendre.</p>
-                      </div>
-                      <Badge variant="secondary" className="border-border/60 bg-background">{inventory.length} objet{inventory.length > 1 ? 's' : ''}</Badge>
-                    </div>
-                    {inventory.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">Aucun objet vendable dans ton inventaire.</div>
-                    ) : (
-                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        {inventory.map((item) => (
-                          <InventoryListingCard key={item.id} item={item} selected={selectedInventoryId === item.id} onSelect={(next) => setSelectedInventoryId(next.id)} />
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/60 bg-card/90 shadow-none lg:sticky lg:top-6">
-                  <CardContent className="space-y-5 p-4">
-                    <div className="space-y-1">
-                      <h2 className="text-lg font-semibold tracking-tight">Créer une annonce</h2>
-                      <p className="text-sm text-muted-foreground">Ton objet sera retiré de l'inventaire tant que l'annonce reste active.</p>
-                    </div>
-                    {selectedInventoryItem ? (
-                      <div className="space-y-4">
-                        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-background">
-                              {selectedInventorySkinImageUrl ? (
-                                <DoodleJumpSkinPreview skinImageUrl={selectedInventorySkinImageUrl} className="h-full" height="100%" />
-                              ) : selectedInventoryItem.item.imageUrl ? (
-                                <img src={resolveImageUrl(selectedInventoryItem.item.imageUrl)} alt={selectedInventoryItem.item.name} className="h-full w-full object-cover" />
-                              ) : (
-                                <Package className="h-6 w-6 text-muted-foreground/60" />
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1 space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="truncate text-base font-semibold">{selectedInventoryItem.item.name}</h3>
-                                <Badge variant="secondary" className="border-border/60 bg-background text-[11px]">{getTypeLabel(selectedInventoryItem.item.type)}</Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground">{selectedInventoryItem.item.description}</p>
-                              <p className="text-xs text-muted-foreground">Prix de base: {formatMoney(selectedInventoryItem.item.price)}</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Quantité</label>
-                            <Input type="number" min="1" max={selectedMaxQuantity} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} />
-                            <p className="text-xs text-muted-foreground">Maximum disponible: {selectedMaxQuantity}</p>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Prix unitaire</label>
-                            <Input type="number" min="1" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
-                            <p className="text-xs text-muted-foreground">Montant reçu: {formatMoney(Number.parseInt(sellPrice || '0', 10) * Number.parseInt(sellQuantity || '1', 10))}</p>
-                          </div>
-                        </div>
-                        <div className="rounded-xl border border-border/60 bg-background p-4 text-sm text-muted-foreground">
-                          {selectedInventoryItem.quantity > 1 ? 'Tu peux vendre une partie de ta pile ou la totalité.' : 'Cet objet sera retiré de ton inventaire dès la mise en vente.'}
-                        </div>
-                        <Button className="w-full" onClick={handleCreateListing} disabled={submittingListing}>
-                          {submittingListing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                          Mettre en vente
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 p-6 text-center text-sm text-muted-foreground">
-                        Sélectionne un objet dans ton inventaire pour préparer une annonce.
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* ── MINE TAB ──────────────────────────────── */}
-          <TabsContent value="mine" className="space-y-6">
-            {loading ? (
-              <div className="rounded-2xl border border-border/60 bg-card/70 p-4"><GridSkeleton cards={4} /></div>
-            ) : (
-              <div className="grid gap-6 xl:grid-cols-2">
-                <Card className="border-border/60 bg-card/80 shadow-none">
-                  <CardContent className="space-y-4 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <h2 className="text-lg font-semibold tracking-tight">Annonces actives</h2>
-                        <p className="text-sm text-muted-foreground">Annule ou garde tes objets en vente.</p>
-                      </div>
-                      <Badge variant="secondary" className="border-border/60 bg-background">{myActiveListings.length}</Badge>
-                    </div>
-                    {myActiveListings.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">Aucune annonce active pour le moment.</div>
-                    ) : (
-                      <div className="overflow-hidden rounded-lg border border-border/60">
-                        {myActiveListings.map((listing, idx) => {
-                          const busy = cancellingListingId === listing.id;
-                          return (
-                            <div key={listing.id} className={cn('flex items-center gap-3 px-4 py-3', idx !== 0 && 'border-t border-border/60')}>
-                              <ItemThumb item={listing.item} size="sm" />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">{listing.item.name}</p>
-                                <p className="text-xs text-muted-foreground">x{listing.quantity} · {formatMoney(listing.unitPrice)} / u.</p>
-                              </div>
-                              <Button variant="outline" size="sm" className="shrink-0" onClick={() => handleCancelListing(listing)} disabled={busy}>
-                                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                    <ItemGroup>
+                      {myActiveListings.map((listing, index) => (
+                        <div key={listing.id}>
+                          {index > 0 ? <ItemSeparator /> : null}
+                          <Item size="sm">
+                            <ItemThumb item={listing.item} />
+                            <ItemContent>
+                              <ItemTitle>{listing.item.name}</ItemTitle>
+                              <ItemDescription>
+                                x{listing.quantity} · {formatMoney(listing.unitPrice)} / u.
+                              </ItemDescription>
+                            </ItemContent>
+                            <ItemActions>
+                              <Button
+                                variant="outline"
+                                size="icon-sm"
+                                aria-label="Annuler l'annonce"
+                                onClick={() => handleCancelListing(listing)}
+                                disabled={cancellingListingId === listing.id}
+                              >
+                                {cancellingListingId === listing.id ? <Spinner /> : <X />}
                               </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                            </ItemActions>
+                          </Item>
+                        </div>
+                      ))}
+                    </ItemGroup>
+                  )}
+                </CardContent>
+              </Card>
 
-                <Card className="border-border/60 bg-card/80 shadow-none">
-                  <CardContent className="space-y-4 p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <h2 className="text-lg font-semibold tracking-tight">Historique</h2>
-                        <p className="text-sm text-muted-foreground">Retrouve les annonces déjà traitées.</p>
-                      </div>
-                      <Badge variant="secondary" className="border-border/60 bg-background">{myHistoryListings.length}</Badge>
-                    </div>
-                    {myHistoryListings.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">Tes annonces soldées ou annulées apparaîtront ici.</div>
-                    ) : (
-                      <div className="space-y-3">
-                        {myHistoryListings.map((listing) => (
-                          <div key={listing.id} className="flex items-center justify-between rounded-xl border border-border/60 bg-background p-4">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium">{listing.item.name}</p>
-                              <p className="text-xs text-muted-foreground">{listing.quantity} x {formatMoney(listing.unitPrice)}</p>
-                            </div>
-                            <Badge className={cn('border px-2 py-1 text-[11px] font-medium', statusTone(listing.status))}>{getStatusLabel(listing.status)}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Historique</CardTitle>
+                  <CardDescription>Retrouvez les annonces déjà traitées.</CardDescription>
+                  <Badge variant="secondary" className="w-fit">
+                    {myHistoryListings.length}
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  {myHistoryListings.length === 0 ? (
+                    <EmptyBlock title="Aucun historique" description="Vos annonces soldées ou annulées apparaîtront ici." />
+                  ) : (
+                    <ItemGroup>
+                      {myHistoryListings.map((listing, index) => (
+                        <div key={listing.id}>
+                          {index > 0 ? <ItemSeparator /> : null}
+                          <Item size="sm">
+                            <ItemContent>
+                              <ItemTitle>{listing.item.name}</ItemTitle>
+                              <ItemDescription>
+                                {listing.quantity} x {formatMoney(listing.unitPrice)}
+                              </ItemDescription>
+                            </ItemContent>
+                            <ItemActions>
+                              <Badge variant={statusVariant(listing.status)}>{getStatusLabel(listing.status)}</Badge>
+                            </ItemActions>
+                          </Item>
+                        </div>
+                      ))}
+                    </ItemGroup>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
-      {selectedListing && (
+      {selectedListing ? (
         <ItemDetailModal
           listing={selectedListing}
           otherListings={otherListings}
@@ -1078,7 +976,7 @@ export default function Marketplace() {
           onBuy={handleBuyListing}
           onClose={() => setSelectedListingId(null)}
         />
-      )}
+      ) : null}
     </PageShell>
   );
 }

@@ -193,12 +193,12 @@ const BUSINESS_TYPES_DATA = [
 ];
 
 const SKILLS_DATA = [
-  { label: 'Affaires',     color: 'text-emerald-400 bg-emerald-400/15', cost: 2500, how: 'Gérer et faire tourner ses entreprises', unlocks: '1 slot business par niveau' },
-  { label: 'Social',       color: 'text-purple-400 bg-purple-400/15',   cost: 1800, how: "Acheter des biens immobiliers via une agence", unlocks: 'Réseau social étendu' },
-  { label: 'Intelligence', color: 'text-sky-400 bg-sky-400/15',         cost: 2200, how: 'Acheter des formations dans un Centre de formation', unlocks: 'Accès aux opportunités avancées' },
-  { label: 'Charisme',     color: 'text-pink-400 bg-pink-400/15',       cost: 2000, how: 'Recevoir de l\'Aura sur le site', unlocks: 'Négociation renforcée' },
-  { label: 'Finance',      color: 'text-amber-400 bg-amber-400/15',     cost: 3000, how: 'Déposer de l\'argent en banque', unlocks: 'Meilleur rendement sur les investissements' },
-  { label: 'Illégalité',   color: 'text-rose-400 bg-rose-400/15',       cost: 0,    how: 'Activités illégales (non entraînable manuellement)', unlocks: 'Accès au marché noir' },
+  { label: 'Affaires',     color: 'text-success bg-success/15', cost: 2500, how: 'Gérer et faire tourner ses entreprises', unlocks: '1 slot business par niveau' },
+  { label: 'Social',       color: 'text-primary bg-muted/15',   cost: 1800, how: "Acheter des biens immobiliers via une agence", unlocks: 'Réseau social étendu' },
+  { label: 'Intelligence', color: 'text-primary bg-muted/15',         cost: 2200, how: 'Acheter des formations dans un Centre de formation', unlocks: 'Accès aux opportunités avancées' },
+  { label: 'Charisme',     color: 'text-primary bg-muted/15',       cost: 2000, how: 'Recevoir de l\'Aura sur le site', unlocks: 'Négociation renforcée' },
+  { label: 'Finance',      color: 'text-warning bg-warning/15',     cost: 3000, how: 'Déposer de l\'argent en banque', unlocks: 'Meilleur rendement sur les investissements' },
+  { label: 'Illégalité',   color: 'text-destructive bg-destructive/15',       cost: 0,    how: 'Activités illégales (non entraînable manuellement)', unlocks: 'Accès au marché noir' },
 ];
 
 function GuideSection({ title, children }: { title: string; children: import('react').ReactNode }) {
@@ -322,8 +322,8 @@ const youGuideSubsections: TutorialSubsection[] = [
                 </div>
                 <div className="grid grid-cols-3 gap-x-4 text-xs text-muted-foreground">
                   <span>Frais : <strong className="text-foreground">{b.fee.toLocaleString('fr-FR')} $</strong></span>
-                  <span>Revenu/mois : <strong className="text-emerald-400">{b.revenue.toLocaleString('fr-FR')} $</strong></span>
-                  {b.npc ? <span>Collect NPC : <strong className="text-lime-400">{b.npc} $ / 6 h</strong></span> : null}
+                  <span>Revenu/mois : <strong className="text-success">{b.revenue.toLocaleString('fr-FR')} $</strong></span>
+                  {b.npc ? <span>Collect NPC : <strong className="text-success">{b.npc} $ / 6 h</strong></span> : null}
                 </div>
               </div>
             ))}
@@ -342,22 +342,22 @@ const youGuideSubsections: TutorialSubsection[] = [
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                   <span>Frais : <strong className="text-foreground">{b.fee.toLocaleString('fr-FR')} $</strong></span>
-                  <span>Capital min : <strong className="text-amber-400">{b.minCap.toLocaleString('fr-FR')} $</strong></span>
+                  <span>Capital min : <strong className="text-warning">{b.minCap.toLocaleString('fr-FR')} $</strong></span>
                   {b.revenue > 0
-                    ? <span>Revenu/mois : <strong className="text-emerald-400">{b.revenue.toLocaleString('fr-FR')} $</strong></span>
+                    ? <span>Revenu/mois : <strong className="text-success">{b.revenue.toLocaleString('fr-FR')} $</strong></span>
                     : b.note ? <span className="text-muted-foreground/70 italic">{b.note}</span> : null
                   }
-                  {b.npc ? <span className="col-span-2 sm:col-span-1">Collect NPC : <strong className="text-lime-400">{b.npc} $ / 6 h</strong></span> : null}
+                  {b.npc ? <span className="col-span-2 sm:col-span-1">Collect NPC : <strong className="text-success">{b.npc} $ / 6 h</strong></span> : null}
                 </div>
               </div>
             ))}
           </div>
         </GuideSection>
         <GuideSection title="Niveau 3 — Banque">
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/5 px-4 py-3 space-y-2">
+          <div className="rounded-xl border border-success/30 bg-success/5 px-4 py-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">Banque</p>
-              <Badge variant="outline" className="text-xs border-emerald-400/40 text-emerald-400">Niveau 3</Badge>
+              <Badge variant="outline" className="text-xs border-success/40 text-success">Niveau 3</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               Frais de création : <strong className="text-foreground">10 000 $</strong> · Capital minimum : <strong className="text-foreground">0 $</strong>
@@ -541,11 +541,11 @@ const youGuideSubsections: TutorialSubsection[] = [
         <GuideSection title="Types de comptes">
           <div className="rounded-xl border border-border/40 overflow-hidden">
             <div className="px-4 py-3 space-y-1 border-b border-border/30">
-              <p className="text-xs font-semibold text-sky-400">Compte courant</p>
+              <p className="text-xs font-semibold text-primary">Compte courant</p>
               <p className="text-xs text-muted-foreground">Dépôt et retrait libres. Sert à stocker de l'argent hors de ton portefeuille principal. Les intérêts dépendent du taux de la banque.</p>
             </div>
             <div className="px-4 py-3 space-y-1">
-              <p className="text-xs font-semibold text-amber-400">Livret épargne</p>
+              <p className="text-xs font-semibold text-warning">Livret épargne</p>
               <p className="text-xs text-muted-foreground">Disponible uniquement si le propriétaire de la banque l'a activé. Fonctionne comme un compte courant mais avec un taux d'intérêt potentiellement différent.</p>
             </div>
           </div>
@@ -593,8 +593,8 @@ const youGuideSubsections: TutorialSubsection[] = [
             Un joueur marié peut initier une <strong>liaison</strong> avec un tiers. C'est risqué :
             le/la conjoint(e) peut activer une <strong>suspicion de tricherie</strong>.
           </p>
-          <div className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 space-y-2 mt-2">
-            <p className="text-xs font-semibold text-amber-300">Suspicion — deux issues possibles</p>
+          <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 space-y-2 mt-2">
+            <p className="text-xs font-semibold text-warning">Suspicion — deux issues possibles</p>
             <p className="text-xs text-muted-foreground">
               · Si la suspicion est <strong className="text-foreground">fondée</strong> (liaison réelle) :
               le/la conjoint(e) récupère <strong>tout l'argent du foyer</strong> et vous divorcez automatiquement.
@@ -685,14 +685,14 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
         <GuideSection title="Deux monnaies, deux rôles">
           <div className="rounded-xl border border-border/40 overflow-hidden">
             <div className="px-4 py-3 space-y-1 border-b border-border/30">
-              <p className="text-xs font-semibold text-amber-400">Aura ✦</p>
+              <p className="text-xs font-semibold text-warning">Aura ✦</p>
               <p className="text-xs text-muted-foreground">
                 Monnaie de prestige. Elle reflète ta réputation sur la plateforme. Tu peux en recevoir de la part d'autres joueurs,
                 en gagner via les jeux ou les quêtes. Tu peux en donner jusqu'à <strong className="text-foreground">100 par jour</strong>.
               </p>
             </div>
             <div className="px-4 py-3 space-y-1">
-              <p className="text-xs font-semibold text-emerald-400">Argent $</p>
+              <p className="text-xs font-semibold text-success">Argent $</p>
               <p className="text-xs text-muted-foreground">
                 Monnaie in-game. Sert à acheter, investir, créer des entreprises dans You, jouer au casino.
                 Tu démarres avec <strong className="text-foreground">1 000 $</strong> sur ton compte.
@@ -732,7 +732,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-xs font-semibold">{src}</p>
-                    {cap && <span className="text-[10px] text-amber-400 border border-amber-400/30 rounded px-1">Plafonné</span>}
+                    {cap && <span className="text-[10px] text-warning border border-warning/30 rounded px-1">Plafonné</span>}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>
                 </div>
@@ -952,8 +952,8 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     title: 'Impôts journaliers — attention !',
     content: (
       <div className="space-y-5">
-        <div className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 space-y-2">
-          <p className="text-xs font-semibold text-amber-300">À savoir avant de t'enrichir</p>
+        <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 space-y-2">
+          <p className="text-xs font-semibold text-warning">À savoir avant de t'enrichir</p>
           <p className="text-xs text-muted-foreground">
             Chaque nuit à <strong className="text-foreground">minuit (Paris)</strong>, si ton solde dépasse un certain seuil,
             un impôt est automatiquement prélevé. Par défaut, le seuil est à <strong className="text-foreground">10 000 $</strong> avec un taux de <strong className="text-foreground">1 % / jour</strong>.
@@ -1032,11 +1032,11 @@ const clanGuideSubsections: TutorialSubsection[] = [
         <GuideSection title="Public vs privé">
           <div className="rounded-xl border border-border/40 overflow-hidden">
             <div className="px-4 py-3 space-y-1 border-b border-border/30">
-              <p className="text-xs font-semibold text-emerald-400">Public</p>
+              <p className="text-xs font-semibold text-success">Public</p>
               <p className="text-xs text-muted-foreground">N'importe qui peut rejoindre directement sans accord du chef.</p>
             </div>
             <div className="px-4 py-3 space-y-1">
-              <p className="text-xs font-semibold text-amber-400">Privé</p>
+              <p className="text-xs font-semibold text-warning">Privé</p>
               <p className="text-xs text-muted-foreground">Les candidats envoient une demande. Le chef peut accepter ou refuser. Une notification est envoyée au chef à chaque nouvelle demande.</p>
             </div>
           </div>
@@ -1079,7 +1079,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
       <div className="space-y-5">
         <div className="rounded-xl border border-border/40 overflow-hidden">
           <div className="px-4 py-3 space-y-2 border-b border-border/30">
-            <p className="text-xs font-semibold text-amber-400">Chef (Leader)</p>
+            <p className="text-xs font-semibold text-warning">Chef (Leader)</p>
             <div className="space-y-0.5 text-xs text-muted-foreground">
               <p>· Déclarer les guerres de clans</p>
               <p>· Accepter / refuser les demandes d'adhésion</p>
@@ -1151,9 +1151,9 @@ const clanGuideSubsections: TutorialSubsection[] = [
         <GuideSection title="3 mini-jeux de guerre">
           <div className="space-y-2">
             {[
-              { icon: GraduationCap, color: 'text-sky-400 bg-sky-400/15',   title: 'Jeu mémoire (Support)',   desc: 'Résous des paires de cartes. Chaque partie réussie renforce les structures défensives de ton clan.',                                                   limit: '1 partie / jour' },
-              { icon: Swords,        color: 'text-rose-400 bg-rose-400/15', title: 'Bombardement (Attaque)',  desc: 'Fais tomber des bombes sur la grille ennemie pour marquer des points de combat. Les défenses adverses réduisent les dégâts.',                     limit: '1 attaque / jour' },
-              { icon: TrendingUp,    color: 'text-amber-400 bg-amber-400/15', title: 'Guerre navale (Attaque)', desc: 'Tire sur la grille adverse pour toucher des cibles cachées. Chaque touche rapporte des points. Le stock de tirs se reconstitue chaque jour.', limit: 'Tirs limités par période' },
+              { icon: GraduationCap, color: 'text-primary bg-muted/15',   title: 'Jeu mémoire (Support)',   desc: 'Résous des paires de cartes. Chaque partie réussie renforce les structures défensives de ton clan.',                                                   limit: '1 partie / jour' },
+              { icon: Swords,        color: 'text-destructive bg-destructive/15', title: 'Bombardement (Attaque)',  desc: 'Fais tomber des bombes sur la grille ennemie pour marquer des points de combat. Les défenses adverses réduisent les dégâts.',                     limit: '1 attaque / jour' },
+              { icon: TrendingUp,    color: 'text-warning bg-warning/15', title: 'Guerre navale (Attaque)', desc: 'Tire sur la grille adverse pour toucher des cibles cachées. Chaque touche rapporte des points. Le stock de tirs se reconstitue chaque jour.', limit: 'Tirs limités par période' },
             ].map(({ icon: Icon, color, title, desc, limit }) => (
               <div key={title} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-1.5">
                 <div className="flex items-center gap-2">

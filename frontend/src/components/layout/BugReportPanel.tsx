@@ -261,7 +261,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                           <button
                             type="button"
                             onClick={() => removeImage(idx)}
-                            className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 bg-destructive text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                             title={t('bug_report_remove_image')}
                           >
                             <X className="h-3 w-3" />
@@ -316,7 +316,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                       onClick={() => openReport(report)}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={cn('text-[10px] px-1.5 py-0.5 rounded', report.status === 'DONE' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400')}>
+                        <span className={cn('text-[10px] px-1.5 py-0.5 rounded', report.status === 'DONE' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning')}>
                           {report.status === 'DONE' ? 'Résolu' : 'En cours'}
                         </span>
                         <span className="text-xs text-muted-foreground/50">
@@ -325,7 +325,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                       </div>
                       <p className="text-sm font-medium leading-tight truncate">{report.title}</p>
                       {report.adminReply && (
-                        <p className="text-xs text-indigo-400/70 mt-0.5 truncate">Support: {report.adminReply}</p>
+                        <p className="text-xs text-primary/70 mt-0.5 truncate">Support: {report.adminReply}</p>
                       )}
                     </button>
                   ))}
@@ -351,7 +351,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                 <div className="min-w-0">
                   <SheetTitle className="text-base truncate">{selectedReport.title}</SheetTitle>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded', selectedReport.status === 'DONE' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400')}>
+                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded', selectedReport.status === 'DONE' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning')}>
                       {selectedReport.status === 'DONE' ? 'Résolu' : 'En cours'}
                     </span>
                   </div>
@@ -371,7 +371,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                   <div key={msg.id} className={cn('flex', isMe ? 'justify-end' : 'justify-start')}>
                     <div className={cn(
                       'max-w-[80%] rounded-lg px-3 py-2 text-sm',
-                      isMe ? 'bg-muted/40 border border-border/40' : 'bg-indigo-500/10 border border-indigo-500/20'
+                      isMe ? 'bg-muted/40 border border-border/40' : 'bg-muted/10 border border-border/20'
                     )}>
                       <p className="text-[10px] text-muted-foreground/60 mb-1">
                         {isMe ? 'Vous' : 'Support'}

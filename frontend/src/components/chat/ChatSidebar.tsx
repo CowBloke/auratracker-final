@@ -562,7 +562,7 @@ export default function ChatSidebar() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{t('chat_title')}</span>
             {unreadCount > 0 && (
-              <span className="px-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+              <span className="px-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -753,7 +753,7 @@ export default function ChatSidebar() {
                           "relative w-fit max-w-[85%] min-w-0 px-3 py-2 rounded-lg",
                           !isSystemMessage && 'pr-12',
                           isSystemMessage
-                            ? 'border border-amber-500/30 bg-amber-500/10'
+                            ? 'border border-warning/30 bg-warning/10'
                             : msg.userId === user?.id
                             ? 'bg-foreground/10'
                             : 'bg-muted'
@@ -865,7 +865,7 @@ export default function ChatSidebar() {
                             />
                           </Button>
                         ) : (
-                          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                          <span className="text-xs font-medium text-warning">
                             {msg.username}
                           </span>
                         )}
@@ -1020,12 +1020,12 @@ export default function ChatSidebar() {
 
           <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
             {isChatMuted && (
-              <div className="mb-3 space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-                <p className="text-xs font-medium text-amber-600 dark:text-amber-300">
+              <div className="mb-3 space-y-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
+                <p className="text-xs font-medium text-warning">
                   {chatMutedMessage || 'Tu es actuellement mute du chat.'}
                 </p>
                 {muteAppealSent ? (
-                  <p className="text-xs text-amber-700 dark:text-amber-200">
+                  <p className="text-xs text-warning">
                     Contestation envoyee aux admins.
                   </p>
                 ) : (
@@ -1039,7 +1039,7 @@ export default function ChatSidebar() {
                       placeholder="Contester ce mute..."
                       rows={2}
                       maxLength={1000}
-                      className="min-h-16 resize-none border-amber-500/30 bg-background/70 text-xs"
+                      className="min-h-16 resize-none border-warning/30 bg-background/70 text-xs"
                     />
                     {muteAppealError && (
                       <p className="text-xs text-destructive">{muteAppealError}</p>
@@ -1050,7 +1050,7 @@ export default function ChatSidebar() {
                       variant="outline"
                       onClick={handleMuteAppealSubmit}
                       disabled={muteAppealMessage.trim().length < 10 || isSubmittingMuteAppeal}
-                      className="h-7 border-amber-500/50 px-2 text-xs text-amber-700 hover:bg-amber-500/10 dark:text-amber-200"
+                      className="h-7 border-warning/50 px-2 text-xs text-warning hover:bg-warning/10"
                     >
                       {isSubmittingMuteAppeal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Envoyer l appel'}
                     </Button>
