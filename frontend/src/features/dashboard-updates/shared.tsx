@@ -5,58 +5,44 @@ export const feedCategoryMeta: Record<DashboardUpdateEntry['feedCategory'], {
   label: string;
   shortLabel: string;
   icon: LucideIcon;
-  badgeClass: string;
-  glowClass: string;
 }> = {
   GAME: {
     label: 'Jeux',
     shortLabel: 'Jeux',
     icon: Gamepad2,
-    badgeClass: 'border-sky-500/30 bg-sky-500/12 text-sky-700 dark:text-sky-300',
-    glowClass: 'from-sky-500/30 via-sky-500/10 to-transparent',
   },
   PATCH: {
     label: 'Patch',
     shortLabel: 'Patch',
     icon: Wrench,
-    badgeClass: 'border-emerald-500/30 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300',
-    glowClass: 'from-emerald-500/30 via-emerald-500/10 to-transparent',
   },
   COMMUNITY: {
     label: 'Communauté',
     shortLabel: 'Communaute',
     icon: Users,
-    badgeClass: 'border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-700 dark:text-fuchsia-300',
-    glowClass: 'from-fuchsia-500/30 via-fuchsia-500/10 to-transparent',
   },
   DEV: {
     label: 'Équipe',
     shortLabel: 'Equipe',
     icon: Megaphone,
-    badgeClass: 'border-amber-500/30 bg-amber-500/12 text-amber-700 dark:text-amber-300',
-    glowClass: 'from-amber-500/30 via-amber-500/10 to-transparent',
   },
 };
 
 export const sectionCategoryMeta: Record<DashboardUpdateSection['category'], {
   label: string;
   icon: LucideIcon;
-  badgeClass: string;
 }> = {
   BIG_FEATURE: {
     label: 'Grandes fonctionnalités',
     icon: Rocket,
-    badgeClass: 'border-amber-500/30 bg-amber-500/12 text-amber-700 dark:text-amber-300',
   },
   SMALL_FEATURE: {
     label: 'Améliorations',
     icon: Sparkles,
-    badgeClass: 'border-sky-500/30 bg-sky-500/12 text-sky-700 dark:text-sky-300',
   },
   BUG_FIX: {
     label: 'Correctifs',
     icon: Bug,
-    badgeClass: 'border-border/70 bg-muted/50 text-muted-foreground',
   },
 };
 

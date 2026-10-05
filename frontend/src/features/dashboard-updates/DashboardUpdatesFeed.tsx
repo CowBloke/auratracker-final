@@ -1,147 +1,48 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Loader2, ChevronDown, ChevronRight, Flame, Heart, Sparkles, Zap, ArrowUpRight, MessagesSquare } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardUpdatesApi, type DashboardUpdateEntry, type DashboardUpdateReaction } from '@/services/api';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { resolveImageUrl } from '@/lib/images';
-import { cn } from '@/lib/utils';
+import { ArrowUpRight, Flame, Heart, Megaphone, MessagesSquare, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatUpdateDateLabel, formatUpdateTimeLabel, renderUpdateRichText } from './shared';
-import './dashboard-feed.css';
+import { dashboardUpdatesApi, type DashboardUpdateEntry, type DashboardUpdateReaction } from '@/services/api';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { resolveImageUrl } from '@/lib/images';
+import {
+  feedCategoryMeta,
+  formatUpdateDateLabel,
+  formatUpdateTimeLabel,
+  renderUpdateRichText,
+  sectionCategoryMeta,
+} from './shared';
 
-type FilterTab = 'tout' | 'GAME' | 'PATCH' | 'COMMUNITY' | 'DEV';
+type FilterTab = 'tout' | DashboardUpdateEntry['feedCategory'];
 
-type FeedEntry = DashboardUpdateEntry & {
-  image: string | null;
-  authorAvatar: string;
-};
-
-
-
-const CATEGORY_META: Record<DashboardUpdateEntry['feedCategory'], { label: string; className: string }> = {
-  GAME: {
-    label: 'Jeux',
-    className: 'is-game',
-  },
-  PATCH: {
-    label: 'Patch',
-    className: 'is-patch',
-  },
-  COMMUNITY: {
-    label: 'Communaute',
-    className: 'is-community',
-  },
-  DEV: {
-    label: 'Equipe',
-    className: 'is-dev',
-  },
-};
-
-const WELCOME_TEMPLATES = [
-  (name: string) => <>Yo <em>{name}</em>, y&apos;a du neuf.</>,
-  (name: string) => <>Salut <em>{name}</em>, quoi de beau ?</>,
-  (name: string) => <>Heureux de te revoir, <em>{name}</em> !</>,
-  (name: string) => <>Alors <em>{name}</em>, on chasse l&apos;Aura aujourd&apos;hui ?</>,
-  (name: string) => <>Bienvenue chez toi, <em>{name}</em>.</>,
-  (name: string) => <>Quelles sont les nouvelles, <em>{name}</em> ?</>,
-  (name: string) => <>Toujours au top, <em>{name}</em> !</>,
-  (name: string) => <>Prêt pour une nouvelle aventure, <em>{name}</em> ?</>,
-  (name: string) => <>AuraTracker t&apos;attendait, <em>{name}</em>.</>,
-  (name: string) => <>Tiens, voilà <em>{name}</em> ! Ça farte ?</>,
-  (name: string) => <>Wesh <em>{name}</em>, bien ou bien ?</>,
-  (name: string) => <>Oh, <em>{name}</em> ! Quel plaisir de te voir.</>,
-  (name: string) => <>Le boss <em>{name}</em> est dans la place !</>,
-  (name: string) => <><em>{name}</em>, t&apos;as une mine radieuse !</>,
-  (name: string) => <>Allez <em>{name}</em>, au boulot !</>,
-  (name: string) => <>C&apos;est reparti pour un tour, <em>{name}</em> !</>,
-];
-
-function ActionLink({
-  href,
-  className,
-  children,
-  onClick,
-}: {
-  href: string | null;
-  className: string;
-  children: ReactNode;
-  onClick?: () => void;
-}) {
-  if (!href || href === '#') {
-    return (
-      <button type="button" className={className} onClick={onClick}>
-        {children}
-      </button>
-    );
-  }
-
-  if (href.startsWith('/')) {
-    return (
-      <Link to={href} className={className} onClick={onClick}>
-        {children}
-      </Link>
-    );
-  }
-
-  return (
-    <a href={href} className={className} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" onClick={onClick}>
-      {children}
-    </a>
-  );
-}
-
-function mapEntry(entry: DashboardUpdateEntry): FeedEntry {
-  return {
-    ...entry,
-    image: entry.imageUrl ? resolveImageUrl(entry.imageUrl) : null,
-    authorAvatar: resolveImageUrl(entry.author.avatarUrl || '/aura-icon.svg'),
-  };
-}
-
-function getDateParts(dateValue: string) {
-  const date = new Date(`${dateValue}T12:00:00`);
-  if (Number.isNaN(date.getTime())) {
-    return {
-      short: dateValue,
-      full: dateValue,
-    };
-  }
-
-  return {
-    short: date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-    }),
-    full: formatUpdateDateLabel(dateValue),
-  };
-}
+const REACTION_META = {
+  fire: { label: 'Flamme', Icon: Flame },
+  heart: { label: 'Cœur', Icon: Heart },
+  boost: { label: 'Boost', Icon: Zap },
+} as const;
 
 function getReactionMeta(kind: DashboardUpdateReaction['kind']) {
-  if (kind === 'fire') {
-    return {
-      label: 'Flamme',
-      Icon: Flame,
-    };
-  }
-  if (kind === 'heart') {
-    return {
-      label: 'Coeur',
-      Icon: Heart,
-    };
-  }
-  return {
-    label: 'Boost',
-    Icon: Zap,
-  };
+  return REACTION_META[kind as keyof typeof REACTION_META] ?? REACTION_META.boost;
 }
 
 function buildReactionTitle(reaction: DashboardUpdateReaction) {
   if (reaction.sampleUsers.length === 0) {
-    return `${reaction.count} reaction${reaction.count > 1 ? 's' : ''}`;
+    return `${reaction.count} réaction${reaction.count > 1 ? 's' : ''}`;
   }
 
   const users = reaction.sampleUsers.map((user) => user.username).join(', ');
-  return `${users}${reaction.count > reaction.sampleUsers.length ? ` et ${reaction.count - reaction.sampleUsers.length} autre(s)` : ''}`;
+  const others = reaction.count - reaction.sampleUsers.length;
+  return others > 0 ? `${users} et ${others} autre(s)` : users;
 }
 
 function applyOptimisticReaction(
@@ -150,344 +51,176 @@ function applyOptimisticReaction(
   kind: DashboardUpdateReaction['kind'],
   nextReacted: boolean
 ) {
-  return entries.map((entry) => {
-    if (entry.id !== entryId) {
-      return entry;
-    }
-
-    return {
-      ...entry,
-      reactions: entry.reactions.map((reaction) => {
-        if (reaction.kind !== kind) {
-          return reaction;
+  return entries.map((entry) =>
+    entry.id !== entryId
+      ? entry
+      : {
+          ...entry,
+          reactions: entry.reactions.map((reaction) =>
+            reaction.kind !== kind
+              ? reaction
+              : {
+                  ...reaction,
+                  reacted: nextReacted,
+                  count: Math.max(0, reaction.count + (nextReacted ? 1 : -1)),
+                }
+          ),
         }
-
-        return {
-          ...reaction,
-          reacted: nextReacted,
-          count: Math.max(0, reaction.count + (nextReacted ? 1 : -1)),
-        };
-      }),
-    };
-  });
-}
-
-function Welcome({
-  welcomeName,
-  showWelcome,
-  welcomeIndex,
-  heading,
-  subheading,
-  action,
-}: {
-  welcomeName?: string | null;
-  showWelcome: boolean;
-  welcomeIndex: number;
-  heading: string;
-  subheading?: string;
-  action?: ReactNode;
-}) {
-  const name = welcomeName || 'toi';
-  const welcomeContent = WELCOME_TEMPLATES[welcomeIndex]?.(name) || WELCOME_TEMPLATES[0](name);
-
-  return (
-    <div className="db-welcome">
-      <div className="db-welcome__copy">
-        <h1>{showWelcome ? welcomeContent : heading}</h1>
-        {subheading ? <p>{subheading}</p> : null}
-      </div>
-      {action ? <div className="db-welcome__action">{action}</div> : null}
-    </div>
   );
 }
 
-function TeamNote({ entry }: { entry: FeedEntry | null }) {
-  if (!entry) {
-    return null;
-  }
+function CtaButton({ entry }: { entry: DashboardUpdateEntry }) {
+  const href = entry.ctaHref;
+  if (!href || href === '#') return null;
+  const label = entry.ctaLabel || 'Voir plus';
 
   return (
-    <article className="db-notice">
-      <div className="db-notice__icon">
-        <Sparkles className="h-4 w-4" />
-      </div>
-      <div className="db-notice__body">
-        <div className="db-notice__meta">
-          <span>Mot d&apos;equipe</span>
-          <span>·</span>
-          <span>{formatUpdateTimeLabel(entry.publishedAt)}</span>
-        </div>
-        <h2>{entry.title}</h2>
-        <p>{entry.summary}</p>
-      </div>
-      <ActionLink href={entry.ctaHref} className="db-inline-link">
-        Ouvrir
-        <ArrowUpRight className="h-3.5 w-3.5" />
-      </ActionLink>
-    </article>
+    <Button asChild size="sm">
+      {href.startsWith('/') ? (
+        <Link to={href}>
+          {label}
+          <ArrowUpRight />
+        </Link>
+      ) : (
+        <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer">
+          {label}
+          <ArrowUpRight />
+        </a>
+      )}
+    </Button>
   );
 }
 
-
-
-function AuthorRow({ entry }: { entry: FeedEntry }) {
-  return (
-    <div className="db-author">
-      <img src={entry.authorAvatar} alt="" />
-      <div>
-        <strong>{entry.author.name}</strong>
-        <span>{entry.author.role || CATEGORY_META[entry.feedCategory].label}</span>
-      </div>
-    </div>
-  );
-}
-
-function ReactionBar({
-  entry,
-  pendingKey,
-  onToggleReaction,
-}: {
-  entry: FeedEntry;
+type UpdateCardProps = {
+  entry: DashboardUpdateEntry;
+  featured: boolean;
   pendingKey: string | null;
+  onOpenDetails: (entryId: string) => void;
   onToggleReaction: (entryId: string, kind: DashboardUpdateReaction['kind'], reacted: boolean) => void;
-}) {
-  return (
-    <div className="db-reactions">
-      {entry.reactions.map((reaction) => {
-        const { Icon, label } = getReactionMeta(reaction.kind);
-        const isPending = pendingKey === `${entry.id}:${reaction.kind}`;
+};
 
+function UpdateCard({ entry, featured, pendingKey, onOpenDetails, onToggleReaction }: UpdateCardProps) {
+  const category = feedCategoryMeta[entry.feedCategory];
+  const image = entry.imageUrl ? resolveImageUrl(entry.imageUrl) : null;
+
+  return (
+    <Card className={featured ? 'overflow-hidden pt-0 lg:col-span-2 lg:grid lg:grid-cols-2 lg:py-0' : 'overflow-hidden pt-0'}>
+      {image ? (
+        <AspectRatio ratio={featured ? 4 / 3 : 16 / 9} className="lg:h-full">
+          <img src={image} alt="" className="size-full object-cover" />
+        </AspectRatio>
+      ) : null}
+      <div className="flex flex-col gap-6 lg:justify-center lg:py-6">
+        <CardHeader>
+          <CardDescription className="flex flex-wrap items-center gap-2">
+            <Badge variant={featured ? 'default' : 'secondary'}>
+              <category.icon />
+              {featured ? `À la une · ${category.label}` : category.label}
+            </Badge>
+            {entry.isFeatured && !featured ? <Badge variant="outline">Épinglé</Badge> : null}
+            <span>{formatUpdateTimeLabel(entry.publishedAt)}</span>
+          </CardDescription>
+          <CardTitle className={featured ? 'text-2xl' : 'text-lg'}>{entry.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{entry.summary}</p>
+        </CardContent>
+        <CardFooter className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar className="size-8">
+              <AvatarImage src={resolveImageUrl(entry.author.avatarUrl || '/aura-icon.svg')} alt="" />
+              <AvatarFallback>{entry.author.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="flex min-w-0 flex-col text-sm leading-tight">
+              <span className="truncate font-medium">{entry.author.name}</span>
+              <span className="truncate text-xs text-muted-foreground">{entry.author.role || category.label}</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {entry.reactions.map((reaction) => {
+              const { Icon, label } = getReactionMeta(reaction.kind);
+              return (
+                <Tooltip key={reaction.kind}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={reaction.reacted ? 'secondary' : 'outline'}
+                      disabled={pendingKey === `${entry.id}:${reaction.kind}`}
+                      aria-pressed={reaction.reacted}
+                      aria-label={label}
+                      onClick={() => onToggleReaction(entry.id, reaction.kind, reaction.reacted)}
+                    >
+                      <Icon />
+                      <span className="tabular-nums">{reaction.count}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{buildReactionTitle(reaction)}</TooltipContent>
+                </Tooltip>
+              );
+            })}
+            <Button type="button" size="sm" variant="outline" onClick={() => onOpenDetails(entry.id)}>
+              <MessagesSquare />
+              Détails
+            </Button>
+            <CtaButton entry={entry} />
+          </div>
+        </CardFooter>
+      </div>
+    </Card>
+  );
+}
+
+function EntryDetails({ entry }: { entry: DashboardUpdateEntry }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="text-sm">{entry.body || entry.summary}</p>
+      {entry.sections.map((section) => {
+        const meta = sectionCategoryMeta[section.category];
         return (
-          <button
-            key={reaction.kind}
-            type="button"
-            className={cn('db-reaction', reaction.reacted && 'is-active')}
-            title={buildReactionTitle(reaction)}
-            disabled={isPending}
-            onClick={() => onToggleReaction(entry.id, reaction.kind, reaction.reacted)}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            <span>{reaction.count}</span>
-            <span className="sr-only">{label}</span>
-          </button>
+          <section key={`${entry.id}-${section.category}`} className="flex flex-col gap-2">
+            <h4 className="flex items-center gap-2 text-sm font-semibold">
+              <meta.icon className="size-4" />
+              {meta.label}
+            </h4>
+            <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
+              {section.items.map((item) => (
+                <li key={item.id}>{renderUpdateRichText(item.text)}</li>
+              ))}
+            </ul>
+          </section>
         );
       })}
     </div>
   );
 }
 
-function ExpandedEntry({ entry }: { entry: FeedEntry }) {
-  return (
-    <div className="db-expanded">
-      <div className="db-expanded__body">
-        <p>{entry.body || entry.summary}</p>
-      </div>
-      {entry.sections.length > 0 ? (
-        <div className="db-expanded__sections">
-          {entry.sections.map((section) => (
-            <section key={`${entry.id}-${section.category}`} className="db-expanded__section">
-              <h4>
-                {section.category === 'BIG_FEATURE'
-                  ? 'Grandes fonctionnalites'
-                  : section.category === 'SMALL_FEATURE'
-                    ? 'Ameliorations'
-                    : 'Correctifs'}
-              </h4>
-              <div className="db-expanded__items">
-                {section.items.map((item) => (
-                  <div key={item.id} className="db-expanded__item">
-                    {renderUpdateRichText(item.text)}
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function Hero({
-  entry,
-  expanded,
-  pendingKey,
-  onToggleExpand,
-  onToggleReaction,
-}: {
-  entry: FeedEntry;
-  expanded: boolean;
-  pendingKey: string | null;
-  onToggleExpand: (entryId: string) => void;
-  onToggleReaction: (entryId: string, kind: DashboardUpdateReaction['kind'], reacted: boolean) => void;
-}) {
-  return (
-    <article className={cn('db-hero', !entry.image && 'db-hero--no-image')}>
-      <div className="db-hero__media">
-        {entry.image ? <img src={entry.image} alt="" /> : <div className="db-hero__wash" aria-hidden="true" />}
-      </div>
-      <div className="db-hero__body">
-        <div className="db-hero__topline">
-          <span className={cn('db-chip', CATEGORY_META[entry.feedCategory].className)}>A la une · {CATEGORY_META[entry.feedCategory].label}</span>
-          <span>{formatUpdateTimeLabel(entry.publishedAt)}</span>
-        </div>
-        <h2>{entry.title}</h2>
-        <p>{entry.summary}</p>
-        <div className="db-hero__foot">
-          <AuthorRow entry={entry} />
-          <ReactionBar entry={entry} pendingKey={pendingKey} onToggleReaction={onToggleReaction} />
-        </div>
-        <div className="db-hero__actions">
-          <button type="button" className="db-button db-button--ghost" onClick={() => onToggleExpand(entry.id)}>
-            <MessagesSquare className="h-3.5 w-3.5" />
-            {expanded ? 'Fermer les details' : 'Voir les details'}
-          </button>
-          <ActionLink href={entry.ctaHref} className="db-button db-button--primary">
-            {entry.ctaLabel || 'Voir plus'}
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </ActionLink>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function TimelineItem({
-  entry,
-  expanded,
-  pendingKey,
-  onToggleExpand,
-  onToggleReaction,
-}: {
-  entry: FeedEntry;
-  expanded: boolean;
-  pendingKey: string | null;
-  onToggleExpand: (entryId: string) => void;
-  onToggleReaction: (entryId: string, kind: DashboardUpdateReaction['kind'], reacted: boolean) => void;
-}) {
-  return (
-    <article className="db-timeline__item">
-      <div className="db-timeline__body">
-        <div className="db-timeline__head">
-          <span className={cn('db-chip', CATEGORY_META[entry.feedCategory].className)}>{CATEGORY_META[entry.feedCategory].label}</span>
-          {entry.isFeatured ? <span className="db-chip is-featured">Epingle</span> : null}
-          <span>{formatUpdateTimeLabel(entry.publishedAt)}</span>
-        </div>
-        <h3>{entry.title}</h3>
-        <p>{entry.summary}</p>
-        <div className="db-timeline__foot">
-          <AuthorRow entry={entry} />
-          <ReactionBar entry={entry} pendingKey={pendingKey} onToggleReaction={onToggleReaction} />
-        </div>
-        <div className="db-timeline__actions">
-          <button type="button" className="db-inline-link" onClick={() => onToggleExpand(entry.id)}>
-            {expanded ? 'Fermer les details' : 'Voir les details'}
-            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-          </button>
-          {entry.ctaHref ? (
-            <ActionLink href={entry.ctaHref} className="db-inline-link">
-              {entry.ctaLabel || 'Voir plus'}
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </ActionLink>
-          ) : null}
-        </div>
-      </div>
-      <div className={cn('db-timeline__media', !entry.image && 'is-empty')}>
-        {entry.image ? <img src={entry.image} alt="" /> : <Sparkles className="h-8 w-8" />}
-      </div>
-    </article>
-  );
-}
-
-export function DashboardUpdatesFeed({
-  entries,
-  loading,
-  heading,
-  subheading,
-  welcomeName,
-  showWelcome = false,
-  action,
-}: {
-  entries: DashboardUpdateEntry[];
-  loading?: boolean;
-  heading: string;
-  subheading?: string;
-  welcomeName?: string | null;
-  showWelcome?: boolean;
-  action?: ReactNode;
-}) {
+export function DashboardUpdatesFeed({ entries, loading }: { entries: DashboardUpdateEntry[]; loading?: boolean }) {
   const [tab, setTab] = useState<FilterTab>('tout');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pendingReactionKey, setPendingReactionKey] = useState<string | null>(null);
   const [feedEntries, setFeedEntries] = useState<DashboardUpdateEntry[]>(entries);
 
-  const welcomeIndex = useMemo(() => Math.floor(Math.random() * WELCOME_TEMPLATES.length), []);
-
   useEffect(() => {
     setFeedEntries(entries);
   }, [entries]);
 
-  const mappedEntries = useMemo(() => feedEntries.map(mapEntry), [feedEntries]);
+  const filteredEntries = useMemo(
+    () => (tab === 'tout' ? feedEntries : feedEntries.filter((entry) => entry.feedCategory === tab)),
+    [feedEntries, tab]
+  );
 
-  // Suppression du mock data : on ne filtre plus sur 'mock-dashboard-team-note'
-  const teamNote = null;
-  const regularEntries = mappedEntries;
-
-  const filteredEntries = useMemo(() => {
-    if (tab === 'tout') {
-      return regularEntries;
-    }
-
-    return regularEntries.filter((entry) => entry.feedCategory === tab);
-  }, [regularEntries, tab]);
-
-  const heroEntry = useMemo(
+  const featuredEntry = useMemo(
     () => filteredEntries.find((entry) => entry.isFeatured) ?? filteredEntries[0] ?? null,
     [filteredEntries]
   );
-
-  const timelineEntries = useMemo(
-    () => filteredEntries.filter((entry) => entry.id !== heroEntry?.id),
-    [filteredEntries, heroEntry?.id]
+  const otherEntries = useMemo(
+    () => filteredEntries.filter((entry) => entry.id !== featuredEntry?.id),
+    [filteredEntries, featuredEntry?.id]
   );
+  const expandedEntry = expandedId ? feedEntries.find((entry) => entry.id === expandedId) ?? null : null;
 
-  const timelineGroups = useMemo(() => {
-    const groups = new Map<string, FeedEntry[]>();
-
-    for (const entry of timelineEntries) {
-      const list = groups.get(entry.date) ?? [];
-      list.push(entry);
-      groups.set(entry.date, list);
-    }
-
-    return Array.from(groups.entries()).map(([date, items]) => ({
-      date,
-      items,
-    }));
-  }, [timelineEntries]);
-
-  const expandedEntry = useMemo(
-    () => (expandedId ? mappedEntries.find((entry) => entry.id === expandedId) ?? null : null),
-    [expandedId, mappedEntries]
-  );
-
-  const toggleExpanded = (entryId: string) => {
-    setExpandedId((current) => (current === entryId ? null : entryId));
-  };
-
-  const replaceEntry = (updatedEntry: DashboardUpdateEntry | null | undefined) => {
-    if (!updatedEntry) {
-      return;
-    }
-
-    setFeedEntries((current) => current.map((entry) => (entry.id === updatedEntry.id ? updatedEntry : entry)));
-  };
-
-  const handleToggleReaction = async (
-    entryId: string,
-    kind: DashboardUpdateReaction['kind'],
-    reacted: boolean
-  ) => {
+  const handleToggleReaction = async (entryId: string, kind: DashboardUpdateReaction['kind'], reacted: boolean) => {
     const nextReacted = !reacted;
     const reactionKey = `${entryId}:${kind}`;
 
@@ -498,88 +231,82 @@ export function DashboardUpdatesFeed({
       const response = nextReacted
         ? await dashboardUpdatesApi.addReaction(entryId, kind)
         : await dashboardUpdatesApi.removeReaction(entryId, kind);
-
-      replaceEntry(response.data.entry);
-    } catch (error) {
+      const updated = response.data.entry;
+      if (updated) {
+        setFeedEntries((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
+      }
+    } catch {
       setFeedEntries((current) => applyOptimisticReaction(current, entryId, kind, reacted));
-      toast.error("Impossible d'enregistrer la reaction.");
+      toast.error("Impossible d'enregistrer la réaction.");
     } finally {
       setPendingReactionKey((current) => (current === reactionKey ? null : current));
     }
   };
 
   return (
-    <div className="db-page">
-      <Welcome
-        welcomeName={welcomeName}
-        showWelcome={showWelcome}
-        welcomeIndex={welcomeIndex}
-        heading={heading}
-        subheading={subheading}
-        action={action}
-      />
-      <TeamNote entry={tab === 'tout' || tab === 'DEV' ? teamNote : null} />
+    <div className="flex flex-col gap-6">
+      <Tabs value={tab} onValueChange={(value) => setTab(value as FilterTab)}>
+        <TabsList>
+          <TabsTrigger value="tout">Tout</TabsTrigger>
+          {(Object.keys(feedCategoryMeta) as DashboardUpdateEntry['feedCategory'][]).map((key) => (
+            <TabsTrigger key={key} value={key}>
+              {feedCategoryMeta[key].label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {loading ? (
-        <div className="db-state">
-          <Loader2 className="h-6 w-6 animate-spin" />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Skeleton className="h-72 lg:col-span-2" />
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
         </div>
-      ) : heroEntry ? (
-        <div className="db-feed db-feed--experimental">
-          <Hero
-            entry={heroEntry}
-            expanded={expandedId === heroEntry.id}
+      ) : featuredEntry ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <UpdateCard
+            entry={featuredEntry}
+            featured
             pendingKey={pendingReactionKey}
-            onToggleExpand={toggleExpanded}
+            onOpenDetails={setExpandedId}
             onToggleReaction={handleToggleReaction}
           />
-
-          <div className="db-timeline">
-            {timelineGroups.map((group) => {
-              const parts = getDateParts(group.date);
-
-              return (
-                <section key={group.date} className="db-timeline__group">
-                  <div className="db-timeline__date">
-                    <strong>{parts.short}</strong>
-                    <span>{parts.full}</span>
-                  </div>
-                  <div className="db-timeline__list">
-                    {group.items.map((entry) => (
-                      <TimelineItem
-                        key={entry.id}
-                        entry={entry}
-                        expanded={expandedId === entry.id}
-                        pendingKey={pendingReactionKey}
-                        onToggleExpand={toggleExpanded}
-                        onToggleReaction={handleToggleReaction}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-
-          <Dialog open={Boolean(expandedEntry)} onOpenChange={(open) => { if (!open) setExpandedId(null); }}>
-            <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
-              <DialogHeader>
-                <DialogTitle>{expandedEntry?.title || 'Details de la mise a jour'}</DialogTitle>
-                <DialogDescription>
-                  {expandedEntry
-                    ? `${CATEGORY_META[expandedEntry.feedCategory].label} · ${formatUpdateDateLabel(expandedEntry.date)} · ${formatUpdateTimeLabel(expandedEntry.publishedAt)}`
-                    : 'Details de la mise a jour'}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="overflow-y-auto pr-1">
-                {expandedEntry ? <ExpandedEntry entry={expandedEntry} /> : null}
-              </div>
-            </DialogContent>
-          </Dialog>
+          {otherEntries.map((entry) => (
+            <UpdateCard
+              key={entry.id}
+              entry={entry}
+              featured={false}
+              pendingKey={pendingReactionKey}
+              onOpenDetails={setExpandedId}
+              onToggleReaction={handleToggleReaction}
+            />
+          ))}
         </div>
       ) : (
-        <div className="db-state">Aucune mise a jour pour le moment.</div>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Megaphone />
+            </EmptyMedia>
+            <EmptyTitle>Aucune mise à jour</EmptyTitle>
+            <EmptyDescription>Les nouveautés de la plateforme apparaîtront ici.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       )}
+
+      <Dialog open={Boolean(expandedEntry)} onOpenChange={(open) => !open && setExpandedId(null)}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{expandedEntry?.title ?? 'Détails de la mise à jour'}</DialogTitle>
+            <DialogDescription>
+              {expandedEntry
+                ? `${feedCategoryMeta[expandedEntry.feedCategory].label} · ${formatUpdateDateLabel(expandedEntry.date)} · ${formatUpdateTimeLabel(expandedEntry.publishedAt)}`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-4">{expandedEntry ? <EntryDetails entry={expandedEntry} /> : null}</ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

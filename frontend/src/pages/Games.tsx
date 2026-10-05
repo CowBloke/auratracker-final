@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Info } from 'lucide-react';
+import { ChevronDown, Info, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdCard } from '@/components/ads/AdCard';
-import { Card, CardContent } from '@/components/ui/card';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemContent, ItemGroup, ItemTitle, ItemActions } from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
+import { Toggle } from '@/components/ui/toggle';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +34,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
 import { type Ad, adminApi, adsApi, gamesApi } from '@/services/api';
-import { cn } from '@/lib/utils';
 
 type GamesTab = 'singleplayer' | 'multiplayer' | 'all';
 type MultiplayerTab = 'all' | 'duel' | 'party';
@@ -743,6 +748,14 @@ const gameRewardTiers: Partial<Record<Game['id'], RewardTierLine[]>> = {
   ],
 };
 
+const GAME_LINK_OVERRIDES: Record<string, string> = {
+  crash: '/games/casino?table=crash',
+  casino: '/games/casino',
+  'game-2048': '/games/2048',
+  'market-room': '/games/salle-de-marche',
+  loto: '/loto',
+};
+
 export default function Games() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<GamesTab>('all');
@@ -848,90 +861,7 @@ export default function Games() {
   const duelGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Duel'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery, rewardFilter, betaFilter, managedBetaGameIds, managedNewGameIds]);
   const partyGames = useMemo(() => filterGames(sortGames(visibleGames.filter((game) => game.requiresParty && game.type === 'Groupe'))), [visibleGames, sortBy, catalogStats, normalizedSearchQuery, rewardFilter, betaFilter, managedBetaGameIds, managedNewGameIds]);
 
-  const getGameLink = (gameId: string) => {
-    if (gameId === 'russian-roulette') {
-      return '/games/russian-roulette';
-    }
-    if (gameId === 'bomb-party') {
-      return '/games/bomb-party';
-    }
-    if (gameId === 'poker') {
-      return '/games/poker';
-    }
-    if (gameId === 'petit-bac') {
-      return '/games/petit-bac';
-    }
-    if (gameId === 'bataille-navale') {
-      return '/games/bataille-navale';
-    }
-    if (gameId === 'game-2048') {
-      return '/games/2048';
-    }
-    if (gameId === 'flappy-bird') {
-      return '/games/flappy-bird';
-    }
-    if (gameId === 'geometry-dash') {
-      return '/games/geometry-dash';
-    }
-    if (gameId === 'qs-watermelon') {
-      return '/games/qs-watermelon';
-    }
-    if (gameId === 'logic-lab') {
-      return '/games/logic-lab';
-    }
-    if (gameId === 'minesweeper') {
-      return '/games/minesweeper';
-    }
-    if (gameId === 'crash') {
-      return '/games/casino?table=crash';
-    }
-    if (gameId === 'casino') {
-      return '/games/casino';
-    }
-    if (gameId === 'blockblast') {
-      return '/games/blockblast';
-    }
-    if (gameId === 'solitaire') {
-      return '/games/solitaire';
-    }
-    if (gameId === 'racer') {
-      return '/games/racer';
-    }
-    if (gameId === 'tetris') {
-      return '/games/tetris';
-    }
-    if (gameId === 'knife-hit') {
-      return '/games/knife-hit';
-    }
-    if (gameId === 'clash-village') {
-      return '/games/clash-village';
-    }
-    if (gameId === 'puissance-quatre') {
-      return '/games/puissance-quatre';
-    }
-    if (gameId === 'ball-arena') {
-      return '/games/ball-arena';
-    }
-    if (gameId === 'morpion') {
-      return '/games/morpion';
-    }
-    if (gameId === 'echecs') {
-      return '/games/echecs';
-    }
-    if (gameId === 'horse-race') {
-      return '/games/horse-race';
-    }
-    if (gameId === 'eaglercraft') {
-      return '/games/eaglercraft';
-    }
-    if (gameId === 'market-room') {
-      return '/games/salle-de-marche';
-    }
-    if (gameId === 'loto') {
-      return '/loto';
-    }
-    return `/games/${gameId}`;
-  };
+  const getGameLink = (gameId: string) => GAME_LINK_OVERRIDES[gameId] ?? `/games/${gameId}`;
 
   const handleGameClick = (gameId: string) => {
     const link = getGameLink(gameId);
@@ -962,20 +892,12 @@ export default function Games() {
       ? partyGames
       : multiplayerGames;
 
-  const gamesToRender = activeTab === 'singleplayer'
-      ? soloGames
-      : multiplayerGamesToRender;
+  const gamesToRender = activeTab === 'singleplayer' ? soloGames : multiplayerGamesToRender;
 
   const activeCardAds = adPool.filter((ad) => ad.isActive);
   const multiplayerTabAdOffset = activeCardAds.length > 1
     ? Math.floor(soloGames.length / 6) % activeCardAds.length
     : 0;
-
-  const renderEmptyState = () => (
-    <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-      Aucun jeu ne correspond à ta recherche.
-    </div>
-  );
 
   const toggleCatalogTag = async (
     gameId: string,
@@ -1004,142 +926,88 @@ export default function Games() {
     }
   };
 
-  const renderTopRightBadges = (game: Game) => {
+  const renderGameCard = (game: Game) => {
     const isBeta = betaGameSet.has(game.id);
     const isNew = newGameSet.has(game.id);
-    const visibilityClass = isBeta || isNew
-      ? 'opacity-100'
-      : 'opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100';
-
-    if (!isBeta && !isNew) {
-      return null;
-    }
+    const hasRewardTiers = Boolean(gameRewardTiers[game.id]?.length);
 
     return (
-      <div className={cn('absolute right-3 top-3 z-20 flex flex-col items-end gap-2', visibilityClass)}>
-        {isNew && (
-          <span className="rounded-full border border-emerald-300/70 bg-emerald-500/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm">
-            Nouveau
-          </span>
-        )}
-        {isBeta && (
-          <span className="rounded-full border border-amber-200/80 bg-amber-400/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-950 shadow-sm">
-            Bêta
-          </span>
-        )}
-      </div>
-    );
-  };
-
-  const renderAdminControls = (game: Game) => {
-    if (!isAdmin) {
-      return renderTopRightBadges(game);
-    }
-
-    const isBeta = betaGameSet.has(game.id);
-    const isNew = newGameSet.has(game.id);
-    const visibilityClass = isBeta || isNew
-      ? 'opacity-100'
-      : 'opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100';
-    const betaButtonVisibilityClass = isBeta
-      ? 'opacity-100'
-      : isNew
-        ? 'opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100'
-        : '';
-
-    return (
-      <div className={cn('absolute right-3 top-3 z-20 flex flex-col items-end gap-2', visibilityClass)}>
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={isNew ? 'default' : 'secondary'}
-            className={cn(
-              'h-7 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm',
-              isNew ? 'bg-emerald-500 text-white hover:bg-emerald-500/90' : 'bg-black/45 text-white hover:bg-black/60'
-            )}
-            disabled={savingCatalogTag === `games_new_ids:${game.id}`}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              void toggleCatalogTag(game.id, 'games_new_ids', managedNewGameIds, setManagedNewGameIds, 'nouveau');
-            }}
-          >
-            Nouveau
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={isBeta ? 'default' : 'secondary'}
-            className={cn(
-              'h-7 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm',
-              isBeta ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-black/45 text-white hover:bg-black/60',
-              betaButtonVisibilityClass
-            )}
-            disabled={savingCatalogTag === `games_beta_ids:${game.id}`}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              void toggleCatalogTag(game.id, 'games_beta_ids', managedBetaGameIds, setManagedBetaGameIds, 'bêta');
-            }}
-          >
-            Bêta
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderGameCard = (game: Game) => (
-    <div
-      key={game.id}
-      className="group block"
-    >
-      <Card className="relative isolate aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
-        <button
-          type="button"
-          className="absolute inset-0 z-10 cursor-pointer"
-          aria-label={`Ouvrir ${game.name}`}
-          onClick={() => handleGameClick(game.id)}
-        />
-        {renderAdminControls(game)}
-        {gameRewardTiers[game.id]?.length ? (
-          <Button
-            type="button"
-            size="icon"
-            variant="secondary"
-            className="absolute bottom-3 right-3 z-20 h-8 w-8 rounded-full border border-white/25 bg-black/45 text-white opacity-0 shadow-sm transition-all duration-200 hover:bg-black/65 hover:text-white group-hover:opacity-100 group-focus-within:opacity-100"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setRewardDetailsGameId(game.id);
-            }}
-            aria-label={`Voir les récompenses de ${game.name}`}
-          >
-            <Info className="h-4 w-4" />
-          </Button>
+      <Card key={game.id} className="relative gap-4 overflow-hidden pt-0 transition-colors hover:bg-accent/40">
+        <AspectRatio ratio={4 / 3} className="bg-muted">
+          {game.emoji ? (
+            <div className="flex size-full items-center justify-center text-7xl">{game.emoji}</div>
+          ) : null}
+          {game.image ? (
+            <img
+              src={resolveThemeImageUrl(game.image, theme)}
+              alt=""
+              className="absolute inset-0 size-full object-cover"
+              loading="lazy"
+              onError={(event) => {
+                (event.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : null}
+        </AspectRatio>
+        <CardHeader>
+          <CardTitle className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="text-left after:absolute after:inset-0 focus-visible:outline-none"
+              onClick={() => handleGameClick(game.id)}
+            >
+              {game.name}
+            </button>
+            {isNew ? <Badge>Nouveau</Badge> : null}
+            {isBeta ? <Badge variant="secondary">Bêta</Badge> : null}
+          </CardTitle>
+          <CardDescription className="line-clamp-2">{game.description}</CardDescription>
+        </CardHeader>
+        {isAdmin || hasRewardTiers ? (
+          <CardFooter className="relative z-10 flex flex-wrap items-center gap-2">
+            {isAdmin ? (
+              <>
+                <Toggle
+                  size="sm"
+                  variant="outline"
+                  pressed={isNew}
+                  disabled={savingCatalogTag === `games_new_ids:${game.id}`}
+                  onPressedChange={() =>
+                    void toggleCatalogTag(game.id, 'games_new_ids', managedNewGameIds, setManagedNewGameIds, 'nouveau')
+                  }
+                >
+                  Nouveau
+                </Toggle>
+                <Toggle
+                  size="sm"
+                  variant="outline"
+                  pressed={isBeta}
+                  disabled={savingCatalogTag === `games_beta_ids:${game.id}`}
+                  onPressedChange={() =>
+                    void toggleCatalogTag(game.id, 'games_beta_ids', managedBetaGameIds, setManagedBetaGameIds, 'bêta')
+                  }
+                >
+                  Bêta
+                </Toggle>
+              </>
+            ) : null}
+            {hasRewardTiers ? (
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                className="ml-auto"
+                onClick={() => setRewardDetailsGameId(game.id)}
+                aria-label={`Voir les récompenses de ${game.name}`}
+              >
+                <Info />
+              </Button>
+            ) : null}
+          </CardFooter>
         ) : null}
-        {game.emoji && (
-          <div className="absolute inset-0 flex items-center justify-center bg-green-950/40 text-8xl">
-            {game.emoji}
-          </div>
-        )}
-        {game.image && (
-          <img
-            src={resolveThemeImageUrl(game.image, theme)}
-            alt={game.name}
-            className="absolute inset-0 h-full w-full scale-125 object-cover"
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-        <CardContent className="relative flex h-full flex-col justify-end p-4 text-white">
-          <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
-        </CardContent>
       </Card>
-    </div>
-  );
+    );
+  };
 
   const activeRewardDetailsGame = rewardDetailsGameId
     ? games.find((game) => game.id === rewardDetailsGameId) ?? null
@@ -1152,25 +1020,57 @@ export default function Games() {
     [visibleGames]
   );
 
+  const renderEmptyState = () => (
+    <Empty className="border">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <SearchX />
+        </EmptyMedia>
+        <EmptyTitle>Aucun jeu trouvé</EmptyTitle>
+        <EmptyDescription>Aucun jeu ne correspond à votre recherche.</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+
+  const gridClassName = 'grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4';
+
+  const renderSection = (title: string, list: Game[], startAdIdx: number) => {
+    const grid = injectAdsIntoGrid(list.map(renderGameCard), startAdIdx);
+    return {
+      nextAdIdx: grid.nextAdIdx,
+      node: (
+        <section key={title} className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+            <Separator className="flex-1" />
+          </div>
+          {list.length > 0 ? <div className={gridClassName}>{grid.elements}</div> : renderEmptyState()}
+        </section>
+      ),
+    };
+  };
+
   return (
     <PageShell>
-      {showcaseGames.length > 0 && (
-        <section className="mb-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Nouveaux jeux</h2>
-            <span className="rounded-full border border-emerald-300/60 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-              À découvrir
-            </span>
-            <div className="h-px flex-1 bg-border/70" />
+      <PageHeader
+        title="Jeux"
+        description="Solo, duel ou en groupe : choisissez votre prochaine partie."
+      />
+
+      {showcaseGames.length > 0 ? (
+        <section className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold tracking-tight">Nouveaux jeux</h2>
+            <Badge variant="secondary">À découvrir</Badge>
+            <Separator className="flex-1" />
           </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {showcaseGames.map(renderGameCard)}
-          </div>
+          <div className={gridClassName}>{showcaseGames.map(renderGameCard)}</div>
         </section>
-      )}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GamesTab)} className={SPACING.SECTION_SPACING}>
+      ) : null}
+
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GamesTab)} className="gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList className="h-auto flex-wrap">
+          <TabsList>
             {tabConfig.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id}>
                 {tab.label}
@@ -1178,19 +1078,19 @@ export default function Games() {
             ))}
           </TabsList>
 
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Rechercher un jeu"
-              className="sm:w-[240px]"
+              className="sm:w-60"
             />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="justify-between sm:w-[240px]">
+                <Button variant="outline" className="justify-between sm:w-48">
                   Trier et filtrer
-                  <ChevronDown className="h-4 w-4 opacity-70" />
+                  <ChevronDown />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72">
@@ -1224,104 +1124,65 @@ export default function Games() {
                 </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
-
           </div>
         </div>
 
-        <TabsContent value={activeTab} className={SPACING.CARD_SPACING}>
-          {activeTab === 'multiplayer' && (
-            <Tabs
+        <TabsContent value={activeTab} className="flex flex-col gap-6">
+          {activeTab === 'multiplayer' ? (
+            <ToggleGroup
+              type="single"
+              variant="outline"
               value={activeMultiplayerTab}
-              onValueChange={(value) => setActiveMultiplayerTab(value as MultiplayerTab)}
+              onValueChange={(value) => value && setActiveMultiplayerTab(value as MultiplayerTab)}
+              className="self-start"
             >
-              <TabsList className="h-auto flex-wrap">
-                <TabsTrigger value="all">Tous</TabsTrigger>
-                <TabsTrigger value="party">Groupe</TabsTrigger>
-                <TabsTrigger value="duel">Duel</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
+              <ToggleGroupItem value="all">Tous</ToggleGroupItem>
+              <ToggleGroupItem value="party">Groupe</ToggleGroupItem>
+              <ToggleGroupItem value="duel">Duel</ToggleGroupItem>
+            </ToggleGroup>
+          ) : null}
 
           {activeTab === 'all' ? (
             (() => {
-              const soloGrid = injectAdsIntoGrid(soloGames.map(renderGameCard), 0);
-              const multiGrid = injectAdsIntoGrid(multiplayerGames.map(renderGameCard), soloGrid.nextAdIdx);
+              const solo = renderSection('Solo', soloGames, 0);
+              const multi = renderSection('Multijoueur', multiplayerGames, solo.nextAdIdx);
               return (
-                <div className="space-y-8">
-                  <section className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Solo</h2>
-                      <div className="h-px flex-1 bg-border/70" />
-                    </div>
-                    {soloGames.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                        {soloGrid.elements}
-                      </div>
-                    ) : (
-                      renderEmptyState()
-                    )}
-                  </section>
-
-                  <section className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Multijoueur</h2>
-                      <div className="h-px flex-1 bg-border/70" />
-                    </div>
-                    {multiplayerGames.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                        {multiGrid.elements}
-                      </div>
-                    ) : (
-                      renderEmptyState()
-                    )}
-                  </section>
+                <div className="flex flex-col gap-8">
+                  {solo.node}
+                  {multi.node}
                 </div>
               );
             })()
+          ) : gamesToRender.length > 0 ? (
+            <div className={gridClassName}>
+              {injectAdsIntoGrid(gamesToRender.map(renderGameCard), activeTab === 'multiplayer' ? multiplayerTabAdOffset : 0).elements}
+            </div>
           ) : (
-            gamesToRender.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                {injectAdsIntoGrid(
-                  gamesToRender.map(renderGameCard),
-                  activeTab === 'multiplayer' ? multiplayerTabAdOffset : 0
-                ).elements}
-              </div>
-            ) : (
-              renderEmptyState()
-            )
+            renderEmptyState()
           )}
         </TabsContent>
       </Tabs>
 
-      <Dialog
-        open={Boolean(activeRewardDetailsGame)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setRewardDetailsGameId(null);
-          }
-        }}
-      >
+      <Dialog open={Boolean(activeRewardDetailsGame)} onOpenChange={(open) => !open && setRewardDetailsGameId(null)}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Récompenses: {activeRewardDetailsGame?.name ?? 'Jeu'}</DialogTitle>
+            <DialogTitle>Récompenses : {activeRewardDetailsGame?.name ?? 'Jeu'}</DialogTitle>
+            <DialogDescription>Paliers de gains selon vos performances.</DialogDescription>
           </DialogHeader>
-
-          <div className="rounded-xl border border-border/70 bg-muted/25 p-4">
-            <div className="space-y-2">
-              {(activeRewardDetailsGame ? gameRewardTiers[activeRewardDetailsGame.id] : [])?.map((tier) => (
-                <div
-                  key={`${activeRewardDetailsGame?.id ?? 'game'}-${tier.label}`}
-                  className="flex items-start justify-between gap-4 rounded-lg border border-border/60 bg-background/80 px-3 py-2 text-sm"
-                >
-                  <span className="font-medium text-foreground">{tier.label}</span>
-                  <span className="max-w-[60%] text-right text-muted-foreground">{tier.reward}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ItemGroup>
+            {(activeRewardDetailsGame ? gameRewardTiers[activeRewardDetailsGame.id] : [])?.map((tier) => (
+              <Item key={`${activeRewardDetailsGame?.id ?? 'game'}-${tier.label}`} variant="outline" size="sm">
+                <ItemContent>
+                  <ItemTitle>{tier.label}</ItemTitle>
+                </ItemContent>
+                <ItemActions>
+                  <span className="text-sm text-muted-foreground">{tier.reward}</span>
+                </ItemActions>
+              </Item>
+            ))}
+          </ItemGroup>
         </DialogContent>
       </Dialog>
-
     </PageShell>
   );
 }

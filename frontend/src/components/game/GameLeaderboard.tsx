@@ -1,6 +1,10 @@
-import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserBadges } from '@/components/badges/UserBadges';
 import type { BadgeData } from '@/components/badges/BadgeIcon';
 import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
@@ -29,9 +33,9 @@ interface GameLeaderboardProps {
   onDeleteScore?: (userId: string, username: string) => void | Promise<void>;
   title?: string;
   maxHeight?: number | string;
-  /** Hide the whole card (e.g. when fullscreen) */
+  /** Masque toute la carte (ex. en plein écran). */
   hidden?: boolean;
-  /** Render only the list, without the Card wrapper (for embedding in tabbed panels) */
+  /** Affiche uniquement la liste, sans la carte (pour l'intégrer dans un panneau à onglets). */
   noCard?: boolean;
 }
 
@@ -46,9 +50,7 @@ function LeaderboardList({
   const { confirm } = useAppDialog();
 
   const handleDeleteClick = async (userId: string, username: string) => {
-    if (!onDeleteScore) {
-      return;
-    }
+    if (!onDeleteScore) return;
 
     const confirmed = await confirm({
       title: 'Supprimer le score',
@@ -57,91 +59,75 @@ function LeaderboardList({
       cancelLabel: 'Annuler',
       variant: 'destructive',
     });
-
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     await onDeleteScore(userId, username);
   };
 
   if (entries.length === 0) {
     return (
-      <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-        Aucun score enregistré
-      </p>
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>Aucun score</EmptyTitle>
+          <EmptyDescription>Soyez le premier à entrer au classement.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <div
-      className="divide-y divide-border/20 overflow-y-auto"
-      style={{ maxHeight }}
-    >
-      {entries.map((entry, index) => (
-        <div
-          key={entry.id}
-          className={cn(
-            'flex items-center gap-3 px-4 py-2.5 group',
-            entry.user.id === currentUserId && 'bg-muted/30',
-          )}
-        >
-          <span
-            className={cn(
-              'w-5 text-center text-xs tabular-nums shrink-0',
-              index === 0 ? 'text-yellow-500 font-bold' :
-              index === 1 ? 'text-muted-foreground' :
-              index === 2 ? 'text-amber-600 font-bold' : 'text-muted-foreground',
-            )}
-          >
-            {index + 1}
-          </span>
-          <span className="flex-1 truncate text-sm flex items-center gap-1.5 min-w-0">
-            {entry.badges && entry.badges.length > 0 && (
-              <UserBadges
-                badges={entry.badges}
-                size="xs"
-                showEmptySlots={false}
-                tooltipSide="right"
-              />
-            )}
-            <PlayerHoverCard
-              userId={entry.user.id}
-              username={entry.user.username}
-              usernameColor={entry.user.usernameColor}
-              clanTag={toClanTagData(entry.user.clanTag)}
-            >
-              <span
-                className="truncate"
-                style={entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}
-              >
-                {entry.user.username}
-              </span>
-              {entry.user.clanTag ? <ClanTag tag={toClanTagData(entry.user.clanTag)!} /> : null}
-            </PlayerHoverCard>
-            {entry.user.id === currentUserId && (
-              <span className="text-xs text-muted-foreground shrink-0">(toi)</span>
-            )}
-          </span>
-          <span className="font-mono text-sm tabular-nums text-muted-foreground shrink-0">
-            {scoreFormatter ? scoreFormatter(entry.highScore) : entry.highScore.toLocaleString()}
-          </span>
-          {isAdmin && onDeleteScore && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                void handleDeleteClick(entry.user.id, entry.user.username);
-              }}
-              className="opacity-0 group-hover:opacity-100 h-6 w-6 text-destructive hover:bg-destructive/10 shrink-0"
-              title="Supprimer ce score"
-            >
-              <X className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </div>
-      ))}
-    </div>
+    <ScrollArea style={{ maxHeight }}>
+      <Table>
+        <TableBody>
+          {entries.map((entry, index) => (
+            <TableRow key={entry.id} data-state={entry.user.id === currentUserId ? 'selected' : undefined}>
+              <TableCell className="w-10 text-center tabular-nums text-muted-foreground">{index + 1}</TableCell>
+              <TableCell className="max-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  {entry.badges && entry.badges.length > 0 ? (
+                    <UserBadges badges={entry.badges} size="xs" showEmptySlots={false} tooltipSide="right" />
+                  ) : null}
+                  <PlayerHoverCard
+                    userId={entry.user.id}
+                    username={entry.user.username}
+                    usernameColor={entry.user.usernameColor}
+                    clanTag={toClanTagData(entry.user.clanTag)}
+                  >
+                    <span className="truncate" style={entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}>
+                      {entry.user.username}
+                    </span>
+                    {entry.user.clanTag ? <ClanTag tag={toClanTagData(entry.user.clanTag)!} /> : null}
+                  </PlayerHoverCard>
+                  {entry.user.id === currentUserId ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">(vous)</span>
+                  ) : null}
+                </div>
+              </TableCell>
+              <TableCell className="text-right font-mono tabular-nums">
+                {scoreFormatter ? scoreFormatter(entry.highScore) : entry.highScore.toLocaleString()}
+              </TableCell>
+              {isAdmin && onDeleteScore ? (
+                <TableCell className="w-10 p-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label="Supprimer ce score"
+                        onClick={() => void handleDeleteClick(entry.user.id, entry.user.username)}
+                      >
+                        <X />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Supprimer ce score</TooltipContent>
+                  </Tooltip>
+                </TableCell>
+              ) : null}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </ScrollArea>
   );
 }
 
@@ -159,15 +145,9 @@ export function GameLeaderboard({
 }: GameLeaderboardProps) {
   const hideGameLeaderboards = useHideGameLeaderboards();
 
-  if (hideGameLeaderboards) {
+  if (hideGameLeaderboards || hidden) {
     return null;
   }
-
-  const recordDuJeu = entries.length > 0 ? entries[0].highScore : null;
-  const recordPersonnelFromEntries = currentUserId
-    ? entries.find((entry) => entry.user.id === currentUserId)?.highScore
-    : null;
-  const recordPersonnel = personalHighScore ?? recordPersonnelFromEntries ?? null;
 
   const list = (
     <LeaderboardList
@@ -180,35 +160,28 @@ export function GameLeaderboard({
     />
   );
 
-  if (noCard) {
-    return (
-      <>
-        {list}
-      </>
-    );
-  }
+  if (noCard) return list;
+
+  const format = (value: number | null) =>
+    value === null ? '--' : scoreFormatter ? scoreFormatter(value) : value.toLocaleString();
+  const record = entries.length > 0 ? entries[0].highScore : null;
+  const personal =
+    personalHighScore ?? (currentUserId ? entries.find((entry) => entry.user.id === currentUserId)?.highScore : null) ?? null;
 
   return (
-    <section
-      className={cn(
-        'overflow-hidden rounded-xl border border-border/50 bg-background/60 backdrop-blur-sm',
-        hidden && 'hidden'
-      )}
-    >
-      <div className="flex items-center justify-between border-b border-border/20 px-4 py-3">
-        <p className="text-sm font-medium">{title}</p>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+    <Card className="gap-0 py-0">
+      <CardHeader className="border-b py-4">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <CardDescription className="flex gap-4">
           <span>
-            Perso <span className="font-mono text-foreground">{recordPersonnel !== null ? (scoreFormatter ? scoreFormatter(recordPersonnel) : recordPersonnel.toLocaleString()) : '--'}</span>
+            Perso <span className="font-mono text-foreground">{format(personal)}</span>
           </span>
           <span>
-            Top <span className="font-mono text-foreground">{recordDuJeu !== null ? (scoreFormatter ? scoreFormatter(recordDuJeu) : recordDuJeu.toLocaleString()) : '--'}</span>
+            Top <span className="font-mono text-foreground">{format(record)}</span>
           </span>
-        </div>
-      </div>
-      <div className="p-0">
-        {list}
-      </div>
-    </section>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">{list}</CardContent>
+    </Card>
   );
 }

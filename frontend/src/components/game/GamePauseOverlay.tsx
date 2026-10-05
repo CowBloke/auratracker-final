@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { GameOverlay } from '@/components/game/GameOverlay';
 
 interface GamePauseOverlayProps {
   visible: boolean;
@@ -13,23 +15,15 @@ export function GamePauseOverlay({
   visible,
   onResume,
   title = 'Jeu en pause',
-  description = 'La partie est gelée jusqu\'à la reprise.',
+  description = "La partie est gelée jusqu'à la reprise.",
   children,
 }: GamePauseOverlayProps) {
-  if (!visible) return null;
-
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-background/88 backdrop-blur-sm">
-      <div className="space-y-4 p-6 text-center">
-        <div>
-          <p className="text-2xl font-light">{title}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-        </div>
-        {children}
-        <Button type="button" variant="outline" onClick={onResume}>
-          Reprendre
-        </Button>
-      </div>
-    </div>
+    <GameOverlay visible={visible} title={title} description={description} icon={Pause}>
+      {children}
+      <Button type="button" variant="outline" onClick={onResume}>
+        Reprendre
+      </Button>
+    </GameOverlay>
   );
 }

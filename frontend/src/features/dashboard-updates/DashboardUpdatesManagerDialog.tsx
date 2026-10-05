@@ -524,7 +524,7 @@ export function DashboardUpdatesManagerDialog({
 
                     <div className="relative z-10 space-y-5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" className={categoryMeta.badgeClass}>
+                        <Badge variant="outline">
                           {categoryMeta.label}
                         </Badge>
                         {form.isFeatured ? (
@@ -658,7 +658,7 @@ export function DashboardUpdatesManagerDialog({
                       const items = form.sections[category];
                       return (
                         <div key={category} className="space-y-2">
-                          <Badge variant="outline" className={meta.badgeClass}>
+                          <Badge variant="outline">
                             <Icon className="mr-1 h-3.5 w-3.5" />
                             {meta.label}
                           </Badge>
@@ -769,7 +769,7 @@ export function DashboardUpdatesManagerDialog({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate text-sm font-semibold">{entry.title}</p>
-                          <Badge variant="outline" className={feedCategoryMeta[entry.feedCategory].badgeClass}>
+                          <Badge variant="outline">
                             {feedCategoryMeta[entry.feedCategory].shortLabel}
                           </Badge>
                           <Badge variant="outline" className={entry.isPublished ? 'border-emerald-500/30 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300' : 'border-border/70 bg-muted text-muted-foreground'}>
@@ -808,7 +808,7 @@ export function DashboardUpdatesManagerDialog({
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {SECTION_ORDER.filter((category) => counts[category] > 0).map((category) => (
-                        <Badge key={category} variant="outline" className={sectionCategoryMeta[category].badgeClass}>
+                        <Badge key={category} variant="outline">
                           {sectionCategoryMeta[category].label} · {counts[category]}
                         </Badge>
                       ))}
