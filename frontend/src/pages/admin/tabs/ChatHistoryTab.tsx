@@ -5,6 +5,7 @@ import { TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { Download, Loader2, RefreshCw, Trash2 } from 'lucide-react';
+import { Item } from '@/components/ui/item';
 
 export type ChatHistoryTabProps = Record<string, unknown>;
 
@@ -56,10 +57,10 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                   {exportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
                   Export total
                 </Button>
-                <div className="flex items-center gap-2 rounded-md border border-border/60 px-2 py-1.5">
+                <Item variant="outline" className="gap-2">
                   <Switch checked={showDeletedChatMessages} onCheckedChange={setShowDeletedChatMessages} />
                   <span className="text-xs text-muted-foreground">Afficher les supprimes</span>
-                </div>
+                </Item>
               </div>
             </div>
           </CardHeader>

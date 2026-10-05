@@ -775,11 +775,11 @@ export default function Inventory() {
             <DialogDescription>Sélectionnez la couleur de votre pseudo dans le chat.</DialogDescription>
           </DialogHeader>
           <FieldGroup>
-            <div className="flex items-center justify-center rounded-md border p-4">
+            <Item variant="outline" className="justify-center">
               <span className="text-lg font-semibold" style={{ color: selectedColor }}>
                 {user?.username}
               </span>
-            </div>
+            </Item>
             <Field>
               <FieldLabel>Couleurs prédéfinies</FieldLabel>
               <div className="flex flex-wrap gap-2">

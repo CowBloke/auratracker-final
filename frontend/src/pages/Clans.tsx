@@ -201,18 +201,18 @@ const WarMemberRow = ({
         </div>
       </CardHeader>
       <CardContent className="grid gap-2 px-4 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-md border px-2.5 py-2">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="px-2.5 py-2">
           Bombes : <span className="font-medium text-foreground">{member.bombRuns}</span> • {member.bombPoints} pts
-        </div>
-        <div className="rounded-md border px-2.5 py-2">
+        </CardContent></Card>
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="px-2.5 py-2">
           Naval : <span className="font-medium text-foreground">{member.navalShotsUsed}</span> tirs • {member.navalHits} touches
-        </div>
-        <div className="rounded-md border px-2.5 py-2">
+        </CardContent></Card>
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="px-2.5 py-2">
           Mémoire : <span className="font-medium text-foreground">{member.memoryRuns}</span> • {member.fortificationsUsed} renforts
-        </div>
-        <div className="rounded-md border px-2.5 py-2">
+        </CardContent></Card>
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="px-2.5 py-2">
           Total attaques : <span className="font-medium text-foreground">{member.attackCount}</span> • {member.attackPoints} pts
-        </div>
+        </CardContent></Card>
       </CardContent>
     </Card>
   );
@@ -2361,14 +2361,14 @@ export default function Clans() {
                                   : `Terminée le ${formatDate(selectedWar.completedAt)}.`}
                               </CardDescription>
                               <CardAction className="grid grid-cols-2 gap-3 text-center">
-                                <div className="flex flex-col rounded-md border px-4 py-2">
+                                <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-2 flex flex-col">
                                   <span className="max-w-24 truncate text-xs text-muted-foreground">{selectedWar.attackerClan.name}</span>
                                   <span className="text-2xl font-semibold tabular-nums">{selectedWar.attackerScore}</span>
-                                </div>
-                                <div className="flex flex-col rounded-md border px-4 py-2">
+                                </CardContent></Card>
+                                <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-2 flex flex-col">
                                   <span className="max-w-24 truncate text-xs text-muted-foreground">{selectedWar.defenderClan.name}</span>
                                   <span className="text-2xl font-semibold tabular-nums">{selectedWar.defenderScore}</span>
-                                </div>
+                                </CardContent></Card>
                               </CardAction>
                             </CardHeader>
                             <CardContent className="flex flex-col gap-6">

@@ -645,7 +645,7 @@ function CreateContractModal({ open, onClose, players, currentUserId, onCreated 
             {players.filter((p) => p.id !== currentUserId).length === 0 ? (
               <p className="text-xs text-muted-foreground">Aucun joueur disponible.</p>
             ) : (
-              <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border/40 p-1.5">
+              <Alert className="max-h-40 space-y-1 overflow-y-auto"><AlertDescription>
                 {players.filter((p) => p.id !== currentUserId).map((p) => {
                   const checked = selectedIds.includes(p.id);
                   return (
@@ -667,7 +667,7 @@ function CreateContractModal({ open, onClose, players, currentUserId, onCreated 
                     </button>
                   );
                 })}
-              </div>
+              </AlertDescription></Alert>
             )}
             {selectedIds.length > 0 && (
               <p className="text-xs text-warning">{selectedIds.length} signataire{selectedIds.length > 1 ? 's' : ''} sélectionné{selectedIds.length > 1 ? 's' : ''} (+ toi)</p>

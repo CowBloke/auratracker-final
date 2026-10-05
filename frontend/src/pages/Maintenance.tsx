@@ -88,10 +88,10 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
           <CardContent>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {units.map((unit) => (
-                <div key={unit.singular} className="flex flex-col items-center gap-1 rounded-lg border p-4">
+                <Card key={unit.singular} className="gap-0 py-0 shadow-none"><CardContent className="p-4 flex flex-col items-center gap-1">
                   <span className="text-3xl font-semibold tabular-nums">{String(unit.value).padStart(2, '0')}</span>
                   <span className="text-sm text-muted-foreground">{unit.value === 1 ? unit.singular : unit.plural}</span>
-                </div>
+                </CardContent></Card>
               ))}
             </div>
           </CardContent>

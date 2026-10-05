@@ -1069,12 +1069,12 @@ export default function Polymarket() {
                   <div className="space-y-4">
                     {/* Stats summary */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="rounded-xl border p-3 space-y-1">
+                      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-1">
                         <div className="text-xs font-semibold text-muted-foreground">Paris</div>
                         <div className="text-2xl font-bold tabular-nums">{bets.length}</div>
                         <div className="text-xs text-muted-foreground">{pendingBets.length} en cours</div>
-                      </div>
-                      <div className="rounded-xl border p-3 space-y-1">
+                      </CardContent></Card>
+                      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-1">
                         <div className="text-xs font-semibold text-muted-foreground">Résultats</div>
                         <div className="text-2xl font-bold tabular-nums">
                           <span className="text-success">{wonBets.length}W</span>
@@ -1084,12 +1084,12 @@ export default function Polymarket() {
                         <div className="text-xs text-muted-foreground">
                           {resolvedBets.length > 0 ? `${betWinRate.toFixed(0)}% réussite` : 'Aucun résolu'}
                         </div>
-                      </div>
-                      <div className="rounded-xl border p-3 space-y-1">
+                      </CardContent></Card>
+                      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-1">
                         <div className="text-xs font-semibold text-muted-foreground">Total misé</div>
                         <div className="text-2xl font-bold tabular-nums">{totalWagered.toLocaleString('fr-FR')}</div>
                         <div className="text-xs text-muted-foreground">sur {bets.length} paris</div>
-                      </div>
+                      </CardContent></Card>
                       <div className="rounded-xl border p-3 space-y-1"
                         style={netPnL !== 0 ? {
                           borderColor: (netPnL > 0 ? '#22c55e' : '#ef4444') + '40',
@@ -1207,34 +1207,34 @@ export default function Polymarket() {
                 ) : (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-xl border p-4 space-y-1">
+                      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-1">
                         <div className="text-xs font-semibold text-muted-foreground">Net total</div>
                         <div className={cn('text-3xl font-bold tabular-nums', netPnL > 0 ? 'text-success' : netPnL < 0 ? 'text-destructive' : '')}>
                           {netPnL > 0 ? '+' : ''}{netPnL.toLocaleString('fr-FR')}
                         </div>
                         <div className="text-xs text-muted-foreground">Paris résolus uniquement</div>
-                      </div>
-                      <div className="rounded-xl border p-4 space-y-1">
+                      </CardContent></Card>
+                      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-1">
                         <div className="text-xs font-semibold text-muted-foreground">Total gagné</div>
                         <div className="text-3xl font-bold tabular-nums text-success">
                           {totalGained.toLocaleString('fr-FR')}
                         </div>
                         <div className="text-xs text-muted-foreground">Retours encaissés</div>
-                      </div>
-                      <div className="rounded-xl border p-4 space-y-1">
+                      </CardContent></Card>
+                      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-1">
                         <div className="text-xs font-semibold text-muted-foreground">ROI</div>
                         <div className={cn('text-3xl font-bold tabular-nums', roi > 0 ? 'text-success' : roi < 0 ? 'text-destructive' : '')}>
                           {roi > 0 ? '+' : ''}{roi.toFixed(1)}%
                         </div>
                         <div className="text-xs text-muted-foreground">Sur {resolvedWagered.toLocaleString('fr-FR')} misés</div>
-                      </div>
-                      <div className="rounded-xl border p-4 space-y-1">
+                      </CardContent></Card>
+                      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-1">
                         <div className="text-xs font-semibold text-muted-foreground">Moyenne / pari</div>
                         <div className={cn('text-3xl font-bold tabular-nums', averageNetPerResolvedBet > 0 ? 'text-success' : averageNetPerResolvedBet < 0 ? 'text-destructive' : '')}>
                           {averageNetPerResolvedBet > 0 ? '+' : ''}{averageNetPerResolvedBet.toFixed(0)}
                         </div>
                         <div className="text-xs text-muted-foreground">Sur {resolvedBets.length} paris résolus</div>
-                      </div>
+                      </CardContent></Card>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">

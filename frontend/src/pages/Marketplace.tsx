@@ -212,13 +212,13 @@ function SellerAvatar({ seller }: { seller: MarketplaceListing['seller'] }) {
 
 function StatTile({ label, value, tone, icon }: { label: string; value: string; tone?: string; icon?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border p-3">
+    <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 flex flex-col gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className={cn('flex items-center gap-1 text-sm font-semibold tabular-nums', tone)}>
         {icon}
         {value}
       </span>
-    </div>
+    </CardContent></Card>
   );
 }
 

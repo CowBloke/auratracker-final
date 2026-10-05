@@ -440,9 +440,9 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
 
       <div className="space-y-3">
         {business.members.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
+          <Empty className="border"><EmptyHeader><EmptyDescription>
             Aucun employé. Invitez des joueurs via le panneau de gestion.
-          </div>
+          </EmptyDescription></EmptyHeader></Empty>
         )}
         {business.members.map((member) => {
           const isMe = member.user.id === currentUserId;
@@ -527,10 +527,10 @@ function StockTab({ stock, storage }: { stock: StockEntry[]; storage: StorageSta
       </div>
 
       {stock.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/60 py-10 text-center">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="py-10 flex flex-col items-center gap-2 text-center">
           <Package className="h-8 w-8 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">Aucun stock pour l'instant.</p>
-        </div>
+        </CardContent></Card>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {stock.map(({ resource, qty }) => {
@@ -578,10 +578,10 @@ function CraftingTab({ business, stock }: { business: YouBusiness; stock: StockE
 
   if (available.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/60 py-10 text-center">
+      <Card className="gap-0 py-0 shadow-none"><CardContent className="py-10 flex flex-col items-center gap-2 text-center">
         <Package className="h-8 w-8 text-muted-foreground/30" />
         <p className="text-sm text-muted-foreground">Aucune recette disponible pour ce type d'entreprise.</p>
-      </div>
+      </CardContent></Card>
     );
   }
 

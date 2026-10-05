@@ -2961,7 +2961,7 @@ export default function MessagesPage() {
                   )}
                   <div className="flex w-full items-end gap-2 flex-wrap">
                       {imageUrlToSend && (
-                        <div className="relative inline-block w-full mb-2 border border-border rounded-xl px-2 py-2 w-max max-w-sm">
+                        <Card className="gap-0 py-0 shadow-none relative w-full mb-2 w-max max-w-sm"><CardContent className="px-2 py-2 inline-block">
                           <img src={resolveImageUrl(imageUrlToSend)} alt="Upload preview" className="h-40 rounded-lg object-cover" />
                           <Button
                             variant="ghost"
@@ -2971,7 +2971,7 @@ export default function MessagesPage() {
                           >
                             <X className="h-3 w-3" />
                           </Button>
-                        </div>
+                        </CardContent></Card>
                       )}
                       
                       <Button
@@ -3030,9 +3030,9 @@ export default function MessagesPage() {
                         <InputGroupAddon align="block-end" className="flex-col items-stretch gap-2">
                           <MessageFormatToolbar inputRef={textareaRef} value={draft} onChange={setDraft} />
                           {hasMessageFormatting(draft) ? (
-                            <div className="rounded-md border px-2.5 py-1.5 text-sm text-foreground">
+                            <Card className="gap-0 py-0 shadow-none"><CardContent className="px-2.5 py-1.5 text-sm text-foreground">
                               <FormattedMessageText text={draft} />
-                            </div>
+                            </CardContent></Card>
                           ) : null}
                         </InputGroupAddon>
                       </InputGroup>

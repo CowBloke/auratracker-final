@@ -17,6 +17,7 @@ import {
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { AlertTriangle, Download, Edit2, Gamepad2, Loader2, Package, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Item } from '@/components/ui/item';
 
 export type ContentTabProps = Record<string, unknown>;
 
@@ -71,7 +72,7 @@ export function ContentTab(props: ContentTabProps) {
                 <>
                   <div className="space-y-1">
                     {shopCategories.map((cat: any) => (
-                      <div key={cat.id} className="flex items-center justify-between rounded-md border border-border/30 px-2 py-1.5 text-sm">
+                      <Item key={cat.id} variant="outline" className="justify-between text-sm">
                         <div className="min-w-0">
                           <span className="font-medium truncate block">{cat.label}</span>
                           <span className="font-mono text-xs text-muted-foreground">{cat.id}</span>
@@ -85,7 +86,7 @@ export function ContentTab(props: ContentTabProps) {
                         >
                           <X className="h-3 w-3" />
                         </Button>
-                      </div>
+                      </Item>
                     ))}
                   </div>
                   <div className="space-y-2 pt-1 border-t border-border/30">

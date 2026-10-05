@@ -847,10 +847,10 @@ export default function Profile() {
                       { label: 'Following', value: social.followingCount },
                       { label: 'Connexions', value: social.connectionCount },
                     ].map((stat) => (
-                      <div key={stat.label} className="flex flex-col rounded-lg border p-2">
+                      <Card key={stat.label} className="gap-0 py-0 shadow-none"><CardContent className="p-2 flex flex-col">
                         <span className="text-lg font-semibold tabular-nums">{stat.value}</span>
                         <span className="text-xs text-muted-foreground">{stat.label}</span>
-                      </div>
+                      </CardContent></Card>
                     ))}
                   </div>
                   {social.connections.length > 0 ? (

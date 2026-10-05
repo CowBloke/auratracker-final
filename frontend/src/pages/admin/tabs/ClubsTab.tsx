@@ -21,6 +21,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { cn } from '@/lib/utils';
 import { Crown, Edit2, Loader2, Plus, Save, Search, Swords, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 type ClubsTabProps = {
   filteredClans: any[];
@@ -255,9 +257,9 @@ export function ClubsTab(props: ClubsTabProps) {
             </DialogDescription>
           </DialogHeader>
           {!editingClanId ? (
-            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+            <Alert><AlertDescription>
               Choisis un clan dans la liste pour modifier ses paramètres ou changer son chef.
-            </div>
+            </AlertDescription></Alert>
           ) : (
             (() => {
               const clan = clans.find((entry) => entry.id === editingClanId);
@@ -299,7 +301,7 @@ export function ClubsTab(props: ClubsTabProps) {
                         onChange={(e) => setClanForm((prev: any) => ({ ...prev, maxMembers: parseInt(e.target.value) || clan.members.length }))}
                       />
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Item variant="outline" className="justify-between">
                       <div>
                         <div className="text-sm font-medium">Clan public</div>
                         <div className="text-xs text-muted-foreground">Entrée directe ou sur candidature</div>
@@ -308,10 +310,10 @@ export function ClubsTab(props: ClubsTabProps) {
                         checked={clanForm.isPublic}
                         onCheckedChange={(checked) => setClanForm((prev: any) => ({ ...prev, isPublic: checked }))}
                       />
-                    </div>
+                    </Item>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-lg border p-3">
+                  <Item variant="outline" className="justify-between">
                     <div>
                       <div className="text-sm font-medium">Capacité tag de clan</div>
                       <div className="text-xs text-muted-foreground">Activer débloque immédiatement le tag pour ce clan.</div>
@@ -330,7 +332,7 @@ export function ClubsTab(props: ClubsTabProps) {
                     >
                       {clanForm.tagUnlocked ? 'Désactiver' : 'Activer'}
                     </Button>
-                  </div>
+                  </Item>
 
                   <div className="flex gap-2">
                     <Button onClick={() => saveClan(clan.id)} disabled={savingClan}>
@@ -347,7 +349,7 @@ export function ClubsTab(props: ClubsTabProps) {
                     </div>
                     <div className="space-y-2">
                       {clan.members.map((member: any) => (
-                        <div key={member.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                        <Item key={member.id} variant="outline" className="justify-between">
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{member.user.username}</span>
@@ -370,7 +372,7 @@ export function ClubsTab(props: ClubsTabProps) {
                             )}
                             Nommer chef
                           </Button>
-                        </div>
+                        </Item>
                       ))}
                     </div>
                   </div>
@@ -409,11 +411,11 @@ export function ClubsTab(props: ClubsTabProps) {
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </div>
                 ) : clanEvents.length === 0 ? (
-                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                  <Alert><AlertDescription>
                     Aucun événement de clan configuré.
-                  </div>
+                  </AlertDescription></Alert>
                 ) : clanEvents.map((event) => (
-                  <div key={event.id} className="rounded-xl border border-border/50 p-4">
+                  <Card key={event.id} className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -445,7 +447,7 @@ export function ClubsTab(props: ClubsTabProps) {
                         </Button>
                       </div>
                     </div>
-                  </div>
+                  </CardContent></Card>
                 ))}
               </CardContent>
             </Card>
@@ -522,7 +524,7 @@ export function ClubsTab(props: ClubsTabProps) {
                 </Button>
               </div>
               {clanEventForm.quests.map((quest: any, index: number) => (
-                <div key={`quest-${index}`} className="rounded-xl border border-border/50 p-3 space-y-3">
+                <Card key={`quest-${index}`} className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-3">
                   <Input value={quest.title} onChange={(e) => setClanEventForm((prev: any) => ({ ...prev, quests: prev.quests.map((entry: any, entryIndex: number) => entryIndex === index ? { ...entry, title: e.target.value } : entry) }))} placeholder="Titre de quête" />
                   <Textarea value={quest.description} onChange={(e) => setClanEventForm((prev: any) => ({ ...prev, quests: prev.quests.map((entry: any, entryIndex: number) => entryIndex === index ? { ...entry, description: e.target.value } : entry) }))} rows={2} placeholder="Description" />
                   <div className="grid gap-3 md:grid-cols-3">
@@ -551,7 +553,7 @@ export function ClubsTab(props: ClubsTabProps) {
                       </Button>
                     </div>
                   </div>
-                </div>
+                </CardContent></Card>
               ))}
             </div>
 
@@ -571,7 +573,7 @@ export function ClubsTab(props: ClubsTabProps) {
                 </Button>
               </div>
               {clanEventForm.miniGames.map((miniGame: any, index: number) => (
-                <div key={`mini-${index}`} className="rounded-xl border border-border/50 p-3 space-y-3">
+                <Card key={`mini-${index}`} className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-3">
                   <Input value={miniGame.title} onChange={(e) => setClanEventForm((prev: any) => ({ ...prev, miniGames: prev.miniGames.map((entry: any, entryIndex: number) => entryIndex === index ? { ...entry, title: e.target.value } : entry) }))} placeholder="Titre du mini-jeu" />
                   <Textarea value={miniGame.description} onChange={(e) => setClanEventForm((prev: any) => ({ ...prev, miniGames: prev.miniGames.map((entry: any, entryIndex: number) => entryIndex === index ? { ...entry, description: e.target.value } : entry) }))} rows={2} placeholder="Description" />
                   <Select value={miniGame.type} onValueChange={(value) => setClanEventForm((prev: any) => ({ ...prev, miniGames: prev.miniGames.map((entry: any, entryIndex: number) => entryIndex === index ? { ...entry, type: value as any } : entry) }))}>
@@ -599,7 +601,7 @@ export function ClubsTab(props: ClubsTabProps) {
                       </Button>
                     </div>
                   </div>
-                </div>
+                </CardContent></Card>
               ))}
             </div>
 
@@ -619,7 +621,7 @@ export function ClubsTab(props: ClubsTabProps) {
                 </Button>
               </div>
               {clanEventForm.rewardTiers.map((tier: any, index: number) => (
-                <div key={`reward-${index}`} className="rounded-xl border border-border/50 p-3 space-y-3">
+                <Card key={`reward-${index}`} className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-3">
                   <Input value={tier.title} onChange={(e) => setClanEventForm((prev: any) => ({ ...prev, rewardTiers: prev.rewardTiers.map((entry: any, entryIndex: number) => entryIndex === index ? { ...entry, title: e.target.value } : entry) }))} placeholder="Titre du palier" />
                   <div className="grid gap-3 md:grid-cols-2">
                     <Input type="number" value={tier.minRank} onChange={(e) => setClanEventForm((prev: any) => ({ ...prev, rewardTiers: prev.rewardTiers.map((entry: any, entryIndex: number) => entryIndex === index ? { ...entry, minRank: parseInt(e.target.value) || 1 } : entry) }))} placeholder="Rang min" />
@@ -640,7 +642,7 @@ export function ClubsTab(props: ClubsTabProps) {
                     <Trash2 className="mr-2 h-4 w-4" />
                     Retirer
                   </Button>
-                </div>
+                </CardContent></Card>
               ))}
             </div>
 
