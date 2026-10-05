@@ -26,6 +26,7 @@ import {
   Scale,
   Swords,
 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface TaxBracket {
   id: string;
@@ -353,7 +354,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           </div>
         </GuideSection>
         <GuideSection title="Niveau 3 — Banque">
-          <div className="rounded-xl border border-success/30 bg-success/5 px-4 py-3 space-y-2">
+          <Alert variant="success" className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">Banque</p>
               <Badge variant="outline" className="text-xs border-success/40 text-success">Niveau 3</Badge>
@@ -365,7 +366,7 @@ const youGuideSubsections: TutorialSubsection[] = [
               Revenu passif nul à l'ouverture. Les bénéfices viennent des <strong className="text-foreground">intérêts sur les prêts accordés</strong> et
               des <strong className="text-foreground">dépôts des clients</strong>. Permet aussi d'ouvrir des livrets d'épargne.
             </p>
-          </div>
+          </Alert>
         </GuideSection>
         <GuideSection title="Spécial — Startup Tech">
           <p className={cn('text-sm', 'leading-relaxed')}>
@@ -592,7 +593,7 @@ const youGuideSubsections: TutorialSubsection[] = [
             Un joueur marié peut initier une <strong>liaison</strong> avec un tiers. C'est risqué :
             le/la conjoint(e) peut activer une <strong>suspicion de tricherie</strong>.
           </p>
-          <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 space-y-2 mt-2">
+          <Alert variant="warning" className="space-y-2 mt-2">
             <p className="text-xs font-semibold text-warning">Suspicion — deux issues possibles</p>
             <p className="text-xs text-muted-foreground">
               · Si la suspicion est <strong className="text-foreground">fondée</strong> (liaison réelle) :
@@ -603,7 +604,7 @@ const youGuideSubsections: TutorialSubsection[] = [
               le joueur accusé peut <strong>aller en justice</strong>. S'il choisit cette option, il récupère
               tout l'argent de l'accusateur. S'il ignore, rien ne se passe.
             </p>
-          </div>
+          </Alert>
         </GuideSection>
         <GuideSection title="Procès en justice">
           <p className={cn('text-sm', 'leading-relaxed')}>
@@ -951,14 +952,14 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
     title: 'Impôts journaliers — attention !',
     content: (
       <div className="space-y-5">
-        <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 space-y-2">
+        <Alert variant="warning" className="space-y-2">
           <p className="text-xs font-semibold text-warning">À savoir avant de t'enrichir</p>
           <p className="text-xs text-muted-foreground">
             Chaque nuit à <strong className="text-foreground">minuit (Paris)</strong>, si ton solde dépasse un certain seuil,
             un impôt est automatiquement prélevé. Par défaut, le seuil est à <strong className="text-foreground">10 000 $</strong> avec un taux de <strong className="text-foreground">1 % / jour</strong>.
             Les administrateurs peuvent ajuster ces paliers à tout moment.
           </p>
-        </div>
+        </Alert>
         <GuideSection title="Ce que ça change pour toi">
           <div className="divide-y divide-border/20">
             {[
@@ -1384,9 +1385,9 @@ function GuideDetail({ guide, subsectionId }: { guide: TutorialGuide; subsection
         {subsection ? (
           subsection.content
         ) : (
-          <div className="rounded-xl border border-dashed border-border/40 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+          <Alert><AlertDescription>
             Ce guide arrive bientôt. Le contenu sera ajouté dans une prochaine mise à jour.
-          </div>
+          </AlertDescription></Alert>
         )}
       </CardContent>
     </Card>

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { t } from '@/lib/i18n';
+import { Item } from '@/components/ui/item';
+import { Card, CardContent } from '@/components/ui/card';
 
 type DefenseType = 'FORTRESS' | 'ARMORY' | 'BANNER' | 'STAR';
 
@@ -127,7 +129,7 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
   return (
     <div className="space-y-4">
       {/* Stats bar */}
-      <div className="flex items-center justify-between rounded-xl border border-border/40 bg-muted/20 px-4 py-2 text-sm">
+      <Item variant="muted" className="justify-between text-sm">
         <span className="text-muted-foreground">
           ⏱ <span className={cn('font-mono font-semibold', timeLeft <= 15 && 'text-destructive')}>{timeLeft}s</span>
         </span>
@@ -139,7 +141,7 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
           ))}
         </div>
         <span className="text-muted-foreground">{moves} {t('memory_moves')}</span>
-      </div>
+      </Item>
 
       {/* Card grid */}
       <div className="grid grid-cols-4 gap-2">
@@ -165,7 +167,7 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
 
       {/* End state */}
       {isOver && (
-        <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-center space-y-3">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 text-center space-y-3">
           <div className="text-base font-semibold">
             {done ? t('memory_win_message') : t('memory_timeout_message')}
           </div>
@@ -186,7 +188,7 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
           ) : (
             <p className="text-sm text-muted-foreground">{t('memory_practice_note')}</p>
           )}
-        </div>
+        </CardContent></Card>
       )}
     </div>
   );

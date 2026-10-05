@@ -120,7 +120,7 @@ export default function MarketRoom() {
 
                     <p className="text-sm leading-6 text-muted-foreground">{coin.description}</p>
 
-                    <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+                    <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 grid gap-3">
                       <div className="flex items-end justify-between gap-3">
                         <div>
                           <p className="text-xs text-muted-foreground">Prix</p>
@@ -135,7 +135,7 @@ export default function MarketRoom() {
                         <span className="text-muted-foreground">Frais de trading</span>
                         <span className="font-semibold tabular-nums">{(coin.feePercentage * 100).toFixed(1)}%</span>
                       </div>
-                    </div>
+                    </CardContent></Card>
 
                     <Button className="w-full gap-2" onClick={() => navigate(coin.route)}>
                       Ouvrir le terminal

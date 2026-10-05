@@ -22,6 +22,9 @@ import {
   type YouSupplyResourceType,
   youApi,
 } from '@/services/api';
+import { Item } from '@/components/ui/item';
+import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 function fmt(v: number) { return Math.round(v).toLocaleString('fr-FR'); }
 function fmtDec(v: number) { return v.toFixed(v < 10 ? 1 : 0).replace('.', ','); }
@@ -240,15 +243,15 @@ function CreateListingModal({
               
               {stats ? (
                 <div className="grid grid-cols-1 gap-2">
-                  <div className="bg-background/80 rounded-xl p-3 border border-border/50 flex items-center justify-between px-4 shadow-sm">
+                  <Item variant="outline" className="justify-between">
                     <div className="text-xs font-bold text-muted-foreground">Prix moyen global actuel</div>
                     <div className="font-semibold text-foreground text-sm">{fmtDec(stats.avg)}€/u</div>
-                  </div>
+                  </Item>
                 </div>
               ) : (
-                 <div className="bg-background/50 rounded-xl p-3 border border-border/30 text-xs text-muted-foreground text-center">
+                 <Empty className="border"><EmptyHeader><EmptyDescription>
                    Aucune donnée de marché récente pour ce produit.
-                 </div>
+                 </EmptyDescription></EmptyHeader></Empty>
               )}
             </div>
           )}
@@ -336,7 +339,7 @@ function BuyFlow({
           </SelectContent>
         </Select>
       )}
-      <div className="inline-flex h-8 items-center rounded-lg border border-border/40 bg-background/60">
+      <Card className="gap-0 py-0 shadow-none h-8"><CardContent className="inline-flex items-center">
         <button
           type="button"
           onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -352,7 +355,7 @@ function BuyFlow({
         >
           <Plus className="h-3 w-3" />
         </button>
-      </div>
+      </CardContent></Card>
       <button
         type="button"
         onClick={() => void buy()}
@@ -562,10 +565,10 @@ function ListingRow({
       {/* Avg Price */}
       <div className="flex items-center gap-2">
         {stats && (
-          <div className="bg-muted/30 px-2.5 py-1.5 rounded-lg border border-border/40 shadow-sm">
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="px-2.5 py-1.5">
             <div className="text-xs font-bold text-muted-foreground leading-tight mb-0.5">Prix moyen</div>
             <div className="text-xs font-semibold text-foreground">{fmtDec(stats.avg)}€/u</div>
-          </div>
+          </CardContent></Card>
         )}
       </div>
 
@@ -712,7 +715,7 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
 
       {/* Tabs + filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex rounded-lg border border-border/40 bg-muted/30 p-0.5">
+        <Alert className="flex"><AlertDescription>
           {(['all', 'mine'] as const).map((t) => (
             <button
               key={t}
@@ -726,7 +729,7 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
               {t === 'all' ? 'Toutes' : `Mes annonces${myListingsCount > 0 ? ` (${myListingsCount})` : ''}`}
             </button>
           ))}
-        </div>
+        </AlertDescription></Alert>
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input

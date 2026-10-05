@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { ClanWarNavalShot } from '@/services/api';
 import { t } from '@/lib/i18n';
+import { Item } from '@/components/ui/item';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
 
 const GRID = 6;
 
@@ -57,7 +60,7 @@ export function NavalWarfareGame({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between rounded-xl border border-border/40 bg-muted/20 px-4 py-2 text-sm">
+      <Item variant="muted" className="justify-between text-sm">
         <div className="text-muted-foreground">
           Cible: <span className="font-semibold text-foreground">{enemyClanName}</span>
         </div>
@@ -78,7 +81,7 @@ export function NavalWarfareGame({
             </span>
           )}
         </div>
-      </div>
+      </Item>
 
       {/* Grid */}
       <div className="relative">
@@ -158,9 +161,9 @@ export function NavalWarfareGame({
 
       {/* Team shots summary */}
       {shots.filter((s) => !s.isOwnShot).length > 0 && (
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-2 text-xs text-muted-foreground">
+        <Alert><AlertDescription>
           {shots.filter((s) => !s.isOwnShot && s.isHit).length} {t('naval_team_hits_suffix')}
-        </div>
+        </AlertDescription></Alert>
       )}
 
       {/* Legend */}
@@ -171,9 +174,9 @@ export function NavalWarfareGame({
       </div>
 
       {shotsRemaining <= 0 && (
-        <div className="rounded-xl border border-border/40 bg-muted/15 p-3 text-center text-sm text-muted-foreground">
+        <Empty className="border"><EmptyHeader><EmptyDescription>
           {t('naval_no_shots_remaining')}
-        </div>
+        </EmptyDescription></EmptyHeader></Empty>
       )}
     </div>
   );

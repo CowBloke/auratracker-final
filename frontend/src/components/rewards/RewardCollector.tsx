@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Gift, X } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { type RewardItem } from '../../contexts/RewardQueueContext';
+import { Alert } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 interface Props {
   items: RewardItem[];
@@ -89,18 +91,18 @@ export default function RewardCollector({ items, currentIndex, phase, onAdvance,
 
           <div className="space-y-2">
             {totals.money > 0 && (
-              <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/10 px-4 py-3">
+              <Alert variant="warning" className="flex items-center gap-3">
                 <CurrencyIcon type="money" className="h-5 w-5" />
                 <span className="text-lg font-bold">+{totals.money.toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground">coins</span>
-              </div>
+              </Alert>
             )}
             {totals.aura > 0 && (
-              <div className="flex items-center gap-3 rounded-xl border border-border/20 bg-muted/10 px-4 py-3">
+              <Item variant="muted" className="gap-3">
                 <CurrencyIcon type="aura" className="h-5 w-5" />
                 <span className="text-lg font-bold">+{totals.aura.toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground">aura</span>
-              </div>
+              </Item>
             )}
             {totals.itemRewards.map((item, i) => {
               const border = item.rarity ? rarityBorder[item.rarity] : 'border-border/20';

@@ -1,6 +1,7 @@
 import { BookOpen, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTutorial } from './TutorialContext';
+import { Card, CardContent } from '@/components/ui/card';
 
 export function TutorialWelcomeModal() {
   const { hasSeenWelcome, acknowledgeWelcome, start } = useTutorial();
@@ -19,9 +20,7 @@ export function TutorialWelcomeModal() {
   return (
     <>
       <div className="fixed inset-0 bg-black/50" style={{ zIndex: 1000000 }} />
-      <div
-        className="fixed left-1/2 top-1/2 z-[1000001] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border/60 bg-popover p-6"
-      >
+      <Card className="gap-0 py-0 shadow-none left-1/2 top-1/2 z-[1000001] w-[min(420px,calc(100vw-2rem))]"><CardContent className="p-6 fixed -translate-x-1/2 -translate-y-1/2">
         <button
           onClick={handleDecline}
           className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -50,7 +49,7 @@ export function TutorialWelcomeModal() {
             Non merci, je vais explorer seul
           </Button>
         </div>
-      </div>
+      </CardContent></Card>
     </>
   );
 }

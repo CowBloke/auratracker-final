@@ -62,7 +62,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupTextarea } from '@/components/ui/input-group';
 import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -91,6 +91,8 @@ import {
   usersApi,
 } from '@/services/api';
 import SanctionModal from '@/components/sanctions/SanctionModal';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
 
 const POLL_INTERVAL_MS = 15000;
 
@@ -1613,7 +1615,7 @@ export default function MessagesPage() {
           </DialogHeader>
           {dmOtherUser ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/20 px-3 py-3">
+              <Item variant="muted" className="gap-3">
                 <Avatar className="h-11 w-11">
                   <AvatarImage src={resolveImageUrl(dmOtherUser.profilePicture)} alt={dmOtherUser.username} />
                   <AvatarFallback>{dmOtherUser.username.slice(0, 2).toUpperCase()}</AvatarFallback>
@@ -1624,7 +1626,7 @@ export default function MessagesPage() {
                   </p>
                   <p className="text-xs text-muted-foreground">Discussion privee</p>
                 </div>
-              </div>
+              </Item>
               <DialogFooter>
                 <Button type="button" variant="outline" size="sm" onClick={() => setDmProfilePreviewOpen(false)}>
                   Fermer
@@ -1810,7 +1812,7 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold">Membres</p>
@@ -1860,7 +1862,7 @@ export default function MessagesPage() {
                     })}
                   </div>
                 </ScrollArea>
-              </div>
+              </CardContent></Card>
             </div>
           </ScrollArea>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 px-4 py-2.5">
@@ -2005,7 +2007,7 @@ export default function MessagesPage() {
               <p className="py-6 text-center text-sm text-muted-foreground">Aucun argument pour le moment.</p>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-3 rounded-xl border border-border/25 bg-muted/5 p-3">
+                <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-3">
                   <p className="text-xs font-semibold text-primary">Plaignant</p>
                   {courtArguments.filter((argument) => argument.side === 'PLAINTIFF').map((argument) => (
                     <div key={argument.id} className="rounded-lg border border-border/25 bg-background/70 p-3">
@@ -2018,8 +2020,8 @@ export default function MessagesPage() {
                   {courtArguments.every((argument) => argument.side !== 'PLAINTIFF') && (
                     <p className="text-xs text-muted-foreground">Aucun argument du plaignant.</p>
                   )}
-                </div>
-                <div className="space-y-3 rounded-xl border border-destructive/25 bg-destructive/5 p-3">
+                </CardContent></Card>
+                <Alert variant="destructive" className="space-y-3">
                   <p className="text-xs font-semibold text-destructive">Coupable</p>
                   {courtArguments.filter((argument) => argument.side === 'DEFENDANT').map((argument) => (
                     <div key={argument.id} className="rounded-lg border border-destructive/25 bg-background/70 p-3">
@@ -2032,7 +2034,7 @@ export default function MessagesPage() {
                   {courtArguments.every((argument) => argument.side !== 'DEFENDANT') && (
                     <p className="text-xs text-muted-foreground">Aucun argument du coupable.</p>
                   )}
-                </div>
+                </Alert>
               </div>
             )}
           </div>
@@ -2127,13 +2129,13 @@ export default function MessagesPage() {
 
             {representationType === 'PRIVATE_LAWYER' ? (
               lawFirmsLoading ? (
-                <div className="flex items-center justify-center rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-sm text-muted-foreground">
+                <Item variant="muted" className="justify-center text-sm text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />Chargement des cabinets...
-                </div>
+                </Item>
               ) : sortedLawFirms.length === 0 ? (
-                <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+                <Empty className="border"><EmptyHeader><EmptyDescription>
                   Aucun cabinet disponible pour le moment.
-                </div>
+                </EmptyDescription></EmptyHeader></Empty>
               ) : (
                 <div className="grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)]">
                   <div className="max-h-[45vh] space-y-2 overflow-y-auto pr-1">
@@ -2174,7 +2176,7 @@ export default function MessagesPage() {
                       );
                     })}
                   </div>
-                  <div className="rounded-xl border border-border/40 bg-muted/10 p-4">
+                  <Alert><AlertDescription>
                     {selectedLawFirm ? (
                       <div className="space-y-3">
                         <div>
@@ -2183,9 +2185,9 @@ export default function MessagesPage() {
                         </div>
                         <div className="space-y-2">
                           {selectedLawFirmLawyers.length === 0 ? (
-                            <div className="rounded-xl border border-border/40 bg-background/70 px-3 py-3 text-xs text-muted-foreground">
+                            <Alert><AlertDescription>
                               Aucun avocat disponible dans ce cabinet pour ce dossier.
-                            </div>
+                            </AlertDescription></Alert>
                           ) : selectedLawFirmLawyers.map((lawyer) => (
                             <button
                               key={lawyer.userId}
@@ -2212,13 +2214,13 @@ export default function MessagesPage() {
                         Selectionne un cabinet puis un avocat.
                       </div>
                     )}
-                  </div>
+                  </AlertDescription></Alert>
                 </div>
               )
             ) : (
-              <div className="rounded-xl border border-border/20 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+              <Alert><AlertDescription>
                 Les administrateurs et juges disponibles pourront intervenir comme defenseurs publics sur ce dossier.
-              </div>
+              </AlertDescription></Alert>
             )}
           </div>
           <DialogFooter>
@@ -2242,11 +2244,11 @@ export default function MessagesPage() {
           </DialogHeader>
           <div className="space-y-4 p-4">
             {assignedLawyer ? (
-              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
                 <p className="text-sm font-semibold">{assignedLawyer.username}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{assignedLawyerProfile?.specialty ?? 'Avocat generaliste'}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet prive'}</p>
-              </div>
+              </CardContent></Card>
             ) : null}
             <div className="flex items-center justify-center gap-2">
               {[1, 2, 3, 4, 5].map((value) => (
@@ -2592,9 +2594,9 @@ export default function MessagesPage() {
                         </div>
                       ) : visibleMessages.length === 0 ? (
                         <div className="flex flex-col items-center py-12 text-center">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-card">
+                          <Item variant="outline" className="h-12 w-12 justify-center">
                             <MessagesSquare className="h-5 w-5 text-muted-foreground" />
-                          </div>
+                          </Item>
                           <p className="mt-3 text-sm font-medium">Lance la conversation</p>
                           <p className="mt-1 text-xs text-muted-foreground">Envoie un premier message.</p>
                         </div>
@@ -2953,9 +2955,9 @@ export default function MessagesPage() {
                     </div>
                   )}
                   {isCourtChatLocked && (
-                    <div className="mb-2 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2 text-xs text-warning">
+                    <Alert variant="warning" className="mb-2"><AlertDescription>
                       Cette affaire n est pas en cours. Le chat est verrouille.
-                    </div>
+                    </AlertDescription></Alert>
                   )}
                   <div className="flex w-full items-end gap-2 flex-wrap">
                       {imageUrlToSend && (
@@ -3044,9 +3046,9 @@ export default function MessagesPage() {
             ) : (
               <div className="flex flex-1 items-center justify-center p-6">
                 <div className="text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl border border-border/60 bg-muted/30">
+                  <Item variant="muted" className="mx-auto h-14 w-14 justify-center">
                     <MessageCircleMore className="h-6 w-6 text-muted-foreground" />
-                  </div>
+                  </Item>
                   <p className="mt-3 text-sm font-medium">Aucune conversation</p>
                   <p className="mt-1 text-xs text-muted-foreground">Sélectionne une conversation ou crée un DM.</p>
                   <Button size="sm" className="mt-4" onClick={() => setCreateOpen(true)}>

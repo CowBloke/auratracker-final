@@ -18,6 +18,9 @@ import {
 } from '@/lib/resources';
 import type { YouBusiness, YouBusinessMember } from '@/services/api';
 import { youApi } from '@/services/api';
+import { Item } from '@/components/ui/item';
+import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // ── Resource icon helper ─────────────────────────────────
 function ResIcon({ type, size = 'sm' }: { type: ResourceType; size?: 'sm' | 'md' }) {
@@ -58,10 +61,10 @@ function TimingGame({ onResult }: { onResult: (success: boolean) => void }) {
   return (
     <div className="space-y-4">
       <p className="text-center text-sm text-muted-foreground">Cliquez quand l'indicateur est dans la zone verte</p>
-      <div className="relative h-10 overflow-hidden rounded-xl border border-border/60 bg-muted/30">
+      <Card className="gap-0 py-0 shadow-none relative h-10 overflow-hidden"><CardContent>
         <div className="absolute inset-y-0 border-x border-success/40 bg-success/25" style={{ left: '35%', width: '30%' }} />
         <div className="absolute top-1 h-8 w-2 rounded-full bg-white transition-none" style={{ left: `calc(${pos}% - 4px)` }} />
-      </div>
+      </CardContent></Card>
       <Button className="w-full" onClick={hit} disabled={done} size="lg">Frapper !</Button>
     </div>
   );
@@ -181,10 +184,10 @@ function TypingGame({ onResult }: { onResult: (success: boolean) => void }) {
   return (
     <div className="space-y-4">
       <p className="text-center text-sm text-muted-foreground">Tapez le mot avant la fin du chrono</p>
-      <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
+      <Item variant="muted" className="justify-between">
         <span className="text-2xl font-bold text-foreground">{word}</span>
         <span className={cn('text-lg font-mono font-bold', timeLeft <= 2 ? 'text-destructive' : 'text-muted-foreground')}>{timeLeft}s</span>
-      </div>
+      </Item>
       <input
         autoFocus
         value={value}
@@ -221,9 +224,9 @@ function MathGame({ onResult }: { onResult: (success: boolean) => void }) {
   return (
     <div className="space-y-4">
       <p className="text-center text-sm text-muted-foreground">Résolvez le calcul mental</p>
-      <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-5 text-center text-3xl font-bold text-foreground">
+      <Empty className="border font-bold"><EmptyHeader><EmptyDescription>
         {problem.q} = ?
-      </div>
+      </EmptyDescription></EmptyHeader></Empty>
       <input
         autoFocus
         type="number"
@@ -412,7 +415,7 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
       )}
 
       {isProducer && totalMembers > 0 && (
-        <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-2">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Production du jour</span>
             <span className={cn('font-bold tabular-nums', workRatio >= 1 ? 'text-success' : workRatio > 0 ? 'text-warning' : 'text-destructive')}>
@@ -426,13 +429,13 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
             />
           </div>
           <p className="text-xs text-muted-foreground">{workedCount}/{totalMembers} employés ont travaillé aujourd'hui{workedCount >= 4 ? ' · Bonus +25%' : ''}</p>
-        </div>
+        </CardContent></Card>
       )}
 
       {!isProducer && (
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
+        <Alert><AlertDescription>
           Ce type d'entreprise ne produit pas de ressources directement.
-        </div>
+        </AlertDescription></Alert>
       )}
 
       <div className="space-y-3">
@@ -655,7 +658,7 @@ function StorageTab({ storage, setStorage }: {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-3">
+      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Capacité totale</p>
           <p className="text-sm font-bold tabular-nums">{storage.used} / {capacity} u.</p>
@@ -668,7 +671,7 @@ function StorageTab({ storage, setStorage }: {
           <div className="rounded-lg bg-muted/20 px-2 py-2"><p className="text-muted-foreground">Silos ({storage.silos}/3)</p><p className="font-semibold">+{storage.silos * 150} u.</p></div>
           <div className="rounded-lg bg-muted/20 px-2 py-2"><p className="text-muted-foreground">Entrepôt</p><p className="font-semibold">{storage.hasWarehouse ? '+500 u.' : '—'}</p></div>
         </div>
-      </div>
+      </CardContent></Card>
 
       <Card className={cn('border-border/60 shadow-none', storage.silos >= 3 && 'opacity-50')}>
         <CardContent className="flex items-center gap-4 p-4">
@@ -702,7 +705,7 @@ function StorageTab({ storage, setStorage }: {
         </CardContent>
       </Card>
 
-      <div className="rounded-xl border border-dashed border-border/50 bg-muted/5 p-4">
+      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
         <div className="flex items-center gap-3">
           <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
           <div>
@@ -710,7 +713,7 @@ function StorageTab({ storage, setStorage }: {
             <p className="text-xs text-muted-foreground">Louez l'espace inutilisé d'un autre joueur. Bientôt disponible.</p>
           </div>
         </div>
-      </div>
+      </CardContent></Card>
     </div>
   );
 }

@@ -32,6 +32,9 @@ import {
 } from './modal-helpers';
 import { ActionCard, ActionRow, FieldRow, Pill, SectionTitle, SelectBox, UserAvatar } from './YouPrimitives';
 import { AppModal } from '@/components/ui/app-modal';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
+import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
 
 const PICKER_DEFAULT_STYLE = { card: 'border-border/40 bg-muted/10', badge: 'bg-muted text-muted-foreground', iconWrap: 'bg-muted/20', icon: 'text-foreground/60' };
 
@@ -325,7 +328,7 @@ export function CreateBusinessModal({
             )}
           </button>
         </FieldRow>
-        {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-xs text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></div> : null}
+        {selectedType ? <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></CardContent></Card> : null}
         <FieldRow label="Nom">
           <Input
             value={name}
@@ -485,7 +488,7 @@ export function InvitePlayersModal({
           })}
           {availablePlayers.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible pour cette recherche.</p> : null}
         </div>
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{selectedIds.length === 0 ? 'Aucune invitation preparee.' : `${selectedIds.length} invitation(s) preparee(s) pour le role ${role} a ${Number(salary).toLocaleString('fr-FR')} money/jour.`}</div>
+        <Alert><AlertDescription>{selectedIds.length === 0 ? 'Aucune invitation preparee.' : `${selectedIds.length} invitation(s) preparee(s) pour le role ${role} a ${Number(salary).toLocaleString('fr-FR')} money/jour.`}</AlertDescription></Alert>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Fermer</AppModal.Button>
@@ -544,16 +547,16 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
             placeholder="Explique ce que tu comptes faire de l argent, comment tu vas rembourser et pourquoi ce pret a du sens."
           />
         </FieldRow>
-        <div className="grid grid-cols-3 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 grid grid-cols-3 gap-3">
           <div><p className="text-xs text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-warning">{rate}%</p></div>
           <div><p className="text-xs text-muted-foreground/60">Remb. / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div>
           <div><p className="text-xs text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-destructive">{formatMoney(total)}</p></div>
-        </div>
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
+        </CardContent></Card>
+        <Alert><AlertDescription>
           {Number(collateralAura || 0) > 0
             ? `${Number(collateralAura).toLocaleString('fr-FR')} aura seront bloquees a l acceptation puis rendues au remboursement. Si l echeance est depassee et que le joueur ne peut pas payer, elles seront saisies.`
             : 'Sans hypothèque, le pret repose uniquement sur la capacite du joueur a rembourser.'}
-        </div>
+        </AlertDescription></Alert>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
@@ -589,7 +592,7 @@ export function InvestModal({ open, onClose, business, onSubmitted }: { open: bo
       <AppModal.Body>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={100} /></FieldRow>
       <FieldRow label="Risque"><SelectBox value={riskLevel} onChange={(value) => setRiskLevel(value as 'low' | 'medium' | 'high')}><option value="low">Faible risque</option><option value="medium">Risque modere</option><option value="high">Risque eleve</option></SelectBox></FieldRow>
-      <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/10 p-3 text-center"><div><p className="text-xs text-muted-foreground/60">Risque</p><p className={cn('text-sm font-bold', selected.color)}>{selected.label}</p></div><div><p className="text-xs text-muted-foreground/60">Min</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.min}%</p></div><div><p className="text-xs text-muted-foreground/60">Max</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.max}%</p></div></div>
+      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 grid grid-cols-3 gap-2 text-center"><div><p className="text-xs text-muted-foreground/60">Risque</p><p className={cn('text-sm font-bold', selected.color)}>{selected.label}</p></div><div><p className="text-xs text-muted-foreground/60">Min</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.min}%</p></div><div><p className="text-xs text-muted-foreground/60">Max</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.max}%</p></div></CardContent></Card>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
@@ -659,9 +662,9 @@ export function TransferBusinessModal({
         })}
       </div>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} /></FieldRow>
-      <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
+      <Alert><AlertDescription>
         Frais de service actuels: {business?.transferFeeRate ?? 2}% du montant envoye.
-      </div>
+      </AlertDescription></Alert>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
@@ -759,7 +762,7 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
       <FieldRow label="Somme proposee">
         <Input type="number" min={1} value={amount} onChange={(event) => setAmount(event.target.value)} />
       </FieldRow>
-      <div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-2">
+      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-2">
         <div className="flex items-center justify-between gap-3 text-xs">
           <span className="text-muted-foreground">Montant suggere auto-calcule</span>
           <button type="button" className="font-semibold text-warning transition-opacity hover:opacity-80" onClick={() => setAmount(String(suggestedAmount))}>
@@ -771,7 +774,7 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
           <div><p className="text-xs text-muted-foreground/60">Owner restant</p><p className="text-sm font-bold">{Math.max(0, 100 - numericSharePercent).toLocaleString('fr-FR')}%</p></div>
           <div><p className="text-xs text-muted-foreground/60">Base actuelle</p><p className="text-sm font-bold">{formatMoney(business?.treasuryMoney ?? 0)}</p></div>
         </div>
-      </div>
+      </CardContent></Card>
       <FieldRow label="Message (optionnel)">
         <Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : je veux financer votre croissance." />
       </FieldRow>
@@ -954,7 +957,7 @@ function TxRow({ tx }: { tx: YouBusinessTransaction }) {
   const Icon = meta.icon;
   const isPositive = tx.amount > 0;
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border/30 bg-muted/5 px-4 py-3">
+    <Item variant="muted" className="gap-3">
       <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/20')}>
         <Icon className={cn('h-3.5 w-3.5', meta.color)} />
       </div>
@@ -965,7 +968,7 @@ function TxRow({ tx }: { tx: YouBusinessTransaction }) {
       <p className={cn('shrink-0 text-sm font-bold tabular-nums', isPositive ? 'text-success' : 'text-destructive')}>
         {isPositive ? '+' : ''}{tx.amount.toLocaleString('fr-FR')} €
       </p>
-    </div>
+    </Item>
   );
 }
 
@@ -1619,10 +1622,10 @@ export function ManageBusinessModal({
             {/* Trésorerie */}
             <Card>
               <CardContent className="space-y-4 px-5 py-4">
-                <div className="rounded-xl border border-success/25 bg-success/10 px-5 py-6 text-center">
+                <Alert variant="success">
                   <p className="text-xs text-success/70">Trésorerie</p>
                   <p className="mt-2 text-5xl font-semibold tabular-nums text-success">{business.treasuryMoney.toLocaleString('fr-FR')} €</p>
-                </div>
+                </Alert>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { label: 'Membres', value: String(business.memberCount) },
@@ -1634,7 +1637,7 @@ export function ManageBusinessModal({
                     </div>
                   ))}
                 </div>
-                <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-4">
+                <Alert variant="warning">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs text-muted-foreground/60">Capital partage</p>
@@ -1667,7 +1670,7 @@ export function ManageBusinessModal({
                     ))}
                     {business.shareholders.length === 0 ? <p className="text-xs text-muted-foreground">Aucun actionnaire externe pour l instant.</p> : null}
                   </div>
-                </div>
+                </Alert>
               </CardContent>
             </Card>
 
@@ -1677,7 +1680,7 @@ export function ManageBusinessModal({
                 <CardContent className="space-y-3 px-5 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <SectionTitle>Prêts banque</SectionTitle>
-                    <div className="inline-flex items-center rounded-lg border border-border/40 bg-muted/10 p-1">
+                    <Card className="gap-0 py-0 shadow-none"><CardContent className="p-1 inline-flex items-center">
                       <button
                         type="button"
                         onClick={() => setLoanViewTab('active')}
@@ -1692,15 +1695,15 @@ export function ManageBusinessModal({
                       >
                         Historique ({bankLoans.length})
                       </button>
-                    </div>
+                    </CardContent></Card>
                   </div>
 
                   {loadingLoanHistory && bankLoans.length === 0 ? (
                     <p className="py-4 text-center text-xs text-muted-foreground">Chargement de l'historique des prêts…</p>
                   ) : ((loanViewTab === 'active' ? activeLoans : bankLoans).length === 0) ? (
-                    <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+                    <Alert><AlertDescription>
                       {loanViewTab === 'active' ? 'Aucun prêt actif actuellement.' : 'Aucun prêt enregistré pour cette banque.'}
-                    </div>
+                    </AlertDescription></Alert>
                   ) : (
                     <div className="space-y-3 max-h-[34rem] overflow-y-auto pr-1">
                       {(loanViewTab === 'active' ? activeLoans : bankLoans).map((loan) => {
@@ -1804,9 +1807,9 @@ export function ManageBusinessModal({
                 {loadingTx ? (
                   <p className="py-4 text-center text-xs text-muted-foreground">Chargement…</p>
                 ) : filteredTx.length === 0 ? (
-                  <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+                  <Alert><AlertDescription>
                     Aucun mouvement enregistré.
-                  </div>
+                  </AlertDescription></Alert>
                 ) : (
                   <div className="max-h-64 space-y-2 overflow-y-auto">
                     {filteredTx.map((tx) => <TxRow key={tx.id} tx={tx} />)}
@@ -2078,9 +2081,9 @@ export function ManageTeamModal({
           ) : null}
 
           {activeMembers.length === 0 ? (
-            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
+            <Empty className="border"><EmptyHeader><EmptyDescription>
               Aucun membre dans cette équipe.
-            </div>
+            </EmptyDescription></EmptyHeader></Empty>
           ) : (
             <div className="space-y-2">
               <SectionTitle>Membres actifs</SectionTitle>
@@ -2213,14 +2216,14 @@ export function MemberEditModal({
     <AppModal open={open} onClose={onClose} tone="cyan" size="md" description={`${roleLabel} · ${business.name}`}>
       <AppModal.Header tone="cyan" title={member.user.username} subtitle={`${roleLabel} · ${business.name}`} />
       <AppModal.Body scrollable>
-      <div className="flex items-center gap-4 rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
+      <Item variant="muted" className="gap-4">
         <UserAvatar player={member.user} className="h-12 w-12 shrink-0" />
         <div>
           <p className="font-semibold">{member.user.username}</p>
           <p className="text-xs text-muted-foreground">{roleLabel}</p>
           {isLawFirm && member.specialty ? <p className="text-xs text-muted-foreground/70">{member.specialty}</p> : null}
         </div>
-      </div>
+      </Item>
 
       {/* Salary */}
       <div className="space-y-2">
@@ -2256,7 +2259,7 @@ export function MemberEditModal({
 
       {/* Law firm profile */}
       {isLawFirm ? (
-        <div className="space-y-4 rounded-xl border border-border/20 bg-muted/5 px-4 py-4">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-4 space-y-4">
           <div className="flex items-center gap-2">
             <Scale className="h-4 w-4 text-primary" />
             <p className="text-xs font-semibold text-primary">Profil avocat</p>
@@ -2307,7 +2310,7 @@ export function MemberEditModal({
               <p className="text-xs text-muted-foreground/70">Mis en avant sur la fiche publique du cabinet.</p>
             </div>
           </label>
-        </div>
+        </CardContent></Card>
       ) : null}
 
       </AppModal.Body>
@@ -2360,9 +2363,9 @@ export function TeamRosterModal({
       <AppModal.Header tone="cyan" title={`Équipe · ${business.name}`} subtitle={`${members.length} membre(s)`} />
       <AppModal.Body scrollable>
       {members.length === 0 ? (
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+        <Empty className="border"><EmptyHeader><EmptyDescription>
           Aucun membre pour le moment.
-        </div>
+        </EmptyDescription></EmptyHeader></Empty>
       ) : (
         <div className="space-y-2">
           {members.map((m, i) => (
@@ -2481,9 +2484,9 @@ export function BankAccountModal({
           </div>
 
           {accounts.length === 0 ? (
-            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
+            <Empty className="border"><EmptyHeader><EmptyDescription>
               Ouvre un compte pour commencer à épargner.
-            </div>
+            </EmptyDescription></EmptyHeader></Empty>
           ) : (
             accounts.map((account) => {
               const isEpargne = account.accountType === 'EPARGNE';
@@ -2573,18 +2576,18 @@ export function FormationPurchaseModal({
       <AppModal.Body scrollable>
       {purchased ? (
         <div className="space-y-4 text-center">
-          <div className="rounded-xl border border-success/25 bg-success/10 px-4 py-6">
+          <Alert variant="success">
             <GraduationCap className="mx-auto h-10 w-10 text-success" />
             <p className="mt-3 text-sm font-semibold">Formation achetée !</p>
             <p className="mt-1 text-xs text-muted-foreground">Clique sur le bouton pour accéder au contenu.</p>
-          </div>
+          </Alert>
           <a href={purchased} target="_blank" rel="noopener noreferrer">
             <Button className="w-full"><ExternalLink className="mr-2 h-4 w-4" />Accéder à la formation</Button>
           </a>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-xl border border-warning/20 bg-warning/8 px-4 py-4">
+          <Alert variant="warning">
             <div className="flex items-center gap-3">
               <GraduationCap className="h-8 w-8 text-warning" />
               <div>
@@ -2592,13 +2595,13 @@ export function FormationPurchaseModal({
                 <p className="mt-0.5 text-xs text-muted-foreground">Propriétaire : {business?.owner.username}</p>
               </div>
             </div>
-          </div>
-          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-sm">
+          </Alert>
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Prix de la formation</span>
               <span className="font-bold text-warning">{price.toLocaleString('fr-FR')} €</span>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
       </AppModal.Body>
@@ -2740,9 +2743,9 @@ export function ManageFormationsModal({
       <AppModal.Header tone="blue" title="Gérer les formations" subtitle="Ajoute, modifie ou supprime les formations vendues sur ce centre." />
       <AppModal.Body scrollable>
       {products.length === 0 && !formOpen ? (
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
+        <Empty className="border"><EmptyHeader><EmptyDescription>
           Aucune formation configurée. Clique sur "Ajouter" pour commencer.
-        </div>
+        </EmptyDescription></EmptyHeader></Empty>
       ) : (
         <div className="space-y-2">
           {products.map((p) => (
@@ -2779,7 +2782,7 @@ export function ManageFormationsModal({
       )}
 
       {formOpen ? (
-        <div className="space-y-3 rounded-xl border border-border/40 bg-muted/5 p-4">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">
           <p className="text-xs font-semibold text-muted-foreground">
             {editingId ? 'Modifier la formation' : 'Nouvelle formation'}
           </p>
@@ -2805,7 +2808,7 @@ export function ManageFormationsModal({
             const currentProduct = products.find((entry) => entry.id === editingId) ?? null;
             if (!currentProduct) return null;
             return (
-              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs space-y-2">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3 text-xs space-y-2">
                 <p className={cn('font-medium', currentProduct.status === 'APPROVED' ? 'text-success' : currentProduct.status === 'REJECTED' ? 'text-destructive' : 'text-warning')}>
                   Statut: {currentProduct.status === 'APPROVED' ? 'ApprouvÃ©e' : currentProduct.status === 'REJECTED' ? 'RefusÃ©e' : 'En attente'}
                 </p>
@@ -2821,7 +2824,7 @@ export function ManageFormationsModal({
                     Supprimer le fichier joint
                   </label>
                 ) : null}
-              </div>
+              </CardContent></Card>
             );
           })() : null}
           <div className="flex justify-end gap-2">
@@ -2830,7 +2833,7 @@ export function ManageFormationsModal({
               {editingId ? 'Enregistrer' : 'Ajouter'}
             </Button>
           </div>
-        </div>
+        </CardContent></Card>
       ) : (
         <Button size="sm" variant="outline" className="w-full justify-start" onClick={startAdd}>
           <Plus className="mr-2 h-4 w-4" />Ajouter une formation
@@ -2901,10 +2904,10 @@ export function BusinessProfileModal({
         <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
       </FieldRow>
       {logoUrl ? (
-        <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+        <Item variant="muted" className="gap-3">
           <img src={logoUrl} alt="apercu" className="h-10 w-10 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           <p className="text-xs text-muted-foreground">Apercu du logo</p>
-        </div>
+        </Item>
       ) : null}
       </AppModal.Body>
       <AppModal.Footer>
@@ -3010,11 +3013,11 @@ export function FormationCatalogModal({
       <AppModal.Body scrollable>
       {purchasedAccess ? (
         <div className="space-y-4 text-center">
-          <div className="rounded-xl border border-success/25 bg-success/10 px-4 py-6">
+          <Alert variant="success">
             <GraduationCap className="mx-auto h-10 w-10 text-success" />
             <p className="mt-3 text-sm font-semibold">{purchasedAccess.title}</p>
             <p className="mt-1 text-xs text-muted-foreground">Clique pour reouvrir ton acces securise.</p>
-          </div>
+          </Alert>
           <Button className="w-full" onClick={() => void openFormationAccess(business.id, purchasedAccess.productId).then(onAccessed)}>
             <Download className="mr-2 h-4 w-4" />Acceder a la formation
           </Button>
@@ -3025,9 +3028,9 @@ export function FormationCatalogModal({
           ) : null}
         </div>
       ) : visibleProducts.length === 0 ? (
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+        <Empty className="border"><EmptyHeader><EmptyDescription>
           {isOwnerPreview ? 'Aucune formation creee pour le moment.' : 'Aucune formation disponible pour le moment.'}
-        </div>
+        </EmptyDescription></EmptyHeader></Empty>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {visibleProducts.map((product) => {
@@ -3085,9 +3088,9 @@ export function FormationCatalogModal({
                   </div>
 
                   {isOwnerPreview && product.status === 'REJECTED' && product.reviewerNote ? (
-                    <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    <Alert variant="destructive"><AlertDescription>
                       Note moderation: {product.reviewerNote}
-                    </div>
+                    </AlertDescription></Alert>
                   ) : null}
 
                   <div className="flex items-center gap-2">

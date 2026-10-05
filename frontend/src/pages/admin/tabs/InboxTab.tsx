@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardHeader } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
@@ -34,6 +34,7 @@ import {
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { useEffect, useRef } from 'react';
 import type { AdminChatModerationEvent, BanAppeal, BugReport, BugReportMessage, CustomBadgeRequest, NameChangeRequest, PendingFormationReviewItem, PendingSanction, PendingUser } from '../../../services/api';
+import { Alert } from '@/components/ui/alert';
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -428,7 +429,7 @@ export function InboxTab(props: InboxTabProps) {
                         </div>
 
                         {isAppeal ? (
-                          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 space-y-3">
+                          <Alert variant="destructive" className="space-y-3">
                             <div>
                               <p className="text-xs font-medium text-muted-foreground/70 mb-1">Message d'appel</p>
                               <p className="text-sm whitespace-pre-wrap break-words">{event.details.message || 'Message indisponible'}</p>
@@ -439,9 +440,9 @@ export function InboxTab(props: InboxTabProps) {
                                 <p className="text-sm">{event.details.reason}</p>
                               </div>
                             )}
-                          </div>
+                          </Alert>
                         ) : (
-                        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 space-y-3">
+                        <Alert variant="destructive" className="space-y-3">
                           <div>
                             <p className="text-xs font-medium text-muted-foreground/70 mb-2">Termes detectes</p>
                             <div className="flex flex-wrap gap-2">
@@ -456,11 +457,11 @@ export function InboxTab(props: InboxTabProps) {
                             <p className="text-xs font-medium text-muted-foreground/70 mb-1">Message sanctionne</p>
                             <p className="text-sm whitespace-pre-wrap break-words">{event.details.offendingMessage || event.details.censoredMessage || 'Message indisponible'}</p>
                           </div>
-                        </div>
+                        </Alert>
                         )}
 
                         {!isAppeal && (
-                        <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-3">10 derniers messages avant sanction</p>
                           {contextMessages.length === 0 ? (
                             <p className="text-sm text-muted-foreground">Aucun contexte enregistre.</p>
@@ -476,7 +477,7 @@ export function InboxTab(props: InboxTabProps) {
                               ))}
                             </div>
                           )}
-                        </div>
+                        </CardContent></Card>
                         )}
                       </div>
                     );
@@ -496,7 +497,7 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{product.title}</h3>
                           <p className="text-sm text-muted-foreground">{product.business.name} · par {product.business.owner.username}</p>
                         </div>
-                        <div className="rounded-lg border border-border/20 bg-muted/5 p-4 space-y-3">
+                        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">
                           <p className="text-sm font-medium">{product.price.toLocaleString('fr-FR')} €</p>
                           {product.description && (
                             <p className="text-sm whitespace-pre-wrap break-words">{product.description}</p>
@@ -510,12 +511,12 @@ export function InboxTab(props: InboxTabProps) {
                             {product.attachmentOriginalName ?? 'Sans fichier joint'}
                           </p>
                           {product.reviewerNote && (
-                            <div className="rounded-md border border-border/50 bg-background/70 px-3 py-2">
+                            <Card className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2">
                               <p className="text-xs font-medium text-muted-foreground/70 mb-1">Dernière note reviewer</p>
                               <p className="text-sm whitespace-pre-wrap break-words">{product.reviewerNote}</p>
-                            </div>
+                            </CardContent></Card>
                           )}
-                        </div>
+                        </CardContent></Card>
                         <div className="space-y-2">
                           <p className="text-xs font-medium text-muted-foreground/70">Note reviewer</p>
                           <Input
@@ -575,12 +576,12 @@ export function InboxTab(props: InboxTabProps) {
                             </p>
                           )}
                         </div>
-                        <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-2">Message de motivation</p>
                           <p className="text-sm whitespace-pre-wrap break-words">
                             {u.motivationMessage?.trim() || 'Non renseigné'}
                           </p>
-                        </div>
+                        </CardContent></Card>
                         {!u.registrationStatus && (
                           <div className="flex items-center gap-2">
                             <Button size="sm" variant="outline" onClick={() => approveUser(u.id)} disabled={approvingUser === u.id} className="h-8 border-success/50 text-success hover:bg-success/10">
@@ -723,17 +724,17 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{appeal.user.username}</h3>
                           <p className="text-sm text-muted-foreground">{appeal.user.email}</p>
                         </div>
-                        <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                        <Alert variant="destructive">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-1.5">Motif du bannissement</p>
                           <p className="text-sm font-medium">{appeal.ban.reason}</p>
                           <p className="text-xs text-muted-foreground mt-1">
                             {appeal.ban.type === 'PERMANENT' ? 'Permanent' : appeal.ban.expiresAt ? `Expire le ${new Date(appeal.ban.expiresAt).toLocaleDateString('fr-FR')}` : 'Temporaire'}
                           </p>
-                        </div>
-                        <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                        </Alert>
+                        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-2">Message de l'utilisateur</p>
                           <p className="text-sm whitespace-pre-wrap break-words">{appeal.message}</p>
-                        </div>
+                        </CardContent></Card>
                         {isPending && (
                           <div className="flex items-center gap-2">
                             <Button size="sm" variant="outline" onClick={() => reviewBanAppeal(appeal.id, 'approve')} disabled={reviewingAppeal === appeal.id} className="h-8 border-success/50 text-success hover:bg-success/10">
@@ -762,7 +763,7 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{req.name}</h3>
                           <p className="text-sm text-muted-foreground">{req.user?.username ? `Demande par ${req.user.username}` : 'Auteur inconnu'}</p>
                         </div>
-                        <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
+                        <Alert variant="warning">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-3">Aperçu</p>
                           <div className="flex items-start gap-4">
                             <BadgeIcon
@@ -788,7 +789,7 @@ export function InboxTab(props: InboxTabProps) {
                               </span>
                             </div>
                           </div>
-                        </div>
+                        </Alert>
                         <div className="space-y-2">
                           <p className="text-xs font-medium text-muted-foreground/70">Note admin optionnelle</p>
                           <Input
@@ -835,7 +836,7 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{sanction.type === 'AMENDE' ? 'Amende' : 'Paiement forcé'} pour {sanction.targetUser.username}</h3>
                           <p className="text-sm text-muted-foreground">Demandé par {sanction.requestedBy.username}</p>
                         </div>
-                        <div className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-2">
+                        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-2">
                           <p className="text-sm font-medium">
                             <span className="text-warning">{sanction.amount.toLocaleString('fr-FR')}€</span>
                             {sanction.type === 'AMENDE'
@@ -844,12 +845,12 @@ export function InboxTab(props: InboxTabProps) {
                           </p>
                           {sanction.caseId && <p className="text-xs text-muted-foreground">Affaire liée : {sanction.caseId}</p>}
                           {sanction.message && <p className="text-sm whitespace-pre-wrap break-words">{sanction.message}</p>}
-                        </div>
+                        </CardContent></Card>
                         {sanction.adminNote && (
-                          <div className="rounded-lg border border-border/40 bg-background/70 p-4">
+                          <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                             <p className="text-xs font-medium text-muted-foreground/70 mb-1">Note admin</p>
                             <p className="text-sm whitespace-pre-wrap break-words">{sanction.adminNote}</p>
-                          </div>
+                          </CardContent></Card>
                         )}
                         {sanction.reviewedBy && sanction.status !== 'PENDING' && (
                           <p className="text-xs text-muted-foreground">Traité par {sanction.reviewedBy.username}</p>
@@ -888,7 +889,7 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{req.user.username}</h3>
                           <p className="text-sm text-muted-foreground">{req.user.email}</p>
                         </div>
-                        <div className="rounded-lg border border-border/20 bg-muted/5 p-4">
+                        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                           <p className="text-xs font-medium text-muted-foreground/70 mb-3">Changement demandé</p>
                           <div className="flex items-center gap-4">
                             <div>
@@ -901,12 +902,12 @@ export function InboxTab(props: InboxTabProps) {
                               <p className="text-sm font-semibold text-primary">{req.requestedUsername}</p>
                             </div>
                           </div>
-                        </div>
+                        </CardContent></Card>
                         {req.reason && (
-                          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                          <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                             <p className="text-xs font-medium text-muted-foreground/70 mb-2">Raison</p>
                             <p className="text-sm whitespace-pre-wrap break-words">{req.reason}</p>
-                          </div>
+                          </CardContent></Card>
                         )}
                         {isPending && (
                           <div className="flex items-center gap-2">

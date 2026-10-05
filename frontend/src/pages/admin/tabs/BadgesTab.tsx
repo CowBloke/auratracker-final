@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { Award, Edit2, Loader2, Plus, RefreshCw, Save, Sparkles, Trash2 } from 'lucide-react';
+import { Item } from '@/components/ui/item';
 
 export type BadgesTabProps = Record<string, unknown>;
 
@@ -194,7 +195,7 @@ export function BadgesTab(props: BadgesTabProps) {
             </DialogHeader>
 
             <div className="space-y-5 py-2">
-              <div className="flex gap-4 items-start p-4 rounded-lg bg-muted/20 border border-border/40">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 flex gap-4 items-start">
                 <div className="flex flex-col items-center gap-1.5 shrink-0">
                   <BadgeIcon badge={{
                     id: 'preview',
@@ -232,7 +233,7 @@ export function BadgesTab(props: BadgesTabProps) {
                     <Input value={badgeForm.howToObtain ?? ''} onChange={(e) => setBadgeForm((f: any) => ({ ...f, howToObtain: e.target.value }))} placeholder="Ex: Etre dans le top 5 de l'aura" />
                   </div>
                 </div>
-              </div>
+              </CardContent></Card>
 
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground">Apparence</p>
@@ -380,10 +381,10 @@ export function BadgesTab(props: BadgesTabProps) {
                 </div>
 
                 {editingBadge?.isAutomatic ? (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30 border border-border/40 text-xs text-muted-foreground">
+                  <Item variant="muted" className="gap-2 text-xs text-muted-foreground">
                     <Sparkles className="w-3.5 h-3.5 shrink-0 text-primary/60" />
                     <span>Badge automatique - condition : <span className="font-mono text-foreground">{editingBadge.autoConditionKey}</span></span>
-                  </div>
+                  </Item>
                 ) : (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">

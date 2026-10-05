@@ -3,6 +3,7 @@ import { TabsContent } from '@/components/ui/tabs';
 import SanctionModal from '@/components/sanctions/SanctionModal';
 import { Loader2, Gavel } from 'lucide-react';
 import { sanctionsApi } from '@/services/api';
+import { Card, CardContent } from '@/components/ui/card';
 
 export type FiscalTabProps = Record<string, unknown>;
 
@@ -53,7 +54,7 @@ export function FiscalTab(props: FiscalTabProps) {
         </div>
 
         {user?.isFiscalInspector && (
-          <div className="rounded-lg border border-border/60 p-4 bg-muted/20">
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold">Fonds du fisc</p>
@@ -82,7 +83,7 @@ export function FiscalTab(props: FiscalTabProps) {
                 </div>
               </div>
             </div>
-          </div>
+          </CardContent></Card>
         )}
 
         {loadingFiscalUsers ? (

@@ -10,6 +10,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { useSmartScroll } from '@/hooks/use-smart-scroll';
 import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface PartyChatFloatingProps {
   rightOffset: string;
@@ -199,9 +200,9 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
                   />
                   <MessageFormatToolbar inputRef={{ current: inputElement }} value={message} onChange={setMessage} />
                   {hasMessageFormatting(message) && (
-                    <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
+                    <Card className="gap-0 py-0 shadow-none mt-2"><CardContent className="px-2.5 py-1.5 text-sm text-foreground">
                       <FormattedMessageText text={message} />
-                    </div>
+                    </CardContent></Card>
                   )}
                 </div>
                 <Button type="submit" size="icon" disabled={!message.trim()}>

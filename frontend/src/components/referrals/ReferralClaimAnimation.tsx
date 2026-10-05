@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Copy, Sparkles, Ticket, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ReferralClaimAnimationProps {
   open: boolean;
@@ -109,7 +110,7 @@ export default function ReferralClaimAnimation({
       )}
 
       {phase === 'reveal' && (
-        <div className="referral-reveal-panel relative w-full max-w-md rounded-xl border border-white/10 bg-[linear-gradient(160deg,rgba(17,24,39,0.98),rgba(15,23,42,0.96))] p-6 text-white">
+        <Card className="gap-0 py-0 shadow-none relative w-full max-w-md"><CardContent className="p-6 referral-reveal-panel text-white">
           <Button
             type="button"
             variant="ghost"
@@ -134,17 +135,17 @@ export default function ReferralClaimAnimation({
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-left">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                 <p className="text-xs text-white/45">Valides</p>
                 <p className="mt-2 text-2xl font-semibold">{successfulReferrals}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              </CardContent></Card>
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                 <p className="text-xs text-white/45">Copie</p>
                 <p className="mt-2 flex items-center gap-2 text-lg font-medium text-success">
                   <Copy className="h-4 w-4" />
                   {copied ? 'Confirmee' : 'En cours'}
                 </p>
-              </div>
+              </CardContent></Card>
             </div>
 
             <Button
@@ -155,7 +156,7 @@ export default function ReferralClaimAnimation({
               Fermer
             </Button>
           </div>
-        </div>
+        </CardContent></Card>
       )}
     </div>
   );

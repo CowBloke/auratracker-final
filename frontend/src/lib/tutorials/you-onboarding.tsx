@@ -1,4 +1,5 @@
 import type { TutorialFlow } from '@/components/tutorial/types';
+import { Card, CardContent } from '@/components/ui/card';
 
 export const youOnboarding: TutorialFlow = {
   id: 'you-onboarding',
@@ -29,7 +30,7 @@ export const youOnboarding: TutorialFlow = {
       content: (
         <div className="space-y-3">
           <p className="text-muted-foreground">Voici les principales sections de la barre de navigation :</p>
-          <div className="rounded-xl border border-border/30 p-3 bg-muted/5">
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3">
             <div className="grid gap-2">
               <div className="text-sm"><strong>Dashboard</strong> — Vue d'ensemble : statistiques, fil d'activité et notifications.</div>
               <div className="text-sm"><strong>YOU</strong> — Le coeur du jeu : ton profil, entreprises, investissements et onglets associés.</div>
@@ -38,7 +39,7 @@ export const youOnboarding: TutorialFlow = {
               <div className="text-sm"><strong>Clans</strong> — Rejoins ou crée un clan pour jouer en équipe.</div>
               <div className="text-sm"><strong>Marketplace</strong> — Achetez et vendez ressources, objets et actions entre joueurs.</div>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       ),
     },
@@ -48,7 +49,7 @@ export const youOnboarding: TutorialFlow = {
       title: 'Principaux onglets (2/2)',
       content: (
         <div className="space-y-3">
-          <div className="rounded-xl border border-border/30 p-3 bg-muted/5">
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3">
             <div className="grid gap-2">
               <div className="text-sm"><strong>Boutique / Shop</strong> — Achats directs de ressources et objets.</div>
               <div className="text-sm"><strong>Inventaire</strong> — Tes objets et biens personnels.</div>
@@ -56,7 +57,7 @@ export const youOnboarding: TutorialFlow = {
               <div className="text-sm"><strong>Forum / Suggestions</strong> — Communauté, idées et retours.</div>
               <div className="text-sm"><strong>Tutoriels</strong> — Tous les guides et tutoriels disponibles.</div>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       ),
     },

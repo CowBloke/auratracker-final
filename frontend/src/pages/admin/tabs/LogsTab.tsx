@@ -9,6 +9,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { ChevronDown, Clock, Download, Gamepad2, Loader2, ScrollText, Search } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 type LogFilter = {
   type: string;
@@ -285,7 +286,7 @@ export function LogsTab(props: LogsTabProps) {
                 </span>
               </div>
 
-              <div className="rounded-xl border border-border/40 bg-muted/20 px-4 py-5">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-5">
                 <Slider
                   min={0}
                   max={1439}
@@ -315,7 +316,7 @@ export function LogsTab(props: LogsTabProps) {
                     );
                   })}
                 </div>
-              </div>
+              </CardContent></Card>
             </div>
           </div>
           <DialogFooter>

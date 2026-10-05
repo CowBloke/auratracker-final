@@ -30,6 +30,8 @@ import { cn } from '@/lib/utils';
 import { AlertTriangle, Download, Gamepad2, Loader2, LogIn, MessageCircle, Save, Sparkles, Terminal, Trash2, Trophy, Search, ShieldAlert, Sparkle, Ban } from 'lucide-react';
 import { ANNOUNCEMENT_MAX_LENGTH, CHAT_BLOCK_MESSAGE_MAX_LENGTH, CHAT_BLOCK_TIMEZONE } from '../constants';
 import { DEFAULT_LANDING_PAGE_OPTIONS } from '@/lib/default-landing-page';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export type SettingsTabProps = Record<string, unknown>;
 
@@ -212,7 +214,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <Sparkle className="h-4 w-4 text-primary" />
             <p className="text-xs font-bold text-primary">Système de présence</p>
           </div>
-          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
                 <div className="text-sm font-medium text-primary/90">Utilisateurs en ligne fictifs</div>
@@ -220,7 +222,7 @@ export function SettingsTab(props: SettingsTabProps) {
               </div>
               <Switch checked={fakeOnlineEnabled} disabled={savingFakeOnline} onCheckedChange={saveFakeOnline} />
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
 
@@ -231,7 +233,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <Trophy className="h-4 w-4 text-primary" />
             <p className="text-xs font-bold text-primary">Parrainage & Quotas</p>
           </div>
-          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
                 <div className="text-sm font-medium text-primary/90">Matchmaking duel</div>
@@ -299,7 +301,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 </Button>
               </div>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
 
@@ -310,7 +312,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <Sparkles className="h-4 w-4 text-success" />
             <p className="text-xs font-bold text-success">Salle de marché (Frais & Cryptos)</p>
           </div>
-          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
                 <div className="text-sm font-medium text-success/90">Frais Aura Coin</div>
@@ -374,7 +376,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 </Button>
               </div>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
 
@@ -385,7 +387,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <Gamepad2 className="h-4 w-4 text-warning" />
             <p className="text-xs font-bold text-warning">Clash Village</p>
           </div>
-          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
                 <div className="text-sm font-medium text-warning/90">Temps de recharge d'attaque</div>
@@ -408,7 +410,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 </Button>
               </div>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
 
@@ -419,7 +421,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <MessageCircle className="h-4 w-4 text-primary" />
             <p className="text-xs font-bold text-primary">Communication & Contenu</p>
           </div>
-          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/20">
             <div className="px-4 py-3.5 space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -462,7 +464,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border/20 bg-background/30 p-4 space-y-3">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="text-sm font-medium">Blocage automatique quotidien</div>
@@ -503,7 +505,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 <p className="text-xs text-muted-foreground">
                   Exemple: `22:00` → `07:00` bloque le chat toute la nuit.
                 </p>
-              </div>
+              </CardContent></Card>
 
               <div className="flex justify-end">
                 <Button onClick={saveChatBlockSettings} disabled={savingChatBlockSettings} className="bg-primary hover:bg-primary">
@@ -632,7 +634,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 </Button>
               </div>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
 
@@ -675,7 +677,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <DialogDescription>Personnalisez le message et le bouton d&apos;inscription visibles sur la page de connexion.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+            <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/30">
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
                   <div className="text-sm font-medium">Bouton &ldquo;Creer un compte&rdquo;</div>
@@ -683,7 +685,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 </div>
                 <Switch checked={loginRegisterCtaEnabled} onCheckedChange={saveLoginRegisterCta} disabled={savingLoginRegisterCta} />
               </div>
-            </div>
+            </CardContent></Card>
             <div className="space-y-2">
               <label className="text-sm font-medium">Message</label>
               <Textarea
@@ -717,7 +719,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <div className="flex justify-center py-8"><div className="w-1 h-8 bg-foreground/20" /></div>
           ) : (
             <div className="space-y-4 py-2">
-              <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/30">
                 <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                   <div>
                     <div className="text-sm font-medium">Maintenance globale</div>
@@ -732,7 +734,7 @@ export function SettingsTab(props: SettingsTabProps) {
                   </div>
                   <Switch checked={maintenanceAutoWeekendEnabled} onCheckedChange={setMaintenanceAutoWeekendEnabled} />
                 </div>
-              </div>
+              </CardContent></Card>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Raison</label>
                 <Textarea
@@ -771,7 +773,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <Gamepad2 className="h-4 w-4 text-success" />
             <p className="text-xs font-bold text-success">Fonctionnalités</p>
           </div>
-          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
                 <div className="text-sm font-medium text-success/90">Pages du site</div>
@@ -786,7 +788,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 Gérer
               </Button>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
 
@@ -797,7 +799,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <Terminal className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs font-bold text-muted-foreground">Déploiement</p>
           </div>
-          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div className="min-w-0">
                 <div className="text-sm font-medium text-foreground/90">Déployer la dernière version</div>
@@ -846,7 +848,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 </Button>
               </div>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
 
@@ -860,7 +862,7 @@ export function SettingsTab(props: SettingsTabProps) {
               <p className="text-xs text-destructive/70">Ces actions ont un impact irréversible sur la base de données et l'expérience de jeu.</p>
             </div>
           </div>
-          <div className="rounded-xl border border-destructive/20 overflow-hidden bg-card/60 divide-y divide-destructive/10">
+          <Alert variant="destructive" className="overflow-hidden divide-y divide-destructive/10">
             {/* Vider le chat */}
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
@@ -959,7 +961,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 Annuler toutes les offres de ressources
               </Button>
             </div>
-          </div>
+          </Alert>
         </div>
       )}
 
@@ -990,7 +992,7 @@ export function SettingsTab(props: SettingsTabProps) {
       {user?.isSuperAdmin && (
         <div className="space-y-1.5">
           <p className="text-xs font-semibold text-muted-foreground/60 px-1">Classements par periode</p>
-          <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/30">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
                 <div className="text-sm font-medium">Backfill historique des scores</div>
@@ -1035,7 +1037,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 {backfillLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trophy className="h-3.5 w-3.5" />}
               </Button>
             </div>
-          </div>
+          </CardContent></Card>
         </div>
       )}
 
@@ -1076,7 +1078,7 @@ export function SettingsTab(props: SettingsTabProps) {
                     {pages.filter((p) => !blockedPages.includes(p.key)).length}/{pages.length}
                   </span>
                 </div>
-                <div className="mx-4 rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+                <Alert className="mx-4 overflow-hidden divide-y divide-border/30"><AlertDescription>
                   {pages.map((page) => {
                     const isBlocked = blockedPages.includes(page.key);
                     const blockedReason = blockedPageMessages[page.key] || '';
@@ -1104,7 +1106,7 @@ export function SettingsTab(props: SettingsTabProps) {
                       </div>
                     );
                   })}
-                </div>
+                </AlertDescription></Alert>
               </div>
             ))}
             <div className="h-4" />

@@ -78,6 +78,7 @@ import {
   type ItemFormData,
 } from './adminPageModels';
 import { ACTION_LABELS, LOG_TYPE_CONFIG } from './log-constants';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const TaxesTabComponent = TaxesTab;
 
@@ -4811,7 +4812,7 @@ export default function Admin() {
             const dropdownInner = 'min-w-40 rounded-md border border-border/50 bg-popover p-1 flex flex-col gap-0.5';
             const isFiscalOnly = isReadOnlyInspectionUser;
             return (
-              <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
+              <Alert className="flex flex-wrap gap-1 mb-6"><AlertDescription>
                 {/* Réception — admin only */}
                 {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchPendingSanctions(); fetchChatModerationEvents(); },
                   inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-xs font-semibold leading-none">{inboxCount}</span> : undefined
@@ -4935,7 +4936,7 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>}
-            </div>
+            </AlertDescription></Alert>
             );
           })()}
 

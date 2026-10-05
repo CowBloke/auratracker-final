@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { adminApi, type AdminUser, type BraquageLegalHistoryEntry, type BraquageLegalSession } from '@/services/api';
 import { Clock3, Loader2, Plus, Sparkles, Ticket, Trophy, UserRoundPlus } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const DEFAULT_DURATION = 24;
 
@@ -169,23 +170,23 @@ export function BraquageLegalTab({ users }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 xl:grid-cols-3">
-          <div className="rounded-xl border border-border/50 bg-background/60 p-4">
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock3 className="h-4 w-4" />
               Session active
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums">{session ? countdown : 'Aucune'}</p>
             <p className="mt-1 text-sm text-muted-foreground">{session ? (session.isExpired ? 'Session expirée' : 'Session en cours') : 'Aucune session ouverte'}</p>
-          </div>
-          <div className="rounded-xl border border-border/50 bg-background/60 p-4">
+          </CardContent></Card>
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Ticket className="h-4 w-4" />
               Jackpot
             </div>
             <p className="mt-2 text-2xl font-bold tabular-nums">{session?.totalPool.toLocaleString('fr-FR') ?? '0'} €</p>
             <p className="mt-1 text-sm text-muted-foreground">{session?.participationsCount ?? 0} participations, {session?.ticketPool ?? 0} tickets</p>
-          </div>
-          <div className="rounded-xl border border-border/50 bg-background/60 p-4">
+          </CardContent></Card>
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Trophy className="h-4 w-4" />
               Propriétaire
@@ -200,7 +201,7 @@ export function BraquageLegalTab({ users }: Props) {
                 <p className="text-sm text-muted-foreground">Désignation unique en vigueur</p>
               </div>
             </div>
-          </div>
+          </CardContent></Card>
         </CardContent>
       </Card>
 
@@ -228,9 +229,9 @@ export function BraquageLegalTab({ users }: Props) {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">Durée autorisée entre 24 et 48 heures.</p>
-            <div className="rounded-xl border border-border/50 bg-background/60 p-4 text-sm text-muted-foreground">
+            <Alert><AlertDescription>
               Si une session active existe déjà, la création est bloquée.
-            </div>
+            </AlertDescription></Alert>
           </CardContent>
         </Card>
 
@@ -245,9 +246,9 @@ export function BraquageLegalTab({ users }: Props) {
               {drawing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Effectuer le tirage
             </Button>
-            <div className="rounded-xl border border-border/50 bg-background/60 p-4 text-sm text-muted-foreground">
+            <Alert><AlertDescription>
               Gère aussi la clôture automatique des sessions expirées via le cron serveur.
-            </div>
+            </AlertDescription></Alert>
           </CardContent>
         </Card>
       </div>

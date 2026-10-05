@@ -7,6 +7,7 @@ import { adminApi } from '@/services/api';
 import { toast } from 'sonner';
 import { GAME_TYPES } from '../adminPageModels';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 
 export function GameLimitsTab() {
   const [loading, setLoading] = useState(true);
@@ -147,7 +148,7 @@ export function GameLimitsTab() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border/40 bg-card overflow-hidden shadow-sm">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -213,7 +214,7 @@ export function GameLimitsTab() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </CardContent></Card>
           
           <div className="flex justify-end pt-2">
              <Button className="gap-2 shadow-primary/20" onClick={handleSave} disabled={saving}>

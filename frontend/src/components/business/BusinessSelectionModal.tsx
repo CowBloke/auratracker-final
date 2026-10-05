@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Building2, Check, Star } from 'lucide-react';
 import { AppModal } from '@/components/ui/app-modal';
 import { cn } from '@/lib/utils';
+import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
 
 export type SelectableBusiness = {
   id: string;
@@ -57,9 +58,9 @@ export function BusinessSelectionModal<TBusiness extends SelectableBusiness>({
       <AppModal.Header icon={<Building2 />} tone="cyan" title={title} subtitle={subtitle} />
       <AppModal.Body scrollable maxHeight="62vh" className="space-y-2">
         {businesses.length === 0 ? (
-          <div className="rounded-lg border border-border bg-muted/25 px-4 py-8 text-center text-sm text-muted-foreground">
+          <Empty className="border"><EmptyHeader><EmptyDescription>
             {emptyLabel}
-          </div>
+          </EmptyDescription></EmptyHeader></Empty>
         ) : (
           businesses.map((business) => {
             const disabled = Boolean(isBusinessDisabled?.(business));

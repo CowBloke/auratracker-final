@@ -12,6 +12,7 @@ import { useSocketBase } from '@/contexts/SocketContext';
 import { adminApi, type BraquageLegalDrawResult, type BraquageLegalHistoryEntry, type BraquageLegalSession, type BraquageLegalTier } from '@/services/api';
 import { toast } from 'sonner';
 import { Clock3, Loader2, Ticket, Users } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const TIER_CONFIG: Record<BraquageLegalTier, { cost: number; tickets: number; maxParticipations: number; label: string; description: string; color: string }> = {
   BRONZE: { cost: 500, tickets: 1, maxParticipations: 10, label: 'Bronze', description: 'Entrée la plus accessible.', color: 'border-warning/25 bg-warning/10 text-warning' },
@@ -255,27 +256,27 @@ export default function BraquageLegal() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Jackpot</p>
                   <p className="mt-2 text-3xl font-bold tabular-nums text-warning">{session?.totalPool.toLocaleString('fr-FR') ?? '0'} €</p>
                   <p className="mt-1 text-sm text-muted-foreground">70% au gagnant, 30% au propriétaire.</p>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                </CardContent></Card>
+                <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Fin de session</p>
                   <p className="mt-2 flex items-center gap-2 text-3xl font-bold tabular-nums">
                     <Clock3 className="h-5 w-5 text-muted-foreground" />
                     {countdown}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">{session?.isExpired ? 'Session expirée, en attente du tirage.' : 'Session en cours.'}</p>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                </CardContent></Card>
+                <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Tickets en jeu</p>
                   <p className="mt-2 flex items-center gap-2 text-3xl font-bold tabular-nums">
                     <Ticket className="h-5 w-5 text-muted-foreground" />
                     {session?.ticketPool.toLocaleString('fr-FR') ?? '0'}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">{session?.participationsCount ?? 0} participations enregistrées.</p>
-                </div>
+                </CardContent></Card>
               </div>
             </CardContent>
           </Card>
@@ -389,9 +390,9 @@ export default function BraquageLegal() {
             </DialogDescription>
           </DialogHeader>
           {winnerResult?.cancelled ? (
-            <div className="rounded-xl border border-border/50 bg-background/70 p-4 text-sm text-muted-foreground">
+            <Alert><AlertDescription>
               La session a été fermée sans payout.
-            </div>
+            </AlertDescription></Alert>
           ) : (
             <div className="space-y-4 text-center">
               <Avatar className="mx-auto h-24 w-24 border-2 border-warning/30">
@@ -403,19 +404,19 @@ export default function BraquageLegal() {
                 <p className="mt-2 text-2xl font-bold">{winnerResult?.winner?.username ?? 'Inconnu'}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Gain</p>
                   <p className="mt-2 text-xl font-bold tabular-nums text-success">{winnerResult?.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                </CardContent></Card>
+                <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Propriétaire</p>
                   <p className="mt-2 text-xl font-bold tabular-nums text-warning">{winnerResult?.ownerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
-                </div>
+                </CardContent></Card>
               </div>
               {winnerResult?.winner?.id === user?.id && (
-                <div className="rounded-xl border border-success/20 bg-success/10 p-4 text-sm text-success">
+                <Alert variant="success"><AlertDescription>
                   Tu as remporté la session. C&apos;est toi le braqueur du jour.
-                </div>
+                </AlertDescription></Alert>
               )}
             </div>
           )}

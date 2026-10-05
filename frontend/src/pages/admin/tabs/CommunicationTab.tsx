@@ -7,6 +7,7 @@ import { TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Archive, Loader2, Plus, RefreshCw, Send, Upload, X } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export type CommunicationTabProps = Record<string, unknown>;
 
@@ -351,7 +352,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
             </div>
 
             {surveyAudienceType === 'SELECTED_USERS' && (
-              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-3">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Utilisateurs ciblés</label>
                   <Input
@@ -382,7 +383,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                 )}
 
                 {surveyTargetSearch.trim() && (
-                  <div className="max-h-40 overflow-y-auto rounded-md border border-border bg-background">
+                  <Alert className="max-h-40 overflow-y-auto"><AlertDescription>
                     {filteredSurveyUsers.length === 0 ? (
                       <p className="px-3 py-2 text-sm text-muted-foreground">Aucun utilisateur trouvé.</p>
                     ) : (
@@ -397,9 +398,9 @@ export function CommunicationTab(props: CommunicationTabProps) {
                         </button>
                       ))
                     )}
-                  </div>
+                  </AlertDescription></Alert>
                 )}
-              </div>
+              </CardContent></Card>
             )}
           </div>
 
@@ -553,7 +554,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
           </CardContent>
         </Card>
 
-        <div className="rounded-lg border border-border bg-muted/10 p-4">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold tracking-tight">Signalements de conversations</h3>
@@ -583,13 +584,13 @@ export function CommunicationTab(props: CommunicationTabProps) {
                     </span>
                   </div>
                   {report.reason && <p className="text-sm text-foreground">{report.reason}</p>}
-                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-border/50 bg-muted/20 p-2">
+                  <Alert className="max-h-64 space-y-2 overflow-y-auto"><AlertDescription>
                     {report.snapshot.map((message: any) => (
                       <div key={message.id} className="rounded-md bg-background/80 px-2 py-1.5 text-xs whitespace-pre-wrap break-words">
                         <span className="font-semibold">{message.sender?.username ?? 'Systeme'}:</span> {message.body}
                       </div>
                     ))}
-                  </div>
+                  </AlertDescription></Alert>
                   {report.status === 'PENDING' && (
                     <div className="flex gap-2">
                       <Button size="sm" variant="destructive" disabled={reviewingSupportReportId === report.id} onClick={() => handleReviewSupportReport(report.id, 'ACTION_TAKEN')}>
@@ -604,7 +605,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
               ))}
             </div>
           )}
-        </div>
+        </CardContent></Card>
 
         <div className="flex gap-4 h-[600px]">
           <div className="w-72 shrink-0 flex flex-col border border-border rounded-lg overflow-hidden">

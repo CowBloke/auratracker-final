@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { t } from '@/lib/i18n';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Canvas dimensions
 const W = 600;
@@ -609,7 +610,7 @@ export function BombDropGame({ isPractice, onComplete }: BombDropGameProps) {
         onClick={handleCanvasClick}
       />
       {over ? (
-        <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-center space-y-2">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 text-center space-y-2">
           <div className="text-base font-semibold">
             {display.hits > 0 ? `${t('bombdrop_mission_ended_prefix')} ${display.hits} ${t('bombdrop_hits_plural')}` : t('bombdrop_no_building_hit')}
           </div>
@@ -626,7 +627,7 @@ export function BombDropGame({ isPractice, onComplete }: BombDropGameProps) {
           ) : (
             <p className="text-sm text-muted-foreground">{t('bombdrop_practice_note')}</p>
           )}
-        </div>
+        </CardContent></Card>
       ) : (
         <p className="text-center text-xs text-muted-foreground">{t('bombdrop_controls_hint')}</p>
       )}

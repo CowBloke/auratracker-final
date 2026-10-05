@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { Input } from '@/components/ui/input';
 import { TabsContent } from '@/components/ui/tabs';
 import { Landmark, Loader2, Minus, Plus, Save } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type EditableTaxBracket = {
   id: string;
@@ -61,7 +62,7 @@ export function TaxesTab(props: TaxesTabProps) {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+            <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/30">
               <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-4 py-3 text-xs font-semibold text-muted-foreground">
                 <div>Seuil minimum</div>
                 <div>Taux (%)</div>
@@ -105,7 +106,7 @@ export function TaxesTab(props: TaxesTabProps) {
                   </div>
                 ))
               )}
-            </div>
+            </CardContent></Card>
 
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -136,9 +137,9 @@ export function TaxesTab(props: TaxesTabProps) {
               </Button>
             </div>
 
-            <div className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 text-xs text-muted-foreground">
+            <Alert variant="warning"><AlertDescription>
               Chaque prélèvement crée une notification dans l&apos;Inbox du joueur avec le montant retiré, le taux appliqué et son nouveau solde.
-            </div>
+            </AlertDescription></Alert>
           </CardContent>
         </Card>
       </div>

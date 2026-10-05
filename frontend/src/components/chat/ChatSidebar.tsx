@@ -33,6 +33,8 @@ import { IMAGE_UPLOAD_INPUT_ACCEPT, prepareImageUploadPayload } from '@/lib/imag
 import { t } from '@/lib/i18n';
 import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
 import { MessageFormatToolbar } from './MessageFormatToolbar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert } from '@/components/ui/alert';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -628,7 +630,7 @@ export default function ChatSidebar() {
           )}
           {activePoll && (
             <div className="border-b border-border/40 bg-muted/20 px-3 py-3">
-              <div className="rounded-lg border border-border/60 bg-background/90 p-3">
+              <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <BarChart3 className="h-3.5 w-3.5" />
@@ -674,7 +676,7 @@ export default function ChatSidebar() {
                     );
                   })}
                 </div>
-              </div>
+              </CardContent></Card>
             </div>
           )}
           <ScrollArea 
@@ -1020,7 +1022,7 @@ export default function ChatSidebar() {
 
           <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
             {isChatMuted && (
-              <div className="mb-3 space-y-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
+              <Alert variant="warning" className="mb-3 space-y-2">
                 <p className="text-xs font-medium text-warning">
                   {chatMutedMessage || 'Tu es actuellement mute du chat.'}
                 </p>
@@ -1056,7 +1058,7 @@ export default function ChatSidebar() {
                     </Button>
                   </div>
                 )}
-              </div>
+              </Alert>
             )}
             <input
               ref={imageInputRef}
@@ -1069,7 +1071,7 @@ export default function ChatSidebar() {
               }}
             />
             {replyTarget && (
-              <div className="mb-2 flex items-start justify-between gap-3 rounded-md border border-border/60 bg-foreground/5 px-3 py-2 text-xs">
+              <Card className="gap-0 py-0 shadow-none mb-2"><CardContent className="px-3 py-2 flex items-start justify-between gap-3 text-xs">
                 <div className="min-w-0">
                   <UsernameDisplay
                     username={replyTarget.username}
@@ -1087,10 +1089,10 @@ export default function ChatSidebar() {
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </CardContent></Card>
             )}
             {imageUrl && (
-              <div className="mb-2 relative overflow-hidden rounded-md border border-border/60 bg-background/60 p-2">
+              <Card className="gap-0 py-0 shadow-none mb-2 relative overflow-hidden"><CardContent className="p-2">
                 <img
                   src={resolveImageUrl(imageUrl)}
                   alt={t('chat_image_preview_alt')}
@@ -1105,7 +1107,7 @@ export default function ChatSidebar() {
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </CardContent></Card>
             )}
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -1123,12 +1125,12 @@ export default function ChatSidebar() {
                 />
                 <MessageFormatToolbar inputRef={inputRef} value={input} onChange={setInput} />
                 {hasMessageFormatting(input) && (
-                  <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
+                  <Card className="gap-0 py-0 shadow-none mt-2"><CardContent className="px-2.5 py-1.5 text-sm text-foreground">
                     <FormattedMessageText text={input} />
-                  </div>
+                  </CardContent></Card>
                 )}
                 {showMentionList && (
-                  <div className="absolute bottom-full z-50 mb-2 w-full rounded-md border border-border/60 bg-background/95">
+                  <Card className="gap-0 py-0 shadow-none absolute bottom-full z-50 mb-2 w-full"><CardContent>
                     <div className="max-h-40 overflow-auto py-1">
                       {mentionCandidates.map((candidate, index) => (
                         <Button
@@ -1164,7 +1166,7 @@ export default function ChatSidebar() {
                         </Button>
                       ))}
                     </div>
-                  </div>
+                  </CardContent></Card>
                 )}
               </div>
               <DropdownMenu>
@@ -1271,11 +1273,11 @@ export default function ChatSidebar() {
           {selectedReaction && (
             <div className="space-y-3">
               {selectedReaction.preview && (
-                <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                <Card className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2 text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">{selectedReaction.author}</span>
                   <span className="mx-1">•</span>
                   <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{selectedReaction.preview}</span>
-                </div>
+                </CardContent></Card>
               )}
 
               <ScrollArea className="max-h-72 rounded-lg border border-border/60">

@@ -30,6 +30,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { getSearchablePageEntries } from '@/lib/page-meta';
 import { cn } from '@/lib/utils';
 import { clansApi, usersApi, type ClanSummary } from '@/services/api';
+import { Item } from '@/components/ui/item';
 
 type SearchUser = {
   id: string;
@@ -469,9 +470,9 @@ function CommandPaletteItem({
           </AvatarFallback>
         </Avatar>
       ) : (
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-muted/35 text-muted-foreground">
+        <Item variant="muted" className="h-10 w-10 justify-center text-muted-foreground">
           <Icon className="h-4 w-4" />
-        </div>
+        </Item>
       )}
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-foreground">{entry.title}</div>

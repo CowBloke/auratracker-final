@@ -40,6 +40,7 @@ import {
 import { NewRelationModal } from '../components/modals';
 import { Pill, SectionTitle, UserAvatar } from '../components/YouPrimitives';
 import { getRelationshipPill, relativeTime, withRouteError } from '../utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // ─── Relationships ────────────────────────────────────────────────────────────
 
@@ -92,7 +93,7 @@ function CourtCaseItem({ courtCase, onReload }: { courtCase: YouCourtCase; onRel
   };
 
   return (
-    <div className="rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3">
+    <Alert variant="destructive">
       <div className="flex items-center gap-2">
         <Gavel className="h-4 w-4 text-destructive" />
         <p className="text-sm font-semibold text-destructive">Suspicion de tricherie</p>
@@ -110,7 +111,7 @@ function CourtCaseItem({ courtCase, onReload }: { courtCase: YouCourtCase; onRel
           Ignorer
         </Button>
       </div>
-    </div>
+    </Alert>
   );
 }
 
@@ -222,7 +223,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
       )}
 
       {relationship.status === 'MARRIED' && (
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-3">
+        <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3 space-y-3">
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Compte commun</span>
@@ -237,23 +238,23 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
               <ArrowDownLeft className="h-3.5 w-3.5" />Retirer
             </Button>
           </div>
-        </div>
+        </CardContent></Card>
       )}
 
       {relationship.pendingProposal?.canRespond && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 space-y-2">
+        <Alert variant="destructive" className="space-y-2">
           <p className="text-sm font-semibold text-destructive">Demande en mariage</p>
           {relationship.pendingProposal.message?.trim() && (
             <p className="text-xs text-muted-foreground">{relationship.pendingProposal.message}</p>
           )}
           {confirmMarriage ? (
             <div className="space-y-2">
-              <div className="rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-xs text-warning space-y-1">
+              <Alert variant="warning" className="space-y-1">
                 <p className="font-semibold">Consequences du mariage :</p>
                 <p>· Compte bancaire commun partage avec ton conjoint</p>
                 <p>· En cas de divorce, le compte commun est divise en deux</p>
                 <p>· Si ton conjoint triche, il peut perdre tout son argent au tribunal</p>
-              </div>
+              </Alert>
               <div className="flex gap-2">
                 <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'accept')}>Confirmer</Button>
                 <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => setConfirmMarriage(false)}>Annuler</Button>
@@ -265,17 +266,17 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
               <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'reject')}>Refuser</Button>
             </div>
           )}
-        </div>
+        </Alert>
       )}
 
       {relationship.pendingProposal && !relationship.pendingProposal.canRespond && (
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
+        <Alert><AlertDescription>
           Ta demande en mariage est en attente de reponse.
-        </div>
+        </AlertDescription></Alert>
       )}
 
       {relationship.pendingDivorceProposal?.canRespond && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3">
+        <Alert variant="destructive">
           <p className="text-sm font-semibold text-destructive">Demande de divorce</p>
           {relationship.pendingDivorceProposal.message?.trim() && (
             <p className="mt-1 text-xs text-muted-foreground">{relationship.pendingDivorceProposal.message}</p>
@@ -285,13 +286,13 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
             <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToDivorce(relationship.pendingDivorceProposal!.id, 'accept')}>Accepter</Button>
             <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToDivorce(relationship.pendingDivorceProposal!.id, 'reject')}>Refuser</Button>
           </div>
-        </div>
+        </Alert>
       )}
 
       {relationship.pendingDivorceProposal && !relationship.pendingDivorceProposal.canRespond && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+        <Alert variant="destructive"><AlertDescription>
           Ta demande de divorce attend une validation mutuelle.
-        </div>
+        </AlertDescription></Alert>
       )}
 
       <div className="space-y-2">
@@ -311,7 +312,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
           </Button>
         )}
         {confirmMistress && (
-          <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3">
+          <Alert variant="warning">
             <div className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
               <p className="text-xs text-warning">Attention : ton/ta conjoint(e) peut te soupçonner de tricherie. Si la suspicion est confirmee, il/elle recupere TOUT l argent du foyer et vous divorcez automatiquement.</p>
@@ -320,7 +321,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
               <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => { setConfirmMistress(false); void makeMistress(); }}>Confirmer</Button>
               <Button size="sm" variant="ghost" className="text-xs" onClick={() => setConfirmMistress(false)}>Annuler</Button>
             </div>
-          </div>
+          </Alert>
         )}
         {relationship.canSuspectCheating && !confirmSuspect && (
           <Button size="sm" className="w-full justify-start gap-2 text-xs text-warning" variant="outline" disabled={!!loading} onClick={() => setConfirmSuspect(true)}>
@@ -328,7 +329,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
           </Button>
         )}
         {confirmSuspect && (
-          <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3">
+          <Alert variant="warning">
             <div className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
               <p className="text-xs text-warning">Si ton/ta conjoint(e) a une liaison, tu recuperes tout l argent du foyer et vous divorcez automatiquement. Si tu as tort, il/elle peut aller en justice et prendre tout ton argent.</p>
@@ -337,7 +338,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
               <Button size="sm" variant="destructive" className="text-xs" disabled={!!loading} onClick={() => { setConfirmSuspect(false); void suspectCheating(); }}>Confirmer</Button>
               <Button size="sm" variant="ghost" className="text-xs" onClick={() => setConfirmSuspect(false)}>Annuler</Button>
             </div>
-          </div>
+          </Alert>
         )}
         {relationship.canForget && !confirmForget && (
           <Button size="sm" className="w-full justify-start gap-2 text-xs text-muted-foreground" variant="ghost" disabled={!!loading} onClick={() => setConfirmForget(true)}>
@@ -345,13 +346,13 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
           </Button>
         )}
         {confirmForget && (
-          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
             <p className="text-xs text-muted-foreground">Supprimer cette relation definitivement ?</p>
             <div className="mt-3 flex gap-2">
               <Button size="sm" variant="destructive" className="text-xs" disabled={!!loading} onClick={() => { setConfirmForget(false); void forget(); }}>Oublier</Button>
               <Button size="sm" variant="ghost" className="text-xs" onClick={() => setConfirmForget(false)}>Annuler</Button>
             </div>
-          </div>
+          </CardContent></Card>
         )}
       </div>
     </div>
@@ -448,11 +449,11 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
         </div>
 
         {/* Content */}
-        <div className="min-h-[100px] rounded-lg border border-warning/15 bg-warning/50 px-5 py-4">
+        <Alert variant="warning" className="min-h-[100px]">
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-warning/80">
             {contract.content}
           </p>
-        </div>
+        </Alert>
 
         {/* Divider */}
         <div className="h-px bg-warning/20" />
@@ -496,10 +497,10 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
 
         {/* Status badge */}
         {allSigned && (
-          <div className="flex items-center justify-center gap-2 rounded-xl border border-success/30 bg-success/50 py-2.5">
+          <Alert variant="success" className="flex items-center justify-center gap-2">
             <Stamp className="h-4 w-4 text-success" />
             <span className="text-xs font-semibold text-success">Contrat signé par toutes les parties</span>
-          </div>
+          </Alert>
         )}
 
         {/* Actions */}
@@ -815,7 +816,7 @@ export function SocialTab({ data, userId, onReload }: { data: YouState; userId?:
   return (
     <>
       {/* Sub-tab bar */}
-      <div className="mb-5 flex gap-1 rounded-xl border border-border/40 bg-muted/10 p-1 w-fit">
+      <Card className="gap-0 py-0 shadow-none mb-5 w-fit"><CardContent className="p-1 flex gap-1">
         <button
           type="button"
           onClick={() => setTab('relations')}
@@ -845,7 +846,7 @@ export function SocialTab({ data, userId, onReload }: { data: YouState; userId?:
           <ScrollText className="h-3.5 w-3.5" />
           Contrats
         </button>
-      </div>
+      </CardContent></Card>
 
       {tab === 'relations' && (
         <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">

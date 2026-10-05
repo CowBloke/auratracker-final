@@ -41,6 +41,8 @@ import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Card, CardContent } from '@/components/ui/card';
+import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
 
 type SectionCategory = DashboardUpdateSection['category'];
 
@@ -641,7 +643,7 @@ export function DashboardUpdatesManagerDialog({
                 </TabsContent>
 
                 <TabsContent value="fiche" className="mt-0">
-                  <div className="space-y-5 rounded-xl border border-border/60 bg-card p-5">
+                  <Card className="gap-0 py-0 shadow-none"><CardContent className="p-5 space-y-5">
                     <div className="space-y-2">
                       <FieldLabel>Contenu détaillé</FieldLabel>
                       <AutoTextarea
@@ -698,7 +700,7 @@ export function DashboardUpdatesManagerDialog({
                         </div>
                       );
                     })}
-                  </div>
+                  </CardContent></Card>
                 </TabsContent>
               </div>
             </div>
@@ -750,9 +752,9 @@ export function DashboardUpdatesManagerDialog({
                 <Loader2 className="h-5 w-5 animate-spin" />
               </div>
             ) : entries.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+              <Empty className="border"><EmptyHeader><EmptyDescription>
                 Aucune mise à jour enregistrée.
-              </div>
+              </EmptyDescription></EmptyHeader></Empty>
             ) : (
               entries.map((entry) => {
                 const counts = getEntrySummaryCounts(entry);

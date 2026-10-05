@@ -22,6 +22,9 @@ import { AppModal } from '@/components/ui/app-modal';
 import { getBusinessPinColor, TYPE_LABELS_FR } from '../mapConstants';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { withRouteError } from '../utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { Item } from '@/components/ui/item';
 
 const CONSTRUCTION_STRIPES = 'repeating-linear-gradient(135deg, #facc15 0 8px, #111827 8px 16px)';
 
@@ -293,15 +296,15 @@ function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () 
       <AppModal.Header tone="money" title="Finances" subtitle={business.name} />
       <AppModal.Body scrollable>
       <div className="space-y-3">
-        <div className="rounded-xl border border-success/20 bg-success/8 px-4 py-4">
+        <Alert variant="success">
           <p className="text-xs font-semibold text-success">Trésorerie</p>
           <p className="mt-1 text-[22px] font-bold tabular-nums leading-tight text-success">{fmt(business.treasuryMoney)}</p>
-        </div>
+        </Alert>
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-xl border border-success/20 bg-success/8 px-3 py-3">
+          <Alert variant="success">
             <p className="text-xs text-muted-foreground/70">Rev. mensuel</p>
             <p className="mt-1 text-sm font-bold tabular-nums text-success">{fmt(business.monthlyRevenue)}</p>
-          </div>
+          </Alert>
           <div className={cn('rounded-xl border px-3 py-3', net >= 0 ? 'bg-success/8 border-success/20' : 'bg-destructive/8 border-destructive/20')}>
             <p className="text-xs text-muted-foreground/70">Net / mois</p>
             <p className={cn('mt-1 text-sm font-bold tabular-nums', net >= 0 ? 'text-success' : 'text-destructive')}>
@@ -325,7 +328,7 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
       <AppModal.Body scrollable>
       {business.avgRating != null && business.ratingCount > 0 ? (
         <div className="space-y-3">
-          <div className="flex items-center gap-4 rounded-xl border border-warning/20 bg-warning/8 px-4 py-4">
+          <Alert variant="warning" className="flex items-center gap-4">
             <span className="text-[40px] font-bold text-warning tabular-nums leading-none">{business.avgRating.toFixed(1)}</span>
             <div>
               <div className="flex items-center gap-1">
@@ -339,7 +342,7 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{business.ratingCount} avis · sur 5</p>
             </div>
-          </div>
+          </Alert>
           {reviews.length > 0 && (
             <div className="space-y-2">
               {reviews.map((r) => (
@@ -407,7 +410,7 @@ function ShareholdersModal({ open, onClose, business, userId }: {
       <AppModal.Header tone="money" title={`Capital · ${business.name}`} subtitle={shareholderDesc} />
       <AppModal.Body scrollable>
       <div className="space-y-1.5">
-        <div className="rounded-lg border border-warning/15 bg-muted/10 px-3 py-2.5">
+        <Alert variant="warning">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">{business.owner.username}{business.ownerId === userId ? ' · toi' : ''}</span>
             <span className="font-bold text-warning">{business.ownerSharePercent.toFixed(2)}%</span>
@@ -415,7 +418,7 @@ function ShareholdersModal({ open, onClose, business, userId }: {
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
             <div className="h-full rounded-full bg-warning/70" style={{ width: `${Math.max(0, Math.min(100, business.ownerSharePercent))}%` }} />
           </div>
-        </div>
+        </Alert>
         {business.shareholders.length === 0 ? (
           <p className="py-3 text-center text-sm text-muted-foreground">Aucun actionnaire externe.</p>
         ) : business.shareholders.map((s) => (
@@ -494,12 +497,12 @@ function FilePlainteModal({
       <AppModal.Body scrollable>
       {business ? (
         <div className="space-y-4">
-          <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
+          <Card className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Scale className="h-3.5 w-3.5 shrink-0 text-primary" />
               <span>Déposer une plainte contre un joueur ou un business.</span>
             </div>
-          </div>
+          </CardContent></Card>
 
           <FieldRow label="Titre de la plainte *">
             <Input
@@ -524,10 +527,10 @@ function FilePlainteModal({
 
           <FieldRow label="Coupable (optionnel)">
             {selectedPlayer ? (
-              <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
+              <Item variant="muted" className="gap-2">
                 <span className="flex-1 text-sm font-medium">{selectedPlayer.username}</span>
                 <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => { setDefendantId(''); setDefendantSearch(''); }}>✕</button>
-              </div>
+              </Item>
             ) : (
               <div className="space-y-2">
                 <Input
@@ -536,7 +539,7 @@ function FilePlainteModal({
                   placeholder="Rechercher un joueur..."
                 />
                 {defendantSearch.length > 0 && filteredPlayers.length > 0 && (
-                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border/40 bg-background">
+                  <Alert className="max-h-40 overflow-y-auto"><AlertDescription>
                     {filteredPlayers.map((p) => (
                       <button
                         key={p.id}
@@ -547,7 +550,7 @@ function FilePlainteModal({
                         <span>{p.username}</span>
                       </button>
                     ))}
-                  </div>
+                  </AlertDescription></Alert>
                 )}
               </div>
             )}
@@ -702,10 +705,10 @@ function DetailPanel({
 
           {/* Livret épargne */}
           {business.typeKey === 'bank' && business.livretEpargneUnlocked && (
-            <div className="flex items-center gap-2 rounded-xl border border-warning/20 bg-warning/8 px-3 py-2 text-xs text-warning">
+            <Alert variant="warning" className="flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 shrink-0" />
               <span>Livret épargne disponible</span>
-            </div>
+            </Alert>
           )}
 
           {/* Startup products */}

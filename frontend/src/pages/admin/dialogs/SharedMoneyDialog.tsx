@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Wallet } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface SharedMoneyDialogProps {
   isOpen: boolean;
@@ -35,22 +37,22 @@ export function SharedMoneyDialog({
 
         <div className="space-y-3 py-2">
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
+            <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3">
               <p className="text-xs text-muted-foreground">Argent personnel</p>
               <p className="mt-1 text-lg font-semibold tabular-nums text-success">
                 {sharedMoneyUser?.money.toLocaleString('fr-FR') ?? '0'} €
               </p>
-            </div>
-            <div className="rounded-lg border border-border/40 bg-success/10 p-3">
+            </CardContent></Card>
+            <Alert variant="success">
               <p className="text-xs text-muted-foreground">Compte commun</p>
               <p className="mt-1 text-lg font-semibold tabular-nums text-success">
                 {sharedMoneyUser?.sharedMoney?.coupleBalance.toLocaleString('fr-FR') ?? '0'} €
               </p>
-            </div>
+            </Alert>
           </div>
 
           {sharedMoneyUser?.sharedMoney ? (
-            <div className="space-y-3 rounded-xl border border-border/40 bg-muted/10 p-4">
+            <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Wallet className="h-4 w-4 text-success" />
                 <p className="text-sm font-medium">Conjoint</p>
@@ -81,11 +83,11 @@ export function SharedMoneyDialog({
                   {new Date(sharedMoneyUser.sharedMoney.marriedAt).toLocaleDateString('fr-FR')}
                 </div>
               )}
-            </div>
+            </CardContent></Card>
           ) : (
-            <div className="rounded-xl border border-dashed border-border/40 bg-muted/5 p-4 text-sm text-muted-foreground">
+            <Alert><AlertDescription>
               Cet utilisateur n'a pas de compte commun actif.
-            </div>
+            </AlertDescription></Alert>
           )}
         </div>
 

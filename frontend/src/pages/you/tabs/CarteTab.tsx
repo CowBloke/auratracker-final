@@ -33,6 +33,9 @@ import {
 } from '../mapConstants';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { getYouNotificationMeta, isYouNotification, relativeTime } from '../utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -230,7 +233,7 @@ function BusinessInfoPanel({
         : deployedProducts.slice(0, 5).map((p) => ({ key: p.id, label: p.name, price: p.currentRevenue, emoji: null }));
 
   return (
-    <div className="w-full overflow-hidden rounded-xl border border-border bg-background">
+    <Card className="gap-0 py-0 shadow-none w-full overflow-hidden"><CardContent>
       {/* Header: icon + name + owner + rating */}
       <div className="flex items-center gap-3 p-4">
         <div
@@ -322,7 +325,7 @@ function BusinessInfoPanel({
           </Button>
         )}
       </div>
-    </div>
+    </CardContent></Card>
   );
 }
 
@@ -649,9 +652,9 @@ export const CarteTab = forwardRef<
             <ScrollArea className="min-h-0 flex-1 px-3 pb-3">
               <div className="space-y-2">
                 {youNotifications.length === 0 && (
-                  <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
+                  <Alert><AlertDescription>
                     Aucune notification YOU pour le moment.
-                  </div>
+                  </AlertDescription></Alert>
                 )}
                 {youNotifications.map((notification) => {
                   const meta = getYouNotificationMeta(notification);
@@ -682,7 +685,7 @@ export const CarteTab = forwardRef<
       {/* Placement banner */}
       {placingBusinessId && (
         <div className="absolute left-1/2 top-3 z-20 -translate-x-1/2">
-          <div className="flex items-center gap-3 rounded-xl border border-border/30 bg-background/95 px-4 py-2.5 ">
+          <Item variant="outline" className="gap-3">
             <MapPin className="size-4 shrink-0 text-primary" />
             <div>
               <p className="text-xs font-semibold text-foreground">
@@ -698,7 +701,7 @@ export const CarteTab = forwardRef<
             >
               <X className="size-3.5" />
             </button>
-          </div>
+          </Item>
         </div>
       )}
 

@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { resolveImageUrl } from '@/lib/images';
 import { Eye, Loader2, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export type AdsTabProps = Record<string, unknown>;
 
@@ -61,14 +62,14 @@ export function AdsTab(props: AdsTabProps) {
                       </div>
                     </div>
                     <div className="grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
-                      <div className="overflow-hidden rounded-xl border border-border/40 bg-background/50">
+                      <Alert className="overflow-hidden"><AlertDescription>
                         {ad.imageUrl ? (
                           <img src={resolveImageUrl(ad.imageUrl)} alt={ad.title} className="h-40 w-full object-cover" />
                         ) : (
                           <div className="flex h-40 items-center justify-center bg-muted/30 text-xs text-muted-foreground">Pas d'image</div>
                         )}
-                      </div>
-                      <div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-3">
+                      </AlertDescription></Alert>
+                      <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">
                         <p className="text-xs text-muted-foreground">Apercu joueur</p>
                         <div className="space-y-1">
                           <p className="text-sm font-semibold">{ad.title}</p>
@@ -79,7 +80,7 @@ export function AdsTab(props: AdsTabProps) {
                           <span>-</span>
                           <span>{ad.business.verified ? 'Entreprise verifiee' : 'Entreprise non verifiee'}</span>
                         </div>
-                      </div>
+                      </CardContent></Card>
                     </div>
                   </CardContent>
                 </Card>

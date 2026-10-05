@@ -28,6 +28,8 @@ import {
   type YouSupplyInventory,
   youApi,
 } from '@/services/api';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 const UPGRADE_CONFIGS = {
   productionSpeed: [
@@ -579,7 +581,7 @@ function ActionPipeline({
 
           {/* Action Money Cost (if any) */}
           {action.moneyCost > 0 && (
-            <div className="rounded-xl border border-warning/25 bg-warning/10 flex items-center overflow-hidden h-[58px] text-left w-full shadow-sm">
+            <Alert variant="warning" className="flex items-center overflow-hidden h-[58px] text-left w-full">
               <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-warning/20 bg-warning/20 text-warning">
                 <Coins className="h-5 w-5" />
               </div>
@@ -598,7 +600,7 @@ function ActionPipeline({
                   </span>
                 </div>
               </div>
-            </div>
+            </Alert>
           )}
 
           {/* Resource ingredient cards */}
@@ -630,10 +632,10 @@ function ActionPipeline({
         {/* Middle: Produire button */}
         <div className="flex shrink-0 flex-col items-center justify-center gap-2 px-1" data-tutorial-id="actions-produce-button">
           {blockedReason && !running && (!isCooldownActive || isPlayDisabled) && (
-            <div className="flex items-center gap-1 rounded-lg border border-destructive/25 bg-destructive/8 px-2 py-1 text-xs font-semibold text-destructive text-center max-w-[72px]">
+            <Alert variant="destructive" className="flex items-center gap-1 font-semibold max-w-[72px]">
               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
               <span className="leading-tight">{blockedReason}</span>
-            </div>
+            </Alert>
           )}
           <button
             type="button"
@@ -1128,7 +1130,7 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between text-xs font-semibold bg-muted/20 border border-border/20 rounded-lg px-3 py-2 mb-3">
+                  <Item variant="muted" className="justify-between text-xs font-semibold mb-3">
                     <span className="text-muted-foreground">Effet actuel</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-foreground">{currentStat}</span>
@@ -1139,12 +1141,12 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
                         </>
                       )}
                     </div>
-                  </div>
+                  </Item>
 
                   {isMax ? (
-                    <div className="w-full text-center text-xs font-bold text-success bg-success/10 py-2.5 rounded-lg border border-success/20">
+                    <Alert variant="success" className="w-full font-bold"><AlertDescription>
                       Niveau Maximum
-                    </div>
+                    </AlertDescription></Alert>
                   ) : (
                     <Button
                       size="sm"

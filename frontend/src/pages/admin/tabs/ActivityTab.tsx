@@ -40,6 +40,7 @@ import {
   Eye,
   Landmark,
 } from 'lucide-react';
+import { Item } from '@/components/ui/item';
 
 export type ActivityTabProps = Record<string, unknown>;
 
@@ -320,7 +321,7 @@ export function ActivityTab(props: ActivityTabProps) {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3">
+                    <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3">
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium">Argent par décile</p>
@@ -348,9 +349,9 @@ export function ActivityTab(props: ActivityTabProps) {
                       ) : (
                         <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
                       )}
-                    </div>
+                    </CardContent></Card>
 
-                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3">
+                    <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3">
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium">Aura par décile</p>
@@ -378,7 +379,7 @@ export function ActivityTab(props: ActivityTabProps) {
                       ) : (
                         <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
                       )}
-                    </div>
+                    </CardContent></Card>
                   </div>
                 </CardContent>
               </Card>
@@ -395,7 +396,7 @@ export function ActivityTab(props: ActivityTabProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 gap-3">
-                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2">
+                    <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-2">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-medium">Argent</p>
                         <p className={cn('text-xs', 'text-muted-foreground')}>
@@ -419,9 +420,9 @@ export function ActivityTab(props: ActivityTabProps) {
                       <p className={cn('text-xs', 'text-muted-foreground')}>
                         Comptes à 0 ou moins: {moneyDistribution?.zeroCount.toLocaleString('fr-FR') ?? '—'}
                       </p>
-                    </div>
+                    </CardContent></Card>
 
-                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2">
+                    <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-2">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-medium">Aura</p>
                         <p className={cn('text-xs', 'text-muted-foreground')}>
@@ -445,7 +446,7 @@ export function ActivityTab(props: ActivityTabProps) {
                       <p className={cn('text-xs', 'text-muted-foreground')}>
                         Comptes à 0 ou moins: {auraDistribution?.zeroCount.toLocaleString('fr-FR') ?? '—'}
                       </p>
-                    </div>
+                    </CardContent></Card>
                   </div>
                 </CardContent>
               </Card>
@@ -619,9 +620,9 @@ export function ActivityTab(props: ActivityTabProps) {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card className="border-border/40">
               <CardContent className="flex items-start gap-3 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/40 bg-muted/20">
+                <Item variant="muted" className="h-10 w-10 justify-center">
                   <Trophy className="h-5 w-5 text-muted-foreground" />
-                </div>
+                </Item>
                 <div className="min-w-0 space-y-1">
                   <p className={cn('text-xs', 'text-muted-foreground')}>Record absolu</p>
                   <p className="text-2xl font-semibold tabular-nums">{onlineStats?.allTimeRecord ?? '—'}</p>
@@ -788,7 +789,7 @@ export function ActivityTab(props: ActivityTabProps) {
                   </p>
 
                   {activityHistory.peak > 0 && (
-                    <div className="mb-4 flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
+                    <Item variant="muted" className="mb-4 justify-between">
                       <div className="flex items-center gap-2">
                         <Trophy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className={cn('text-xs', 'text-muted-foreground')}>Pic sur la période</span>
@@ -803,7 +804,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             : 'joueurs'}
                         </span>
                       </div>
-                    </div>
+                    </Item>
                   )}
 
                   <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
