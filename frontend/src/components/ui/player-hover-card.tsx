@@ -1,5 +1,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { UsernameDisplay } from '@/components/ui/username-display';
@@ -73,24 +76,14 @@ export function PlayerHoverCard({
       </HoverCardTrigger>
       <HoverCardContent className="w-72 p-0" align="start">
         {/* Profile header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40">
-          {profilePicture ? (
-            <img
-              src={resolveImageUrl(profilePicture)}
-              alt={username}
-              className="h-10 w-10 rounded-full object-cover flex-shrink-0"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-medium text-muted-foreground">
-                {username.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
-          <div className="min-w-0">
+        <Item size="sm" className="rounded-none border-b">
+          <ItemMedia>
+            <Avatar className="size-10">
+              <AvatarImage src={profilePicture ? resolveImageUrl(profilePicture) : undefined} alt={username} />
+              <AvatarFallback>{username.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          </ItemMedia>
+          <ItemContent>
             <UsernameDisplay
               username={username}
               usernameColor={usernameColor}
@@ -98,14 +91,14 @@ export function PlayerHoverCard({
               clanTag={clanTag}
               usernameClassName="font-medium text-sm"
             />
-          </div>
-        </div>
+          </ItemContent>
+        </Item>
 
         {/* Badges */}
         <div className="px-4 py-3">
           {badges === null ? (
             <div className="flex justify-center py-2">
-              <div className="w-1 h-4 bg-foreground/20" />
+              <Spinner />
             </div>
           ) : badges.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-1">Aucun badge</p>
