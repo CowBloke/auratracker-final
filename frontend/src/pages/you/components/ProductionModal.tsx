@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -86,19 +87,10 @@ function FinanceGame({ onResult }: { onResult: (success: boolean) => void }) {
       <p className="text-center text-sm text-muted-foreground">Quel placement maximise le rendement annuel ?</p>
       <div className="grid grid-cols-2 gap-2">
         {options.map((o) => (
-          <button key={o.label} type="button"
-            onClick={() => { if (!selected) { setSelected(o.label); onResult(o.label === best.label); } }}
-            className={cn('rounded-xl border p-3 text-left text-sm transition-colors',
-              selected === o.label
-                ? o.label === best.label ? 'border-success/60 bg-success/10' : 'border-destructive/40 bg-destructive/10'
-                : selected
-                  ? o.label === best.label ? 'border-success/60 bg-success/10' : 'border-border/40 opacity-40'
-                  : 'border-border/60 bg-muted/10 hover:bg-muted/20',
-            )}
-          >
+          <Item asChild variant="outline" size="sm" className={selected === o.label ? 'border-primary bg-accent' : undefined}><button key={o.label} type="button" onClick={() => { if (!selected) { setSelected(o.label); onResult(o.label === best.label); } }} className="text-left text-left">
             <p className="font-medium">{o.label}</p>
             <p className="text-xs text-muted-foreground">{o.yield}% / an</p>
-          </button>
+          </button></Item>
         ))}
       </div>
     </div>
@@ -141,15 +133,9 @@ function MemoryGame({ onResult }: { onResult: (success: boolean) => void }) {
       <p className="text-center text-sm text-muted-foreground">Retrouvez toutes les paires</p>
       <div className="grid grid-cols-4 gap-2">
         {deck.map((card) => (
-          <button key={card.id} type="button" onClick={() => flip(card.id)}
-            className={cn('h-12 rounded-xl border text-xl transition-all',
-              card.flipped || card.matched
-                ? card.matched ? 'border-success/40 bg-success/10' : 'border-border/60 bg-muted/30'
-                : 'border-border/40 bg-muted/10 hover:bg-muted/20',
-            )}
-          >
+          <Item asChild variant="outline" size="sm" className={card.flipped || card.matched ? 'border-primary bg-accent' : undefined}><button key={card.id} type="button" onClick={() => flip(card.id)} className="w-full text-left">
             {card.flipped || card.matched ? card.value : '?'}
-          </button>
+          </button></Item>
         ))}
       </div>
     </div>
@@ -188,14 +174,13 @@ function TypingGame({ onResult }: { onResult: (success: boolean) => void }) {
         <span className="text-2xl font-bold text-foreground">{word}</span>
         <span className={cn('text-lg font-mono font-bold', timeLeft <= 2 ? 'text-destructive' : 'text-muted-foreground')}>{timeLeft}s</span>
       </Item>
-      <input
+      <Input
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
         disabled={done}
         placeholder="Tapez ici..."
-        className="h-10 w-full rounded-xl border border-border/60 bg-background px-4 text-sm outline-none focus:border-primary"
       />
       <Button className="w-full" onClick={submit} disabled={done} size="lg">Valider</Button>
     </div>
@@ -227,7 +212,7 @@ function MathGame({ onResult }: { onResult: (success: boolean) => void }) {
       <Empty className="border font-bold"><EmptyHeader><EmptyDescription>
         {problem.q} = ?
       </EmptyDescription></EmptyHeader></Empty>
-      <input
+      <Input
         autoFocus
         type="number"
         value={value}
@@ -235,7 +220,6 @@ function MathGame({ onResult }: { onResult: (success: boolean) => void }) {
         onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
         disabled={done}
         placeholder="Votre réponse..."
-        className="h-10 w-full rounded-xl border border-border/60 bg-background px-4 text-sm outline-none focus:border-primary"
       />
       <Button className="w-full" onClick={submit} disabled={done} size="lg">Valider</Button>
     </div>
@@ -272,18 +256,12 @@ function SortGame({ onResult }: { onResult: (success: boolean) => void }) {
         {items.map((item) => {
           const pos = order.indexOf(item.id);
           return (
-            <button key={item.id} type="button" onClick={() => pick(item.id)}
-              className={cn('rounded-xl border p-3 text-left text-sm transition-colors',
-                pos >= 0
-                  ? 'border-primary/40 bg-primary/10'
-                  : 'border-border/60 bg-muted/10 hover:bg-muted/20',
-              )}
-            >
+            <Item asChild variant="outline" size="sm" className={pos >= 0 ? 'border-primary bg-accent' : undefined}><button key={item.id} type="button" onClick={() => pick(item.id)} className="text-left text-left">
               <div className="flex items-center justify-between">
                 <span>{item.label}</span>
                 {pos >= 0 && <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-bold text-primary">#{pos + 1}</span>}
               </div>
-            </button>
+            </button></Item>
           );
         })}
       </div>
@@ -477,15 +455,9 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
                   <span className="text-xs text-muted-foreground/50">En attente</span>
                 )}
                 {canRemind && (
-                  <button
-                    type="button"
-                    onClick={() => void handleReminder(member.id)}
-                    disabled={sending === member.id}
-                    title="Envoyer un rappel"
-                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50"
-                  >
+                  <Item asChild variant="outline" size="sm"><button type="button" onClick={() => void handleReminder(member.id)} disabled={sending === member.id} title="Envoyer un rappel" className="w-7 justify-center text-left">
                     {sending === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
-                  </button>
+                  </button></Item>
                 )}
               </div>
             </Item>
@@ -753,9 +725,9 @@ export function ProductionModal({
             <DialogTitle className="text-base font-semibold">Production — {business.name}</DialogTitle>
             <p className="text-xs text-muted-foreground">Ressources, équipe, fabrication et stockage</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted/20 hover:text-foreground">
-            <X className="h-4 w-4" />
-          </button>
+          <Button type="button" variant="ghost" size="icon-sm" aria-label="Fermer" onClick={onClose}>
+            <X />
+          </Button>
         </div>
 
         <Tabs defaultValue="production" className="flex min-h-0 flex-1 flex-col">

@@ -35,6 +35,7 @@ import { BUSINESS_ICON_MAP } from '../constants';
 import { getYouNotificationMeta, isYouNotification, relativeTime } from '../utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Item } from '@/components/ui/item';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -246,25 +247,19 @@ function BusinessInfoPanel({
           <p className="truncate text-sm font-semibold">{business.name}</p>
           <p className="truncate text-xs text-muted-foreground">@{business.owner.username}</p>
           {business.avgRating != null && business.ratingCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowReviews((v) => !v)}
-              className="flex items-center gap-1 text-xs hover:opacity-80"
-            >
-              <span className="text-warning">★ {business.avgRating.toFixed(1)}</span>
+            <Button type="button" variant="ghost" size="xs" className="-ml-2" onClick={() => setShowReviews((v) => !v)}>
+              <Star className="text-warning" />
+              {business.avgRating.toFixed(1)}
               <span className="text-muted-foreground">{business.ratingCount} avis</span>
-              {showReviews ? <ChevronUp className="size-3 text-muted-foreground" /> : <ChevronDown className="size-3 text-muted-foreground" />}
-            </button>
+              {showReviews ? <ChevronUp /> : <ChevronDown />}
+            </Button>
           ) : (
             <p className="text-xs text-muted-foreground/60">Pas encore noté</p>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
+        <Button type="button" variant="ghost" size="icon-sm" aria-label="Fermer" onClick={onClose}>
+          <X />
+        </Button>
       </div>
 
       {business.description?.trim() && (
@@ -554,51 +549,38 @@ export const CarteTab = forwardRef<
       {/* Owner filter pills & Map type toggle */}
       <div className={cn('pointer-events-auto absolute top-3 z-10 flex gap-3', embedded ? 'left-3' : 'left-[236px]')}>
         <div className="flex gap-1.5">
-          {(['all', 'mine'] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setOwnerFilter(f)}
-              style={
-                ownerFilter === f
-                  ? { background: 'var(--foreground)', color: 'var(--background)', borderColor: 'var(--foreground)' }
-                  : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'color-mix(in oklab, var(--border) 30%, transparent)' }
-              }
-              className="rounded-full border px-3 py-1 text-xs font-medium transition-all"
-            >
-              {f === 'all' ? 'Tout' : 'À toi'}
-            </button>
-          ))}
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={ownerFilter}
+            onValueChange={(value) => { if (value) setOwnerFilter(value as typeof ownerFilter); }}
+            className="bg-background"
+          >
+            <ToggleGroupItem value="all">Tout</ToggleGroupItem>
+            <ToggleGroupItem value="mine">À toi</ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         <div className="flex gap-1.5">
-          {(['map', 'globe'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setMapType(t)}
-              style={
-                mapType === t
-                  ? { background: 'var(--foreground)', color: 'var(--background)', borderColor: 'var(--foreground)' }
-                  : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'color-mix(in oklab, var(--border) 30%, transparent)' }
-              }
-              className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all"
-            >
-              {t === 'map' ? <MapIcon className="size-3" /> : <Globe className="size-3" />}
-              {t === 'map' ? 'Carte' : 'Globe'}
-            </button>
-          ))}
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={mapType}
+            onValueChange={(value) => { if (value) setMapType(value as typeof mapType); }}
+            className="bg-background"
+          >
+            <ToggleGroupItem value="map"><MapIcon />Carte</ToggleGroupItem>
+            <ToggleGroupItem value="globe"><Globe />Globe</ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
 
       {/* Left panel — business browser button */}
       {!embedded && (
         <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[220px] flex-col gap-2" data-tutorial-id="carte-browse-section">
-          <button
-            type="button"
-            onClick={() => setShowBrowserModal(true)}
-            className="pointer-events-auto flex items-center gap-3 rounded-xl border border-border/70 bg-background/95 px-4 py-3.5 transition-all hover:border-border hover:bg-background active:scale-[0.98]"
-          >
+          <Item asChild variant="outline" size="sm"><button type="button" onClick={() => setShowBrowserModal(true)} className="w-full text-left">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Building2 className="size-4.5" />
             </div>
@@ -607,7 +589,7 @@ export const CarteTab = forwardRef<
               <p className="text-xs text-muted-foreground">{allBusinesses.length} sur la carte</p>
             </div>
             <ChevronDown className="ml-auto size-3.5 shrink-0 -rotate-90 text-muted-foreground" />
-          </button>
+          </button></Item>
         </div>
       )}
 
@@ -695,12 +677,9 @@ export const CarteTab = forwardRef<
                 <p className="text-xs text-muted-foreground">{placingBusiness.name}</p>
               )}
             </div>
-            <button
-              onClick={() => setPlacingBusinessId(null)}
-              className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Button type="button" variant="ghost" size="icon-xs" aria-label="Annuler" onClick={() => setPlacingBusinessId(null)}>
+              <X />
+            </Button>
           </Item>
         </div>
       )}

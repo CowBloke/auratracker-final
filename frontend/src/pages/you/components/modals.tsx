@@ -8,6 +8,10 @@ import {
 import { toast } from 'sonner';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -149,16 +153,7 @@ function BusinessTypePickerModal({
                     const isPreviewing = previewKey === type.key;
                     const isConfirmed = selectedKey === type.key;
                     return (
-                      <button
-                        key={type.key}
-                        type="button"
-                        onClick={() => setPreviewKey(type.key)}
-                        data-tutorial-id={`business-type-option-${type.key}`}
-                        className={cn(
-                          'relative overflow-hidden rounded-xl border p-3 text-left transition-all',
-                          isPreviewing ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20',
-                        )}
-                      >
+                      <Item asChild variant="outline" size="sm" className={isPreviewing ? 'border-primary bg-accent' : undefined}><button key={type.key} type="button" onClick={() => setPreviewKey(type.key)} data-tutorial-id={`business-type-option-${type.key}`} className="text-left text-left">
                         {/* Watermark */}
                         <div className="pointer-events-none absolute bottom-0 right-0 select-none overflow-hidden">
                           <Icon className="h-16 w-16 translate-x-4 translate-y-4" style={{ color, opacity: 0.11 }} />
@@ -179,7 +174,7 @@ function BusinessTypePickerModal({
                             </p>
                           </div>
                         </div>
-                      </button>
+                      </button></Item>
                     );
                   })}
                 </div>
@@ -198,15 +193,14 @@ function BusinessTypePickerModal({
               <div className="max-h-[calc(60vh-60px)] overflow-y-auto">
                 <BusinessTypeDetailPanel type={previewType} />
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => { onSelect(previewType); onClose(); }}
                 data-tutorial-id="business-type-picker-confirm"
-                className="mt-auto w-full rounded-xl py-3 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
-                style={{ background: BUSINESS_COLOR_HEX[previewType.key] ?? '#6366f1' }}
+                className="mt-auto w-full"
               >
                 Choisir · {previewType.label}
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -303,12 +297,7 @@ export function CreateBusinessModal({
         <AppModal.Body scrollable>
         <div data-tutorial-id="create-business-modal" className="space-y-3">
         <FieldRow label="Type d activite">
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="w-full rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-left transition-all hover:bg-muted/20"
-            data-tutorial-id="create-business-type"
-          >
+          <Item asChild variant="outline" size="sm"><button type="button" onClick={() => setPickerOpen(true)} data-tutorial-id="create-business-type" className="w-full text-left text-left">
             {selectedType ? (
               <div className="flex items-center gap-4">
                 <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', selectedStyle.iconWrap)}>
@@ -326,7 +315,7 @@ export function CreateBusinessModal({
             ) : (
               <p className="text-sm text-muted-foreground">Choisir un type...</p>
             )}
-          </button>
+          </button></Item>
         </FieldRow>
         {selectedType ? <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></CardContent></Card> : null}
         <FieldRow label="Nom">
@@ -363,24 +352,14 @@ export function CreateBusinessModal({
               <p className="text-xs text-muted-foreground">Chaque juicerie ne produit qu'un seul type de jus. Choisissez votre spécialité :</p>
               <div className="grid grid-cols-1 gap-1.5">
                 {JUICE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setJuiceSpecialization(opt.value)}
-                    className={cn(
-                      'flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all',
-                      juiceSpecialization === opt.value
-                        ? 'border-border/50 bg-muted/10'
-                        : 'border-border/40 bg-muted/10 hover:bg-muted/20',
-                    )}
-                  >
+                  <Item asChild variant="outline" size="sm" className={juiceSpecialization === opt.value ? 'border-primary bg-accent' : undefined}><button key={opt.value} type="button" onClick={() => setJuiceSpecialization(opt.value)} className="text-left text-left">
                     <Droplets className={cn('h-4 w-4 shrink-0', juiceSpecialization === opt.value ? 'text-primary' : 'text-muted-foreground')} />
                     <div className="min-w-0 flex-1">
                       <p className={cn('text-sm font-semibold leading-tight', juiceSpecialization === opt.value ? 'text-primary' : 'text-foreground')}>{opt.label}</p>
                       <p className="text-xs text-muted-foreground">{opt.desc}</p>
                     </div>
                     {juiceSpecialization === opt.value && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
-                  </button>
+                  </button></Item>
                 ))}
               </div>
             </div>
@@ -658,7 +637,7 @@ export function TransferBusinessModal({
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {availablePlayers.map((player) => {
           const selected = player.id === recipientId;
-          return <button key={player.id} type="button" onClick={() => setRecipientId(player.id)} className={cn('flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors', selected ? 'border-border/50 bg-muted/10' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour recevoir un transfert.'}</p></div>{selected ? <Pill label="Destinataire" color="bg-muted/15 text-primary" /> : null}</button>;
+          return <Item asChild variant="outline" size="sm" className={selected ? 'border-primary bg-accent' : undefined}><button key={player.id} type="button" onClick={() => setRecipientId(player.id)} className="w-full text-left text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour recevoir un transfert.'}</p></div>{selected ? <Pill label="Destinataire" color="bg-muted/15 text-primary" /> : null}</button></Item>;
         })}
       </div>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} /></FieldRow>
@@ -765,9 +744,9 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
       <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-2">
         <div className="flex items-center justify-between gap-3 text-xs">
           <span className="text-muted-foreground">Montant suggere auto-calcule</span>
-          <button type="button" className="font-semibold text-warning transition-opacity hover:opacity-80" onClick={() => setAmount(String(suggestedAmount))}>
+          <Button type="button" variant="link" size="xs" onClick={() => setAmount(String(suggestedAmount))}>
             Utiliser {formatMoney(suggestedAmount)}
-          </button>
+          </Button>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div><p className="text-xs text-muted-foreground/60">Ta part</p><p className="text-sm font-bold text-warning">{numericSharePercent.toLocaleString('fr-FR')}%</p></div>
@@ -827,7 +806,7 @@ export function MeetModal({ open, onClose, players, onSubmitted }: { open: boole
       <div className="max-h-80 space-y-2 overflow-y-auto">
         {candidates.map((player) => {
           const selected = player.id === selectedUserId;
-          return <button key={player.id} type="button" onClick={() => setSelectedUserId(player.id)} className={cn('flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors', selected ? 'border-foreground bg-muted/20' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-2 text-xs text-muted-foreground">{player.bio?.trim() || 'Pret a ouvrir une nouvelle relation.'}</p></div>{selected ? <Pill label="Selection" color="bg-foreground text-background" /> : null}</button>;
+          return <Item asChild variant="outline" size="sm" className={selected ? 'border-primary bg-accent' : undefined}><button key={player.id} type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-2 text-xs text-muted-foreground">{player.bio?.trim() || 'Pret a ouvrir une nouvelle relation.'}</p></div>{selected ? <Pill label="Selection" color="bg-foreground text-background" /> : null}</button></Item>;
         })}
         {candidates.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p> : null}
       </div>
@@ -874,9 +853,9 @@ export function NewRelationModal({ open, onClose, players, onSubmitted }: { open
       <FieldRow label="Type">
         <div className="flex gap-2">
           {(['DATING', 'FRIEND'] as const).map((t) => (
-            <button key={t} type="button" onClick={() => setType(t)} className={cn('flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors', type === t ? 'border-foreground bg-muted/20' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}>
+            <Item asChild variant="outline" size="sm" className={type === t ? 'border-primary bg-accent' : undefined}><button key={t} type="button" onClick={() => setType(t)} className="flex-1 text-left">
               {t === 'DATING' ? 'En relation' : 'Ami(e)'}
-            </button>
+            </button></Item>
           ))}
         </div>
       </FieldRow>
@@ -884,7 +863,7 @@ export function NewRelationModal({ open, onClose, players, onSubmitted }: { open
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {candidates.map((player) => {
           const sel = player.id === selectedUserId;
-          return <button key={player.id} type="button" onClick={() => setSelectedUserId(player.id)} className={cn('flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors', sel ? 'border-foreground bg-muted/20' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Aucune bio.'}</p></div>{sel && <Pill label="Selection" color="bg-foreground text-background" />}</button>;
+          return <Item asChild variant="outline" size="sm" className={sel ? 'border-primary bg-accent' : undefined}><button key={player.id} type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Aucune bio.'}</p></div>{sel && <Pill label="Selection" color="bg-foreground text-background" />}</button></Item>;
         })}
         {candidates.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p>}
       </div>
@@ -1566,15 +1545,8 @@ export function ManageBusinessModal({
                     };
                     return (
                       <div key={product.id} className={cn('transition-colors', isBusy && actingProductKey !== `research:${product.slotIndex}` && actingProductKey !== `deploy:${product.slotIndex}` ? 'pointer-events-none opacity-60' : '')}>
-                        <button
-                          type="button"
-                          disabled={!isClickable || isBusy}
-                          onClick={handleClick}
-                          className={cn(
-                            'group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors',
-                            isClickable ? 'hover:bg-muted/5' : 'cursor-default',
-                          )}
-                        >
+                        <Item asChild className={cn('rounded-none', isClickable ? 'hover:bg-accent' : 'cursor-default')}>
+                          <button type="button" disabled={!isClickable || isBusy} onClick={handleClick} className="group w-full text-left">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/15">
                             <TrendingUp className="h-4 w-4 text-primary" />
                           </div>
@@ -1591,7 +1563,7 @@ export function ManageBusinessModal({
                             )}
                           </div>
                           {isClickable ? <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" /> : null}
-                        </button>
+                        </button></Item>
                       </div>
                     );
                   })}
@@ -1680,22 +1652,16 @@ export function ManageBusinessModal({
                 <CardContent className="space-y-3 px-5 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <SectionTitle>Prêts banque</SectionTitle>
-                    <Card className="gap-0 py-0 shadow-none"><CardContent className="p-1 inline-flex items-center">
-                      <button
-                        type="button"
-                        onClick={() => setLoanViewTab('active')}
-                        className={cn('rounded-md px-2.5 py-1 text-xs transition-colors', loanViewTab === 'active' ? 'bg-warning/20 text-warning' : 'text-muted-foreground hover:text-foreground')}
-                      >
-                        Actifs ({activeLoans.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLoanViewTab('history')}
-                        className={cn('rounded-md px-2.5 py-1 text-xs transition-colors', loanViewTab === 'history' ? 'bg-success/20 text-success' : 'text-muted-foreground hover:text-foreground')}
-                      >
-                        Historique ({bankLoans.length})
-                      </button>
-                    </CardContent></Card>
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      size="sm"
+                      value={loanViewTab}
+                      onValueChange={(value) => { if (value) setLoanViewTab(value as typeof loanViewTab); }}
+                    >
+                      <ToggleGroupItem value="active">Actifs ({activeLoans.length})</ToggleGroupItem>
+                      <ToggleGroupItem value="history">Historique ({bankLoans.length})</ToggleGroupItem>
+                    </ToggleGroup>
                   </div>
 
                   {loadingLoanHistory && bankLoans.length === 0 ? (
@@ -1794,15 +1760,16 @@ export function ManageBusinessModal({
               <CardContent className="space-y-3 px-5 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <SectionTitle>Mouvements de trésorerie</SectionTitle>
-                  <select
-                    value={txFilter}
-                    onChange={(e) => setTxFilter(e.target.value as typeof txFilter)}
-                    className="h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none"
-                  >
-                    <option value="all">Tous</option>
-                    <option value="in">Entrées</option>
-                    <option value="out">Sorties</option>
-                  </select>
+                  <Select value={txFilter} onValueChange={(value) => setTxFilter(value as typeof txFilter)}>
+                    <SelectTrigger size="sm" className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous</SelectItem>
+                      <SelectItem value="in">Entrées</SelectItem>
+                      <SelectItem value="out">Sorties</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 {loadingTx ? (
                   <p className="py-4 text-center text-xs text-muted-foreground">Chargement…</p>
@@ -2299,12 +2266,7 @@ export function MemberEditModal({
             <p className="text-xs text-muted-foreground/60">Les avocats sont triés par ordre croissant, puis alphabétiquement.</p>
           </div>
           <label className="flex cursor-pointer select-none items-center gap-3 rounded-xl border border-border/40 bg-background/40 px-4 py-3">
-            <input
-              type="checkbox"
-              checked={isPrimary}
-              onChange={(e) => setIsPrimary(e.target.checked)}
-              className="h-4 w-4 rounded"
-            />
+            <Checkbox checked={isPrimary} onCheckedChange={(checked) => setIsPrimary(checked === true)} />
             <div>
               <p className="text-sm font-medium text-warning">Avocat principal</p>
               <p className="text-xs text-muted-foreground/70">Mis en avant sur la fiche publique du cabinet.</p>
@@ -2816,10 +2778,9 @@ export function ManageFormationsModal({
                 {currentProduct.reviewerNote ? <p className="text-muted-foreground whitespace-pre-wrap break-words">Note reviewer: {currentProduct.reviewerNote}</p> : null}
                 {(currentProduct.hasAttachment || draft.attachmentFile) ? (
                   <label className="flex items-center gap-2 text-foreground">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={draft.removeAttachment}
-                      onChange={(e) => setDraft((d) => ({ ...d, removeAttachment: e.target.checked, attachmentFile: e.target.checked ? null : d.attachmentFile }))}
+                      onCheckedChange={(checked) => setDraft((d) => ({ ...d, removeAttachment: checked === true, attachmentFile: checked === true ? null : d.attachmentFile }))}
                     />
                     Supprimer le fichier joint
                   </label>
@@ -3094,26 +3055,29 @@ export function FormationCatalogModal({
                   ) : null}
 
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="xs"
                       onClick={() => onShowProductReviews?.(product.id)}
                       disabled={!onShowProductReviews}
-                      className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-2 py-0.5 text-xs font-medium text-warning transition-colors hover:bg-muted/20 disabled:pointer-events-none disabled:opacity-50"
                     >
                       <Star className="h-3 w-3 fill-warning" />
                       <span>{product.avgRating?.toFixed(1) ?? '--'}</span>
                       <span className="text-muted-foreground/70">({ratingCount})</span>
-                    </button>
+                    </Button>
                     {!isOwnerPreview ? (
                       product.canReview ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
+                          size="icon-xs"
+                          aria-label="Noter"
                           onClick={() => onRateProduct?.(product.id)}
                           disabled={!onRateProduct}
-                          className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                         >
                           <Plus className="h-3 w-3" />
-                        </button>
+                        </Button>
                       ) : hasPurchased ? (
                         <span className="text-xs text-muted-foreground/60">Note dispo après consultation</span>
                       ) : null
@@ -3181,26 +3145,31 @@ function MenuItemImagePicker({ value, onChange }: { value: string; onChange: (ur
   return (
     <div className="flex items-center gap-1">
       {value ? (
-        <div className="relative h-9 w-9 shrink-0">
-          <img src={resolveImageUrl(value)} className="h-9 w-9 rounded object-cover border border-border/40" alt="" />
-          <button
+        <div className="relative size-9 shrink-0">
+          <img src={resolveImageUrl(value)} className="size-9 rounded-md border object-cover" alt="" />
+          <Button
             type="button"
+            variant="destructive"
+            size="icon-xs"
+            aria-label="Retirer l'image"
+            className="absolute -right-1 -top-1 size-4 rounded-full"
             onClick={() => onChange('')}
-            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center text-xs"
           >
-            <X className="h-3 w-3" />
-          </button>
+            <X />
+          </Button>
         </div>
       ) : (
-        <button
+        <Button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
+          variant="outline"
+          size="icon"
           disabled={uploading}
-          className="h-9 w-9 shrink-0 flex items-center justify-center rounded border border-dashed border-border/60 hover:border-border text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => fileInputRef.current?.click()}
           title="Ajouter une image"
+          aria-label="Ajouter une image"
         >
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image className="h-4 w-4" />}
-        </button>
+          {uploading ? <Spinner /> : <Image />}
+        </Button>
       )}
       <input
         ref={fileInputRef}
