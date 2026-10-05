@@ -166,7 +166,7 @@ export function LogsTab(props: LogsTabProps) {
                 className={cn(
                   'rounded-full text-xs transition-all',
                   isSelected
-                    ? 'border-border bg-primary text-white hover:bg-primary'
+                    ? 'border-border bg-primary text-primary-foreground hover:bg-primary/90'
                     : 'border-border text-primary bg-transparent hover:bg-muted/30 hover:text-primary'
                 )}
               >

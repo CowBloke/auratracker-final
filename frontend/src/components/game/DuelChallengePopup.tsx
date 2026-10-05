@@ -51,7 +51,7 @@ export default function DuelChallengePopup({
       {/* Progress bar */}
       <div className="h-1 bg-muted">
         <div
-          className={cn('h-full transition-all duration-200', isUrgent ? 'bg-red-500' : 'bg-primary')}
+          className={cn('h-full transition-all duration-200', isUrgent ? 'bg-destructive' : 'bg-primary')}
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -62,7 +62,7 @@ export default function DuelChallengePopup({
             <Swords className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Défi de duel</span>
           </div>
-          <div className={cn('flex items-center gap-1 text-xs tabular-nums', isUrgent ? 'text-red-500 font-bold' : 'text-muted-foreground')}>
+          <div className={cn('flex items-center gap-1 text-xs tabular-nums', isUrgent ? 'text-destructive font-bold' : 'text-muted-foreground')}>
             <Clock className="h-3 w-3" />
             {timeLeft}s
           </div>
@@ -82,7 +82,7 @@ export default function DuelChallengePopup({
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 border-red-500/40 text-red-500 hover:bg-red-500/10 hover:border-red-500"
+            className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10 hover:border-red-500"
             onClick={onDecline}
           >
             <X className="h-3.5 w-3.5 mr-1" />

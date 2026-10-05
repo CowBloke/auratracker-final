@@ -72,7 +72,7 @@ export default function GameJoinPrompt({
         <div className="space-y-6 py-4">
           <div className="flex items-center justify-center gap-2">
             <Clock className="h-5 w-5 text-muted-foreground" />
-            <span className={cn('text-3xl font-mono font-bold', timeLeft <= 3 ? 'text-red-500' : 'text-foreground')}>
+            <span className={cn('text-3xl font-mono font-bold', timeLeft <= 3 ? 'text-destructive' : 'text-foreground')}>
               {timeLeft}s
             </span>
           </div>
@@ -93,9 +93,9 @@ export default function GameJoinPrompt({
                   className={cn(
                     'flex items-center justify-between py-2 px-3 border rounded',
                     response?.accepted === true
-                      ? 'border-green-500/50 bg-green-500/5'
+                      ? 'border-success/50 bg-success/5'
                       : response?.accepted === false
-                        ? 'border-red-500/50 bg-red-500/5'
+                        ? 'border-destructive/50 bg-destructive/5'
                         : 'border-border/30'
                   )}
                 >
@@ -105,14 +105,14 @@ export default function GameJoinPrompt({
                       <span className="ml-2 text-xs text-muted-foreground">(toi)</span>
                     )}
                     {member.userId === leaderId && (
-                      <Crown className="inline-block ml-2 h-3 w-3 text-yellow-500" />
+                      <Crown className="inline-block ml-2 h-3 w-3 text-warning" />
                     )}
                   </span>
                   <span>
                     {response?.accepted === true ? (
-                      <Check className="h-4 w-4 text-green-500" />
+                      <Check className="h-4 w-4 text-success" />
                     ) : response?.accepted === false ? (
-                      <X className="h-4 w-4 text-red-500" />
+                      <X className="h-4 w-4 text-destructive" />
                     ) : (
                       <span className="text-xs text-muted-foreground">En attente...</span>
                     )}
@@ -129,7 +129,7 @@ export default function GameJoinPrompt({
               <Button
                 variant="outline"
                 onClick={handleDecline}
-                className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white"
+                className="flex-1 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 <X className="h-4 w-4 mr-2" />
                 Refuser
@@ -137,7 +137,7 @@ export default function GameJoinPrompt({
               <Button
                 variant="outline"
                 onClick={handleAccept}
-                className="flex-1 border-green-500/50 text-green-500 hover:bg-green-500 hover:text-white"
+                className="flex-1 border-success/50 text-success hover:bg-success hover:text-success-foreground"
               >
                 <Check className="h-4 w-4 mr-2" />
                 Rejoindre
@@ -146,9 +146,9 @@ export default function GameJoinPrompt({
           ) : (
             <div className="w-full text-center text-sm text-muted-foreground">
               {myResponse.accepted ? (
-                <span className="text-green-500">Tu as accepté. En attente des autres...</span>
+                <span className="text-success">Tu as accepté. En attente des autres...</span>
               ) : (
-                <span className="text-red-500">Tu as refusé.</span>
+                <span className="text-destructive">Tu as refusé.</span>
               )}
             </div>
           )}

@@ -509,7 +509,7 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
             {!iSigned && myParticipation && (
               <Button
                 size="sm"
-                className="gap-1.5 bg-warning text-white hover:bg-warning"
+                className="gap-1.5 bg-warning text-warning-foreground hover:bg-warning/90"
                 disabled={signing}
                 onClick={onSign}
               >
@@ -678,7 +678,7 @@ function CreateContractModal({ open, onClose, players, currentUserId, onCreated 
             <Button variant="outline" size="sm" onClick={handleClose}>Annuler</Button>
             <Button
               size="sm"
-              className="gap-1.5 bg-warning text-white hover:bg-warning"
+              className="gap-1.5 bg-warning text-warning-foreground hover:bg-warning/90"
               disabled={loading || !title.trim() || !content.trim() || selectedIds.length === 0}
               onClick={() => void submit()}
             >

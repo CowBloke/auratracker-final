@@ -552,7 +552,7 @@ function ActionPipeline({
               className={cn(
                 "h-6 px-2.5 text-xs font-bold rounded-full transition-all duration-200 shrink-0",
                 isConstantProdEnabled 
-                  ? "bg-success hover:bg-success text-white border-transparent" 
+                  ? "bg-success text-success-foreground hover:bg-success/90 border-transparent" 
                   : "text-muted-foreground hover:text-foreground"
               )}
               onClick={() => onToggleConstantProd(biz.id, action.key, !isConstantProdEnabled)}
@@ -872,7 +872,7 @@ function ConstructionPanel({
         size="sm"
         disabled={!allSourcesSelected || submitting}
         onClick={handleLaunch}
-        className="w-full bg-warning hover:bg-warning text-white"
+        className="w-full bg-warning text-warning-foreground hover:bg-warning/90"
       >
         {submitting
           ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Lancement…</>
@@ -1041,7 +1041,7 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
       activeColor: "bg-warning",
       badgeColor: "bg-warning/10 text-warning border border-warning/20",
       iconBg: "bg-warning/15 border border-warning/20 text-warning",
-      btnBg: "bg-warning hover:bg-warning text-white",
+      btnBg: "bg-warning text-warning-foreground hover:bg-warning/90",
       Icon: Zap,
     },
     stockSize: {
@@ -1050,7 +1050,7 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
       activeColor: "bg-success",
       badgeColor: "bg-success/10 text-success border border-success/20",
       iconBg: "bg-success/15 border border-success/20 text-success",
-      btnBg: "bg-success hover:bg-success text-white",
+      btnBg: "bg-success text-success-foreground hover:bg-success/90",
       Icon: Package,
     },
     queue: {
@@ -1059,7 +1059,7 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
       activeColor: "bg-primary",
       badgeColor: "bg-muted/10 text-primary border border-border/20",
       iconBg: "bg-muted/15 border border-border/20 text-primary",
-      btnBg: "bg-primary hover:bg-primary text-white",
+      btnBg: "bg-primary text-primary-foreground hover:bg-primary/90",
       Icon: Layers,
     },
   };

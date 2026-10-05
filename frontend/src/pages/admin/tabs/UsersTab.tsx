@@ -135,19 +135,19 @@ export function UsersTab(props: UsersTabProps) {
           {selectedUserIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 pt-3 mt-1 border-t border-border/30">
               <span className="text-xs text-muted-foreground">{selectedUserIds.length} sélectionné(s) :</span>
-              <Button size="sm" onClick={() => openBadgeModal('')} className="h-7 bg-primary hover:bg-primary text-white text-xs gap-1.5">
+              <Button size="sm" onClick={() => openBadgeModal('')} className="h-7 bg-primary text-primary-foreground hover:bg-primary/90 text-xs gap-1.5">
                 <Award className="h-3.5 w-3.5" />
                 Badge
               </Button>
-              <Button size="sm" onClick={massMuteUsers} className="h-7 bg-warning hover:bg-warning text-white text-xs gap-1.5">
+              <Button size="sm" onClick={massMuteUsers} className="h-7 bg-warning text-warning-foreground hover:bg-warning/90 text-xs gap-1.5">
                 <ShieldOff className="h-3.5 w-3.5" />
                 Mute
               </Button>
-              <Button size="sm" onClick={openMassBanDialog} className="h-7 bg-warning hover:bg-warning text-white text-xs gap-1.5">
+              <Button size="sm" onClick={openMassBanDialog} className="h-7 bg-warning text-warning-foreground hover:bg-warning/90 text-xs gap-1.5">
                 <BanIcon className="h-3.5 w-3.5" />
                 Bannir
               </Button>
-              <Button size="sm" onClick={() => setMassDeleteOpen(true)} className="h-7 bg-destructive hover:bg-destructive/90 text-white text-xs gap-1.5">
+              <Button size="sm" onClick={() => setMassDeleteOpen(true)} className="h-7 bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs gap-1.5">
                 <Trash2 className="h-3.5 w-3.5" />
                 Supprimer
               </Button>
