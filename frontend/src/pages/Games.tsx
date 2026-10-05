@@ -938,11 +938,11 @@ export default function Games() {
     navigate(link);
   };
 
-  const injectAdsIntoGrid = (nodes: JSX.Element[], startAdIdx = 0): { elements: JSX.Element[]; nextAdIdx: number } => {
+  const injectAdsIntoGrid = (nodes: React.JSX.Element[], startAdIdx = 0): { elements: React.JSX.Element[]; nextAdIdx: number } => {
     const cardAds = adPool.filter((ad) => ad.isActive);
     if (cardAds.length === 0 || user?.hasAdblock) return { elements: nodes, nextAdIdx: startAdIdx };
 
-    const result: JSX.Element[] = [];
+    const result: React.JSX.Element[] = [];
     let adIdx = startAdIdx;
 
     nodes.forEach((node, i) => {

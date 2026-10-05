@@ -1,9 +1,9 @@
-﻿import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeftCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeftCircle } from 'lucide-react';
-import { TYPOGRAPHY } from '@/lib/design-system';
-import { CenteredShell } from '@/components/layout/CenteredShell';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { AuthShell } from '@/components/layout/AuthShell';
 
 interface BlockedProps {
   message?: string;
@@ -21,32 +21,26 @@ export default function Blocked({ message }: BlockedProps) {
   };
 
   return (
-    <CenteredShell widthClassName="max-w-2xl">
-      <div className="space-y-6 text-center">
-        <div className="flex justify-center">
-          <ArrowLeftCircle className="h-14 w-14 text-muted-foreground" />
-        </div>
-        <div className={TYPOGRAPHY.H2}>
-          Page bloquée
-        </div>
-        <p className={TYPOGRAPHY.MUTED}>
-          Cette page est temporairement inaccessible. Merci de revenir plus tard.
-        </p>
-
-        {message && message.trim().length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <p className={TYPOGRAPHY.SMALL}>{message}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="flex justify-center">
-          <Button onClick={handleBack} variant="default">
-            Retour
-          </Button>
-        </div>
-      </div>
-    </CenteredShell>
+    <AuthShell size="lg">
+      <Card>
+        <CardContent>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ArrowLeftCircle />
+              </EmptyMedia>
+              <EmptyTitle>Page bloquée</EmptyTitle>
+              <EmptyDescription>
+                Cette page est temporairement inaccessible. Merci de revenir plus tard.
+              </EmptyDescription>
+            </EmptyHeader>
+            {message && message.trim().length > 0 ? <EmptyContent>{message}</EmptyContent> : null}
+            <EmptyContent>
+              <Button onClick={handleBack}>Retour</Button>
+            </EmptyContent>
+          </Empty>
+        </CardContent>
+      </Card>
+    </AuthShell>
   );
 }

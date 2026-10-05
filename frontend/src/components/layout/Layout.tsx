@@ -1,5 +1,5 @@
-﻿import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
 import AdminWarningModal from './AdminWarningModal';
@@ -10,7 +10,10 @@ import { TutorialWelcomeModal } from '@/components/tutorial/TutorialWelcomeModal
 import GameJoinPrompt from '../game/GameJoinPrompt';
 import GameReplayPrompt from '../game/GameReplayPrompt';
 import DuelChallengePopup from '../game/DuelChallengePopup';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useGameSocket } from '@/contexts/GameSocketContext';
 import { useDuelSocket } from '@/contexts/DuelSocketContext';
@@ -19,7 +22,6 @@ import AppSidebar from '@/components/layout/Sidebar';
 import { SiteHeader } from '@/components/SiteHeader';
 import PartyChatFloating from '@/components/party/PartyChatFloating';
 import MoneyIncomeOverlay from '@/components/rewards/MoneyIncomeOverlay';
-import { CONTAINER } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { matchesShortcut, useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
 
@@ -130,53 +132,33 @@ export default function Layout() {
     <TutorialProvider>
     <ChatSidebarProvider>
       <div className="flex h-svh w-full overflow-hidden bg-background">
-        <SidebarProvider
-          defaultOpen={false}
-          className="!w-auto flex-1"
-          style={
-            {
-              '--sidebar-width': 'calc(var(--spacing) * 72)',
-              '--header-height': 'calc(var(--spacing) * 12)',
-            } as CSSProperties
-          }
-        >
-          <AppSidebar variant="inset" />
-          <main className="relative min-h-0 flex w-full flex-1 flex-col overflow-hidden bg-background">
+        <SidebarProvider defaultOpen className="h-svh min-h-0 w-auto flex-1">
+          <AppSidebar />
+          <SidebarInset className="min-h-0 min-w-0 overflow-hidden">
             {updateAvailable && (
-              <div className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-sm text-primary-foreground">
-                <span>Une mise à jour est disponible — rechargez la page pour en bénéficier.</span>
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="rounded bg-primary-foreground/20 px-3 py-0.5 font-medium hover:bg-primary-foreground/30"
-                  >
-                    Recharger
-                  </button>
-                  <button
-                    onClick={dismissUpdate}
-                    className="rounded px-2 py-0.5 hover:bg-primary-foreground/20"
-                    aria-label="Ignorer"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
+              <Alert className="rounded-none border-x-0 border-t-0">
+                <RefreshCw />
+                <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                  <span>Une mise à jour est disponible : rechargez la page pour en bénéficier.</span>
+                  <span className="flex items-center gap-2">
+                    <Button size="sm" onClick={() => window.location.reload()}>
+                      Recharger
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={dismissUpdate}>
+                      Ignorer
+                    </Button>
+                  </span>
+                </AlertDescription>
+              </Alert>
             )}
             <SiteHeader />
-            <div className="@container/main flex min-h-0 flex-1 flex-col">
-              <div ref={mainRef} className={cn('min-h-0 flex-1', isMessagesPage || isCartePage ? 'overflow-hidden' : 'overflow-auto')}>
-                <div
-                  className={cn(
-                    'mx-auto flex w-full flex-1 flex-col md:pl-[4.125rem]',
-                    isMessagesPage || isCartePage ? 'h-full pt-0' : 'pt-6 lg:pt-8',
-                    isCartePage ? CONTAINER.FULL : CONTAINER.DEFAULT
-                  )}
-                >
-                  <Outlet />
-                </div>
-              </div>
+            <div
+              ref={mainRef}
+              className={cn('min-h-0 flex-1', isMessagesPage || isCartePage ? 'overflow-hidden' : 'overflow-auto')}
+            >
+              <Outlet />
             </div>
-          </main>
+          </SidebarInset>
         </SidebarProvider>
         <ChatSidebarWrapper />
         <PartyChatFloatingContainer />

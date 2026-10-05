@@ -24,6 +24,43 @@
   --color-background: var(--card);
   --color-text: var(--card-foreground);
 }
+
+  /* Strip MapLibre's default white popup chrome globally — our React content provides its own styling */
+  .maplibregl-popup-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  .maplibregl-popup-tip {
+    display: none !important;
+  }
+  /* More specific rule for our no-chrome tooltips */
+  .maplibregl-popup.no-chrome .maplibregl-popup-content {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  .maplibregl-popup.no-chrome .maplibregl-popup-tip {
+    display: none !important;
+  }
+
+  .business-hover-popup.maplibregl-popup {
+    pointer-events: none;
+  }
+
+  .business-hover-popup .maplibregl-popup-content {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .business-hover-popup .maplibregl-popup-tip {
+    display: none;
+  }
+
+
   @keyframes shimmer {
     0% {
       background-position: 200% 0;
@@ -174,40 +211,7 @@
   .knife-hit-grid {
     background-image:
       linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-
-  /* Strip MapLibre's default white popup chrome globally — our React content provides its own styling */
-  .maplibregl-popup-content {
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
+      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(circle at center, black 38%, transparent 92%);
   }
-  .maplibregl-popup-tip {
-    display: none !important;
-  }
-  /* More specific rule for our no-chrome tooltips */
-  .maplibregl-popup.no-chrome .maplibregl-popup-content {
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-  }
-  .maplibregl-popup.no-chrome .maplibregl-popup-tip {
-    display: none !important;
-  }
-
-  .business-hover-popup.maplibregl-popup {
-    pointer-events: none;
-  }
-
-  .business-hover-popup .maplibregl-popup-content {
-    background: transparent;
-    box-shadow: none;
-    padding: 0;
-  }
-
-  .business-hover-popup .maplibregl-popup-tip {
-    display: none;
-  }
-
-  /* Hard block for all-caps UI styling. Keep this global to prevent regressions. */

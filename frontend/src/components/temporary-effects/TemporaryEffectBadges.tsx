@@ -1,6 +1,6 @@
 import { Clock3, ShieldOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { YouTemporaryEffect } from '@/services/api';
 
 function formatRemaining(expiresAt: string, nowTs: number) {
@@ -19,35 +19,15 @@ function formatRemaining(expiresAt: string, nowTs: number) {
   return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
 }
 
-function getEffectIcon(effect: YouTemporaryEffect) {
-  if (effect.key === 'YOU_ADBLOCK' || effect.key === 'GLOBAL_ADBLOCK') return ShieldOff;
-  return Clock3;
-}
-
-function getEffectBadgeClass(effect: YouTemporaryEffect) {
-  if (effect.key === 'YOU_ADBLOCK' || effect.key === 'GLOBAL_ADBLOCK') {
-    return 'border-emerald-500/35 bg-emerald-500/10 text-emerald-500';
-  }
-
-  return 'border-border/60 bg-background/80 text-foreground';
-}
-
-function getEffectTypeLabel(effect: YouTemporaryEffect) {
-  if (effect.key === 'YOU_ADBLOCK' || effect.key === 'GLOBAL_ADBLOCK') {
-    return 'Adblock global';
-  }
-
-  return effect.key;
-}
+const isAdblockEffect = (effect: YouTemporaryEffect) =>
+  effect.key === 'YOU_ADBLOCK' || effect.key === 'GLOBAL_ADBLOCK';
 
 export function TemporaryEffectBadges({
   effects,
   nowTs,
-  className,
 }: {
   effects: YouTemporaryEffect[];
   nowTs: number;
-  className?: string;
 }) {
   const activeEffects = effects.filter((effect) => new Date(effect.expiresAt).getTime() > nowTs);
 
@@ -56,26 +36,25 @@ export function TemporaryEffectBadges({
   }
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
+    <>
       {activeEffects.map((effect) => {
-        const Icon = getEffectIcon(effect);
-        const title = `${effect.label} | Type: ${getEffectTypeLabel(effect)} | Restant: ${formatRemaining(effect.expiresAt, nowTs)}`;
+        const Icon = isAdblockEffect(effect) ? ShieldOff : Clock3;
+        const typeLabel = isAdblockEffect(effect) ? 'Adblock global' : effect.key;
 
         return (
-          <Badge
-            key={`${effect.key}-${effect.expiresAt}`}
-            variant="outline"
-            title={title}
-            aria-label={title}
-            className={cn(
-              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full p-0 shadow-sm',
-              getEffectBadgeClass(effect)
-            )}
-          >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-          </Badge>
+          <Tooltip key={`${effect.key}-${effect.expiresAt}`}>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="gap-1" aria-label={effect.label}>
+                <Icon />
+                <span className="tabular-nums">{formatRemaining(effect.expiresAt, nowTs)}</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              {effect.label} · {typeLabel}
+            </TooltipContent>
+          </Tooltip>
         );
       })}
-    </div>
+    </>
   );
 }

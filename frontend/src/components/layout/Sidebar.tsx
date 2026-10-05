@@ -1,348 +1,208 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import type { ComponentProps } from 'react';
-import { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, type ComponentProps, type ComponentType } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
-  Bug,
-  LayoutDashboard,
-  Gamepad2,
-  Map,
-  Trophy,
-  Users,
-  Flag,
-  Backpack,
-  Lightbulb,
-  BookOpen,
-  Store,
   BadgeDollarSign,
   BarChart3,
-  Target,
-  Info,
-  MessagesSquare,
-  Workflow,
-  ShoppingBasket,
-  Hammer,
+  Backpack,
+  BookOpen,
+  Bug,
+  Flag,
+  Gamepad2,
   Grid3X3,
+  Hammer,
+  Info,
+  Lightbulb,
+  LayoutDashboard,
+  Map,
+  MessagesSquare,
+  ShoppingBasket,
+  Store,
+  Target,
+  Trophy,
+  Users,
+  Workflow,
 } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
+  SidebarRail,
 } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
+import { UserAccountMenu } from '@/components/UserAccountMenu';
+import { useAuth } from '@/contexts/AuthContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
-import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { useTheme } from '@/contexts/ThemeContext';
-import BugReportPanel from './BugReportPanel';
+import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { t } from '@/lib/i18n';
+import BugReportPanel from './BugReportPanel';
 
-type SidebarRouteItem = {
+type NavItem = {
   to: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType;
+  tutorialId?: string;
 };
 
-const economyItems: SidebarRouteItem[] = [
-  { to: '/leaderboards', label: t('sidebar_nav_leaderboard'), icon: Trophy },
-  { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag },
-  { to: '/pixel-board', label: 'Pixel Board', icon: Grid3X3 },
-  { to: '/polymarket', label: t('sidebar_polymarket'), icon: BarChart3 },
-  { to: '/market', label: t('sidebar_nav_shop'), icon: Store },
-  { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack },
-  { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign },
-  { to: '/party', label: t('sidebar_nav_party'), icon: Users },
-  { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },
-  { to: '/forum', label: 'Forum', icon: MessagesSquare },
-  { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb },
-  { to: '/tutoriels', label: 'Tutoriel', icon: Info },
-  { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Plateforme',
+    items: [
+      { to: '/dashboard', label: t('sidebar_dashboard'), icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
+      { to: '/games', label: t('sidebar_games'), icon: Gamepad2, tutorialId: 'nav-games' },
+      { to: '/leaderboards', label: t('sidebar_nav_leaderboard'), icon: Trophy, tutorialId: 'nav-leaderboards' },
+      { to: '/quests', label: t('sidebar_nav_quests'), icon: Target, tutorialId: 'nav-quests' },
+      { to: '/party', label: t('sidebar_nav_party'), icon: Users, tutorialId: 'nav-party' },
+      { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag, tutorialId: 'nav-clans' },
+    ],
+  },
+  {
+    label: 'Économie',
+    items: [
+      { to: '/market', label: t('sidebar_nav_shop'), icon: Store, tutorialId: 'nav-market' },
+      { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign, tutorialId: 'nav-marketplace' },
+      { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack, tutorialId: 'nav-inventory' },
+      { to: '/polymarket', label: t('sidebar_polymarket'), icon: BarChart3, tutorialId: 'nav-polymarket' },
+    ],
+  },
+  {
+    label: 'Communauté',
+    items: [
+      { to: '/forum', label: 'Forum', icon: MessagesSquare, tutorialId: 'nav-forum' },
+      { to: '/pixel-board', label: 'Pixel Board', icon: Grid3X3 },
+      { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb, tutorialId: 'nav-suggestions' },
+    ],
+  },
+  {
+    label: 'Aide',
+    items: [
+      { to: '/tutoriels', label: 'Tutoriel', icon: Info, tutorialId: 'nav-tutoriels' },
+      { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },
+    ],
+  },
 ];
 
-const youNavItems = [
-  { tab: 'carte',           label: t('sidebar_you_map'),   icon: Map           },
-  { tab: 'construction',    label: 'Construction',         icon: Hammer        },
-  { tab: 'actions',         label: 'Actions',              icon: Workflow      },
-  { tab: 'social',         label: 'Social',              icon: Users      },
-  { tab: 'salle-de-marche', label: 'Marché ressources',    icon: ShoppingBasket},
+const YOU_NAV_ITEMS = [
+  { tab: 'carte', label: t('sidebar_you_map'), icon: Map },
+  { tab: 'construction', label: 'Construction', icon: Hammer },
+  { tab: 'actions', label: 'Actions', icon: Workflow },
+  { tab: 'social', label: 'Social', icon: Users },
+  { tab: 'salle-de-marche', label: 'Marché ressources', icon: ShoppingBasket },
 ];
 
-export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...props }: ComponentProps<typeof Sidebar>) {
+export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
-  const { isMobile, setOpen } = useSidebar();
-  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
-  const closeTimerRef = useRef<number | null>(null);
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { maintenanceStatus } = useFeatures();
   const { theme } = useTheme();
-  const disabledPages = maintenanceStatus.disabledPages;
+  const { maintenanceStatus } = useFeatures();
+  const location = useLocation();
+  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
+
+  const isOnYou = location.pathname.startsWith('/you');
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
+  const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
+  const logoTarget = isOnYou ? '/dashboard' : canOpenYouFromLogo ? '/you' : '/dashboard';
+  const logoLabel = isOnYou
+    ? t('sidebar_logo_you')
+    : t('sidebar_logo_aura_tracker');
 
   const isDisabled = (path: string) => {
     if (canBypassMaintenance) return false;
     const page = BLOCKABLE_PAGES.find((p) => p.path === path);
-    return page ? disabledPages.includes(page.key) : false;
+    return page ? maintenanceStatus.disabledPages.includes(page.key) : false;
   };
-
-  const isOnGames = location.pathname.startsWith('/games');
-  const isOnYou = location.pathname.startsWith('/you');
 
   const isPathActive = (path: string) =>
-    location.pathname === path || (path !== '/' && location.pathname.startsWith(`${path}/`));
+    location.pathname === path ||
+    (path === '/dashboard' && location.pathname === '/') ||
+    location.pathname.startsWith(`${path}/`);
 
-  const enabledOrderedItems = economyItems.filter((item) => !isDisabled(item.to));
-  const footerItemPaths = new Set(['/suggestions', '/rules']);
-  const footerOrderedItems = enabledOrderedItems.filter((item) => footerItemPaths.has(item.to));
-  const mainOrderedItems = enabledOrderedItems.filter((item) => !footerItemPaths.has(item.to));
-
-  const isGamesSectionActive = isOnGames;
-  const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
-  const shouldNudgeYouLogo = !isOnYou && canOpenYouFromLogo;
-
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current !== null) {
-        window.clearTimeout(closeTimerRef.current);
-      }
-    };
-  }, []);
-
-  const openSidebar = () => {
-    if (isMobile) return;
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setOpen(true);
-  };
-
-  const closeSidebar = () => {
-    if (isMobile) return;
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current);
-    }
-    closeTimerRef.current = window.setTimeout(() => {
-      setOpen(false);
-      closeTimerRef.current = null;
-    }, 70);
-  };
-
-  const handleLogoClick = () => {
-    if (isOnYou) {
-      navigate('/dashboard');
-      return;
-    }
-    navigate(canOpenYouFromLogo ? '/you' : '/dashboard');
-  };
-
-  const logoButton = (
-    <button
-      type="button"
-      data-tutorial-id="sidebar-logo"
-      onClick={handleLogoClick}
-      className={cn(
-        'mb-4 flex h-8 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!justify-center group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:!gap-0 group-data-[collapsible=icon]:mx-auto',
-        shouldNudgeYouLogo && 'shadow-[0_0_0_rgba(99,102,241,0)] hover:shadow-[0_0_10px_rgba(99,102,241,0.25)]'
-      )}
-      aria-label={isOnYou ? t('sidebar_logo_back_to_dashboard') : (canOpenYouFromLogo ? t('sidebar_logo_go_to_you') : t('sidebar_logo_go_to_dashboard'))}
-    >
-      <img
-        src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
-        alt="AuraTracker"
-        className={cn(
-          'h-4 w-4 shrink-0',
-          isOnYou && 'drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]'
-        )}
-      />
-      <span className="inline-block overflow-hidden whitespace-nowrap truncate text-sm font-semibold tracking-tight transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">
-        {isOnYou ? t('sidebar_logo_you') : t('sidebar_logo_aura_tracker')}
-      </span>
-    </button>
-  );
+  const currentYouTab = new URLSearchParams(location.search).get('tab') ?? 'carte';
 
   return (
-    <Sidebar
-      variant="inset"
-      collapsible="icon"
-      detached
-      className={cn('transition-[left,right] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]', className)}
-      onMouseEnter={(event) => {
-        onMouseEnter?.(event);
-        openSidebar();
-      }}
-      onMouseLeave={(event) => {
-        onMouseLeave?.(event);
-        closeSidebar();
-      }}
-      {...props}
-    >
+    <Sidebar collapsible="icon" {...props}>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild data-tutorial-id="sidebar-logo">
+              <Link to={logoTarget}>
+                <img
+                  src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
+                  alt="AuraTracker"
+                  className="size-8 shrink-0 p-1.5"
+                />
+                <span className="truncate font-semibold">{logoLabel}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+
       <SidebarContent data-tutorial-id="sidebar">
-        <div className="px-3 py-4">
-          {logoButton}
-          <SidebarMenu className="gap-0.5">
-
-            {/* You section nav */}
-            {isOnYou && youNavItems.map(({ tab, label, icon: Icon }) => {
-              const href = `/you?tab=${tab}`;
-              const params = new URLSearchParams(location.search);
-              const currentTab = params.get('tab') ?? 'carte';
-              const isActive = currentTab === tab;
-              return (
-                <SidebarMenuItem key={label} data-tutorial-id={`you-tab-${tab}`}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={label}
-                    className={cn(
-                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
-                      isActive
-                        ? 'text-foreground bg-muted/50'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                    )}
-                  >
-                    <NavLink to={href}>
-                      <Icon className="h-4 w-4" />
-                      <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{label}</span>
-                    </NavLink>
+        {isOnYou ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t('sidebar_logo_you')}</SidebarGroupLabel>
+            <SidebarMenu>
+              {YOU_NAV_ITEMS.map(({ tab, label, icon: Icon }) => (
+                <SidebarMenuItem key={tab} data-tutorial-id={`you-tab-${tab}`}>
+                  <SidebarMenuButton asChild isActive={currentYouTab === tab} tooltip={label}>
+                    <Link to={`/you?tab=${tab}`}>
+                      <Icon />
+                      <span>{label}</span>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              );
-            })}
-
-            {/* Dashboard */}
-            {!isOnYou && !isDisabled('/') && (
-              <SidebarMenuItem data-tutorial-id="nav-dashboard">
-                <SidebarMenuButton
-                  asChild
-                  isActive={location.pathname === '/' || location.pathname === '/dashboard'}
-                  tooltip={t('sidebar_dashboard')}
-                  className={cn(
-                    'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
-                    location.pathname === '/' || location.pathname === '/dashboard'
-                      ? 'text-foreground bg-muted/50'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                  )}
-                >
-                  <NavLink to="/dashboard" end>
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{t('sidebar_dashboard')}</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-
-            {!isOnYou && (<>
-
-            {/* Games */}
-            {!isDisabled('/games') && (
-              <SidebarMenuItem data-tutorial-id="nav-games">
-                <SidebarMenuButton
-                  asChild
-                  isActive={isGamesSectionActive}
-                  tooltip={t('sidebar_games')}
-                  className={cn(
-                    'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
-                    isGamesSectionActive
-                      ? 'text-foreground bg-muted/50'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                  )}
-                >
-                  <NavLink to="/games">
-                    <Gamepad2 className="h-4 w-4" />
-                    <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{t('sidebar_games')}</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-
-            {mainOrderedItems.map((item) => {
-              const ItemIcon = item.icon;
-              const isActive = isPathActive(item.to);
-              const NAV_TUTORIAL_IDS: Record<string, string> = {
-                '/leaderboards': 'nav-leaderboards',
-                '/clans': 'nav-clans',
-                '/polymarket': 'nav-polymarket',
-                '/market': 'nav-market',
-                '/inventory': 'nav-inventory',
-                '/marketplace': 'nav-marketplace',
-                '/party': 'nav-party',
-                '/quests': 'nav-quests',
-                '/forum': 'nav-forum',
-                '/suggestions': 'nav-suggestions',
-                '/tutoriels': 'nav-tutoriels',
-              };
-              const tutorialId = NAV_TUTORIAL_IDS[item.to];
-              return (
-                <SidebarMenuItem key={item.to} data-tutorial-id={tutorialId}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={item.label}
-                    className={cn(
-                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
-                      isActive
-                        ? 'text-foreground bg-muted/50'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                    )}
-                  >
-                    <NavLink to={item.to} end={item.to === '/'}>
-                      <ItemIcon className="h-4 w-4" />
-                      <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{item.label}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-            </>)}
-
-          </SidebarMenu>
-        </div>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        ) : (
+          NAV_GROUPS.map((group) => {
+            const items = group.items.filter((item) => !isDisabled(item.to));
+            if (items.length === 0) return null;
+            return (
+              <SidebarGroup key={group.label}>
+                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                <SidebarMenu>
+                  {items.map((item) => (
+                    <SidebarMenuItem key={item.to} data-tutorial-id={item.tutorialId}>
+                      <SidebarMenuButton asChild isActive={isPathActive(item.to)} tooltip={item.label}>
+                        <Link to={item.to}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroup>
+            );
+          })
+        )}
       </SidebarContent>
-      {!isOnYou && (
-        <SidebarFooter className="px-3 pb-4 pt-0">
-          <div className="mx-2 mb-2 h-px bg-sidebar-border/60" />
-          <SidebarMenu className="gap-0.5">
-            {footerOrderedItems.map((item) => {
-              const ItemIcon = item.icon;
-              const isActive = isPathActive(item.to);
-              return (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={item.label}
-                    className={cn(
-                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
-                      isActive
-                        ? 'text-foreground bg-muted/50'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                    )}
-                  >
-                    <NavLink to={item.to} end={item.to === '/'}>
-                      <ItemIcon className="h-4 w-4" />
-                      <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{item.label}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-            <SidebarMenuItem data-tutorial-id="nav-bug-report">
-              <SidebarMenuButton
-                onClick={() => setIsBugReportOpen(true)}
-                tooltip={t('sidebar_report_bug')}
-                className="h-8 px-2 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent group-data-[collapsible=icon]:!h-8"
-              >
-                <Bug className="h-4 w-4" />
-                <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{t('sidebar_report_bug')}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
-      )}
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem data-tutorial-id="nav-bug-report">
+            <SidebarMenuButton tooltip={t('sidebar_report_bug')} onClick={() => setIsBugReportOpen(true)}>
+              <Bug />
+              <span>{t('sidebar_report_bug')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <UserAccountMenu />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
       <BugReportPanel
         open={isBugReportOpen}
         onOpenChange={setIsBugReportOpen}

@@ -43,7 +43,7 @@ export function MessageFormatToolbar({
   value,
   onChange,
 }: {
-  inputRef: RefObject<EditableInput>;
+  inputRef: RefObject<EditableInput | null>;
   value: string;
   onChange: (nextValue: string) => void;
 }) {

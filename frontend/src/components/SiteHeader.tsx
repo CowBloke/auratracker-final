@@ -1,46 +1,55 @@
-﻿import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ChevronDown,
-  Crosshair,
-  Eye,
-  Monitor,
-  Search,
-  SendHorizonal,
-  ShieldOff,
-  Users,
-} from 'lucide-react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Crosshair, Eye, Megaphone, Monitor, Search, SendHorizonal, ShieldOff, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useChatSocket } from '@/contexts/ChatSocketContext';
 import { useDuelSocket } from '@/contexts/DuelSocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import { getPageMeta } from '@/components/chat/presence';
-import { resolveImageUrl } from '@/lib/images';
-import { usersApi, supportApi, youApi, type YouTemporaryEffect } from '@/services/api';
-import { cn } from '@/lib/utils';
-import { getPageMetaForPath } from '@/lib/page-meta';
-import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
-import { MoneyHistoryChip } from '@/components/currency/MoneyHistoryChip';
-import { TemporaryEffectBadges } from '@/components/temporary-effects/TemporaryEffectBadges';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Kbd } from '@/components/ui/kbd';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getPageMeta } from '@/components/chat/presence';
+import { resolveImageUrl } from '@/lib/images';
+import { usersApi, supportApi, youApi, type YouTemporaryEffect } from '@/services/api';
+import { getPageMetaForPath } from '@/lib/page-meta';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
+import { MoneyHistoryChip } from '@/components/currency/MoneyHistoryChip';
+import { TemporaryEffectBadges } from '@/components/temporary-effects/TemporaryEffectBadges';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { UserAccountMenu } from '@/components/UserAccountMenu';
-import { YouHeaderBar } from '@/components/you/YouHeaderBar';
 import { TopbarCommandPalette } from '@/components/layout/TopbarCommandPalette';
 import { t } from '@/lib/i18n';
+
+function formatRemaining(target: string | null, now: number) {
+  if (!target) return '0m';
+  const diff = new Date(target).getTime() - now;
+  if (diff <= 0) return '0m';
+  const totalSeconds = Math.floor(diff / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+  if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+  return `${seconds}s`;
+}
 
 export function SiteHeader() {
   const { user, refreshUser } = useAuth();
@@ -60,14 +69,11 @@ export function SiteHeader() {
   const navigate = useNavigate();
 
   const [showUsers, setShowUsers] = useState(false);
-  const [showTitleTrail, setShowTitleTrail] = useState(false);
   const [announcement, setAnnouncement] = useState('');
-  const [scrolled, setScrolled] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [messagesUnread, setMessagesUnread] = useState(0);
   const [temporaryEffects, setTemporaryEffects] = useState<YouTemporaryEffect[]>([]);
-  const titleTrailCloseTimer = useRef<number | null>(null);
   const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
 
   useEffect(() => {
@@ -76,7 +82,6 @@ export function SiteHeader() {
   }, []);
 
   useEffect(() => {
-    setShowTitleTrail(false);
     setShowUsers(false);
   }, [location.pathname, location.search]);
 
@@ -87,9 +92,7 @@ export function SiteHeader() {
     const load = async () => {
       try {
         const res = await youApi.getTemporaryEffects();
-        if (active) {
-          setTemporaryEffects(res.data.effects ?? []);
-        }
+        if (active) setTemporaryEffects(res.data.effects ?? []);
       } catch {
         // ignore
       }
@@ -116,29 +119,18 @@ export function SiteHeader() {
   }, [socket, user?.id, refreshUser]);
 
   useEffect(() => {
-    const mainEl = document.querySelector('main');
-    if (!mainEl) return;
-    const handleScroll = () => setScrolled(mainEl.scrollTop > 10);
-    mainEl.addEventListener('scroll', handleScroll, { passive: true });
-    return () => mainEl.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
     let isMounted = true;
 
     const fetchAnnouncement = async () => {
       try {
         const res = await usersApi.getAnnouncement();
-        if (isMounted) {
-          setAnnouncement(res.data.message || '');
-        }
+        if (isMounted) setAnnouncement(res.data.message || '');
       } catch (error) {
         console.error('Failed to fetch announcement:', error);
       }
     };
 
     void fetchAnnouncement();
-
     return () => {
       isMounted = false;
     };
@@ -164,37 +156,8 @@ export function SiteHeader() {
   }, [socket, location.pathname]);
 
   useEffect(() => {
-    if (location.pathname === '/messages') {
-      setMessagesUnread(0);
-    }
+    if (location.pathname === '/messages') setMessagesUnread(0);
   }, [location.pathname]);
-
-  useEffect(() => {
-    return () => {
-      if (titleTrailCloseTimer.current !== null) {
-        window.clearTimeout(titleTrailCloseTimer.current);
-      }
-    };
-  }, []);
-
-  const openTitleTrail = () => {
-    if (titleTrailCloseTimer.current !== null) {
-      window.clearTimeout(titleTrailCloseTimer.current);
-      titleTrailCloseTimer.current = null;
-    }
-    setShowTitleTrail(true);
-  };
-
-  const closeTitleTrailSoon = () => {
-    if (titleTrailCloseTimer.current !== null) {
-      window.clearTimeout(titleTrailCloseTimer.current);
-    }
-
-    titleTrailCloseTimer.current = window.setTimeout(() => {
-      setShowTitleTrail(false);
-      titleTrailCloseTimer.current = null;
-    }, 120);
-  };
 
   const doodleSpectateSessionMap = useMemo(
     () => new Map(doodleSpectateSessions.map((session) => [session.hostUserId, session])),
@@ -214,421 +177,261 @@ export function SiteHeader() {
     return sessionsByUser;
   }, [chessSpectateSessions]);
 
-  const getPageName = (pathname: string): string => getPageMetaForPath(pathname).title;
-
   const breadcrumbItems = useMemo(() => {
-    const pathSegments = location.pathname.split('/').filter(Boolean);
-    const items: Array<{ label: string; path: string }> = [];
-
-    if (location.pathname === '/') {
-      return [{ label: t('site_header_dashboard'), path: '/' }];
+    if (location.pathname === '/' || location.pathname === '/dashboard') {
+      return [{ label: t('site_header_dashboard'), path: '/dashboard' }];
     }
 
-    items.push({ label: t('site_header_dashboard'), path: '/' });
-
+    const items: Array<{ label: string; path: string }> = [{ label: t('site_header_dashboard'), path: '/dashboard' }];
     let currentPath = '';
-    pathSegments.forEach((segment, index) => {
-      currentPath += `/${segment}`;
-      const isLast = index === pathSegments.length - 1;
-
-      items.push({
-        label: isLast ? getPageName(location.pathname) : getPageName(currentPath),
-        path: currentPath,
+    location.pathname
+      .split('/')
+      .filter(Boolean)
+      .forEach((segment, index, segments) => {
+        currentPath += `/${segment}`;
+        const isLast = index === segments.length - 1;
+        items.push({
+          label: getPageMetaForPath(isLast ? location.pathname : currentPath).title,
+          path: currentPath,
+        });
       });
-    });
-
     return items;
   }, [location.pathname]);
 
-  const currentPageTitle = breadcrumbItems[breadcrumbItems.length - 1]?.label ?? t('site_header_dashboard');
   const clanEffects = user?.clanEffects ?? [];
-  const isYouPage = location.pathname.startsWith('/you');
   const duelMatchmakingEnabled = maintenanceStatus.duelMatchmakingEnabled;
 
-  const formatRemaining = (target: string | null) => {
-    if (!target) return '0m';
-    const diff = new Date(target).getTime() - now;
-    if (diff <= 0) return '0m';
-    const totalSeconds = Math.floor(diff / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    if (hours > 0) return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
-    if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
-    return `${seconds}s`;
-  };
-
-  const chromeButtonClassName = 'relative h-9 w-9 rounded-xl border border-border/60 bg-background/80 text-muted-foreground shadow-sm transition-all hover:bg-muted/70 hover:text-foreground';
-  const chromeChipClassName = 'hidden items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3.5 py-2 text-xs font-semibold shadow-sm sm:flex';
-
-  const titleControl = (
-    <div
-      className="relative min-w-0"
-      onMouseEnter={openTitleTrail}
-      onMouseLeave={closeTitleTrailSoon}
-    >
-      <button
-        type="button"
-        onClick={() => {
-          if (showTitleTrail) {
-            closeTitleTrailSoon();
-          } else {
-            openTitleTrail();
-          }
-        }}
-        className="group flex min-w-0 items-center gap-2 rounded-2xl px-1 py-1 text-left transition-colors hover:text-foreground"
-        aria-expanded={showTitleTrail}
-        aria-label="Afficher le chemin de navigation"
-      >
-        <span className="truncate text-lg font-semibold tracking-tight text-foreground">{currentPageTitle}</span>
-        <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', showTitleTrail && 'rotate-180')} />
-      </button>
-      {showTitleTrail && breadcrumbItems.length > 1 ? (
-        <div
-          className="absolute left-0 top-full z-50 mt-2 min-w-[16rem] max-w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-border/70 bg-background/95 p-3 shadow-xl backdrop-blur-xl"
-          onMouseEnter={openTitleTrail}
-          onMouseLeave={closeTitleTrailSoon}
-        >
-          <Breadcrumb>
-            <BreadcrumbList className="flex flex-col items-start gap-1.5">
-              {breadcrumbItems.map((item, index) => {
-                const isLast = index === breadcrumbItems.length - 1;
-                return (
-                  <div key={item.path} className="flex w-full items-center gap-2 text-left">
-                    <BreadcrumbItem>
-                      {isLast ? (
-                        <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                      ) : (
-                        <BreadcrumbLink asChild>
-                          <Link to={item.path}>{item.label}</Link>
-                        </BreadcrumbLink>
-                      )}
-                    </BreadcrumbItem>
-                  </div>
-                );
-              })}
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      ) : null}
-    </div>
-  );
-
-  const searchTrigger = (
-    <Button
-      type="button"
-      variant="ghost"
-      onClick={() => setIsSearchOpen(true)}
-      className="h-10 w-10 justify-center rounded-full border border-border/60 bg-background/85 p-0 text-sm font-normal text-muted-foreground shadow-sm transition-all hover:bg-muted/70 hover:text-foreground sm:min-w-[18rem] sm:w-auto sm:justify-start sm:gap-3 sm:px-4"
-      title={t('site_header_search_player')}
-    >
-      <Search className="h-4 w-4" />
-      <span className="hidden min-w-0 flex-1 truncate text-left sm:block">Rechercher partout…</span>
-      <span className="hidden items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground md:inline-flex">
-        <span>Ctrl</span>
-        <span>K</span>
-      </span>
+  const spectateButton = (userId: string, username: string, count: number, onClick: () => void) => (
+    <Button type="button" variant="outline" size="xs" onClick={onClick} aria-label={`Spectate ${username}`}>
+      <Eye />
+      <span className="tabular-nums">{count}</span>
     </Button>
   );
-
-  const messagesButton = (
-    <Button asChild variant="ghost" size="sm" className={cn(chromeButtonClassName, 'p-0')} title="Messagerie">
-      <Link to="/messages">
-        <SendHorizonal className="h-4 w-4" />
-        {messagesUnread > 0 ? (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-0.5 text-white text-[9px] font-semibold">
-            {messagesUnread > 99 ? '99+' : messagesUnread}
-          </span>
-        ) : null}
-      </Link>
-    </Button>
-  );
-
-  const onlineUsersControl = (
-    <div className="relative">
-      <Collapsible
-        open={showUsers}
-        onOpenChange={(open) => {
-          setShowUsers(open);
-          if (open) {
-            requestOnlineUsers();
-            requestDoodleSpectateSessions();
-            requestChessSpectateSessions();
-          }
-        }}
-      >
-        <CollapsibleTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-9 gap-2 rounded-full border border-border/60 bg-background/80 px-3 text-muted-foreground shadow-sm transition-all hover:bg-muted/70 hover:text-foreground"
-            title={connected ? `${onlineCount} connectés` : 'Déconnecté'}
-          >
-            <div className={cn('h-2 w-2 rounded-full', connected ? 'bg-green-500' : 'bg-muted-foreground')} />
-            <Users className="h-4 w-4" />
-            <span className="text-xs font-semibold tabular-nums text-foreground">{onlineCount}</span>
-            <ChevronDown className={cn('h-3 w-3 transition-transform', showUsers && 'rotate-180')} />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="absolute right-0 top-full z-50 mt-2 w-72">
-          <div className="rounded-2xl border border-border/70 bg-background/95 shadow-xl backdrop-blur-xl">
-            <ScrollArea className="h-56">
-              <div className="space-y-1 px-3 py-3">
-                {onlineUsers.map((onlineUser) => (
-                  <div key={onlineUser.userId} className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        setShowUsers(false);
-                        navigate(`/profile/${onlineUser.userId}`);
-                      }}
-                      variant="ghost"
-                      className="h-auto min-w-0 flex-1 justify-start gap-2 px-0 py-1 text-left transition-colors hover:bg-transparent hover:text-foreground"
-                    >
-                      {onlineUser.profilePicture ? (
-                        <img
-                          src={resolveImageUrl(onlineUser.profilePicture)}
-                          alt={onlineUser.username}
-                          className="h-4 w-4 rounded-full object-cover"
-                          onError={(event) => {
-                            (event.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="h-1 w-1 rounded-full bg-foreground/50" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <span className="flex items-center gap-1.5">
-                          <PlayerHoverCard
-                            userId={onlineUser.userId}
-                            username={onlineUser.username}
-                            usernameColor={onlineUser.usernameColor}
-                            profilePicture={onlineUser.profilePicture}
-                          >
-                            <UsernameDisplay
-                              username={onlineUser.username}
-                              usernameColor={onlineUser.usernameColor}
-                              className="block"
-                            />
-                          </PlayerHoverCard>
-                        </span>
-                        {(() => {
-                          const pageMeta = getPageMeta(onlineUser.currentPage);
-                          const PageIcon = pageMeta.icon;
-                          return (
-                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
-                              <PageIcon className="h-3 w-3" />
-                              <span className="truncate">{pageMeta.label}</span>
-                              {canViewConnectedStatus ? (
-                                <>
-                                  <Monitor className="ml-1 h-3 w-3" />
-                                  <span>{onlineUser.isPageActive ? 'sur page' : 'arriere-plan'}</span>
-                                </>
-                              ) : null}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    </Button>
-                    {(() => {
-                      const doodleSession = doodleSpectateSessionMap.get(onlineUser.userId);
-                      const canSpectateDoodle = Boolean(
-                        doodleSession &&
-                        onlineUser.userId !== user?.id &&
-                        onlineUser.currentPage?.startsWith('/games/doodle-jump')
-                      );
-
-                      if (canSpectateDoodle && doodleSession) {
-                        return (
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              setShowUsers(false);
-                              navigate('/games/doodle-jump', {
-                                state: { spectateHostUserId: onlineUser.userId },
-                              });
-                            }}
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1 px-2 text-[10px]"
-                            title={`Spectate ${onlineUser.username}`}
-                          >
-                            <Eye className="h-3 w-3" />
-                            <span className="tabular-nums">{doodleSession.spectatorCount}</span>
-                          </Button>
-                        );
-                      }
-
-                      const chessSession = chessSpectateSessionMap.get(onlineUser.userId);
-                      const canSpectateChess = Boolean(
-                        chessSession &&
-                        onlineUser.userId !== user?.id &&
-                        onlineUser.currentPage?.startsWith('/games/echecs')
-                      );
-
-                      if (!canSpectateChess || !chessSession) return null;
-
-                      return (
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            setShowUsers(false);
-                            navigate('/games/echecs', {
-                              state: { spectatePartyId: chessSession.partyId },
-                            });
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="h-7 gap-1 px-2 text-[10px]"
-                          title={`Spectate ${onlineUser.username}`}
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span className="tabular-nums">{chessSession.spectatorCount}</span>
-                        </Button>
-                      );
-                    })()}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
-  );
-
-  const standardHeaderControls = (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      {user?.hasAdblock ? (
-        <div className="hidden items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-500 shadow-sm lg:flex">
-          <ShieldOff className="h-3.5 w-3.5" />
-          <span>Adblock actif</span>
-        </div>
-      ) : null}
-      {onlineUsersControl}
-      {duelMatchmakingEnabled ? (
-        <Button
-          type="button"
-          variant={duelMatchmakingQueued ? 'default' : 'ghost'}
-          size="sm"
-          className={cn(
-            'hidden h-9 gap-2 rounded-xl border px-3 shadow-sm sm:inline-flex',
-            duelMatchmakingQueued
-              ? 'border-primary/40'
-              : 'border-border/60 bg-background/80 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-          )}
-          onClick={() => {
-            if (duelMatchmakingQueued) {
-              leaveDuelMatchmaking();
-            } else {
-              joinDuelMatchmaking();
-            }
-          }}
-          title={duelMatchmakingQueued ? 'Quitter la file de matchmaking duel' : 'Entrer en file de matchmaking duel'}
-        >
-          <Crosshair className="h-4 w-4" />
-          {duelMatchmakingQueued ? 'Quitter matchmaking' : 'Matchmaking duel'}
-          <span className="text-[10px] tabular-nums text-muted-foreground">
-            {duelMatchmakingStats.queuedCount} en queue / {duelMatchmakingStats.inGameCount} en jeu
-          </span>
-        </Button>
-      ) : null}
-      <TemporaryEffectBadges effects={temporaryEffects} nowTs={now} className="hidden sm:flex" />
-      {searchTrigger}
-      {messagesButton}
-      <InboxDropdown buttonClassName={chromeButtonClassName} />
-      {clanEffects.length > 0 ? (
-        <TooltipProvider delayDuration={100}>
-          <div className="hidden sm:flex items-center gap-1">
-            {clanEffects.map((effect) => (
-              <Tooltip key={effect.id}>
-                <TooltipTrigger asChild>
-                  <div className="flex h-7 w-7 cursor-default items-center justify-center rounded-full border border-emerald-500/35 bg-emerald-500/15 text-[10px] font-bold text-emerald-500 shadow-sm select-none">
-                    +{effect.value}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-48 text-center">
-                  <p className="font-medium">{effect.name}</p>
-                  <p className="text-muted-foreground text-xs">+{effect.value}% {t('site_header_game_reward_bonus')}</p>
-                  <p className="text-muted-foreground/70 text-xs mt-0.5">Fin : {formatRemaining(effect.activeUntil)}</p>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </TooltipProvider>
-      ) : null}
-      <div className="flex shrink-0 items-center gap-2">
-        <div className={cn(chromeChipClassName, 'text-amber-700 dark:text-amber-500')}>
-          <CurrencyIcon type="aura" className="h-3.5 w-3.5 text-yellow-400" />
-          <span className="tabular-nums">{user?.aura?.toLocaleString() ?? '0'}</span>
-        </div>
-        <MoneyHistoryChip
-          amount={user?.money}
-          className={cn(chromeChipClassName, 'text-emerald-600 dark:text-emerald-400')}
-        />
-        <UserAccountMenu
-          showLabel
-          className="h-10 rounded-full border border-border/60 bg-background/85 px-2 shadow-sm hover:bg-muted/70"
-        />
-      </div>
-    </div>
-  );
-
-  if (isYouPage) {
-    return (
-      <>
-        <header
-          className={cn(
-            'sticky top-0 z-50 shrink-0 border-b px-3 py-3 sm:px-6 md:pl-[4.125rem] transition-all duration-300',
-            scrolled
-              ? 'border-border/30 bg-background/90 shadow-sm backdrop-blur-xl'
-              : 'border-border/50 bg-background/80 backdrop-blur-xl'
-          )}
-        >
-          <div className="flex w-full min-w-0 items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <YouHeaderBar
-                titleSlot={titleControl}
-                rightSlot={
-                  <div className="flex items-center gap-2">
-                    {onlineUsersControl}
-                    {searchTrigger}
-                    {messagesButton}
-                    <InboxDropdown buttonClassName={chromeButtonClassName} />
-                  </div>
-                }
-              />
-            </div>
-          </div>
-        </header>
-        <TopbarCommandPalette open={isSearchOpen} onOpenChange={setIsSearchOpen} currentUserId={user?.id} />
-      </>
-    );
-  }
 
   return (
     <>
-      <header
-        className={cn(
-          'sticky top-0 z-50 shrink-0 border-b px-3 py-3 sm:px-6 md:pl-[4.125rem] transition-all duration-300',
-          scrolled
-            ? 'border-border/30 bg-background/90 shadow-sm backdrop-blur-xl'
-            : 'border-border/50 bg-background/80 backdrop-blur-xl'
-        )}
-      >
-        <div className="flex w-full min-w-0 flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            {titleControl}
-            {announcement ? (
-              <div className="mt-1.5 hidden max-w-[48rem] min-w-0 items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-500 sm:flex">
-                <span className="font-semibold uppercase tracking-[0.14em]">Annonce</span>
-                <span className="truncate">{announcement}</span>
-              </div>
-            ) : null}
+      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+        <Breadcrumb className="min-w-0">
+          <BreadcrumbList className="flex-nowrap">
+            {breadcrumbItems.map((item, index) => {
+              const isLast = index === breadcrumbItems.length - 1;
+              return (
+                <Fragment key={item.path}>
+                  <BreadcrumbItem className={isLast ? 'min-w-0' : 'hidden md:block'}>
+                    {isLast ? (
+                      <BreadcrumbPage className="truncate">{item.label}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <Link to={item.path}>{item.label}</Link>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                  {!isLast ? <BreadcrumbSeparator className="hidden md:block" /> : null}
+                </Fragment>
+              );
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <div className="ml-auto flex items-center gap-2">
+          {user?.hasAdblock ? (
+            <Badge variant="outline" className="hidden lg:inline-flex">
+              <ShieldOff />
+              Adblock actif
+            </Badge>
+          ) : null}
+
+          <TemporaryEffectBadges effects={temporaryEffects} nowTs={now} />
+
+          {clanEffects.map((effect) => (
+            <Tooltip key={effect.id}>
+              <TooltipTrigger asChild>
+                <Badge variant="secondary" className="hidden tabular-nums sm:inline-flex">
+                  +{effect.value}%
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="font-medium">{effect.name}</p>
+                <p>
+                  +{effect.value}% {t('site_header_game_reward_bonus')}
+                </p>
+                <p>Fin : {formatRemaining(effect.activeUntil, now)}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+
+          {duelMatchmakingEnabled ? (
+            <Button
+              type="button"
+              variant={duelMatchmakingQueued ? 'default' : 'outline'}
+              className="hidden lg:inline-flex"
+              onClick={() => (duelMatchmakingQueued ? leaveDuelMatchmaking() : joinDuelMatchmaking())}
+            >
+              <Crosshair />
+              {duelMatchmakingQueued ? 'Quitter la file duel' : 'Matchmaking duel'}
+              <Badge variant="secondary" className="tabular-nums">
+                {duelMatchmakingStats.queuedCount} / {duelMatchmakingStats.inGameCount}
+              </Badge>
+            </Button>
+          ) : null}
+
+          <Popover
+            open={showUsers}
+            onOpenChange={(open) => {
+              setShowUsers(open);
+              if (open) {
+                requestOnlineUsers();
+                requestDoodleSpectateSessions();
+                requestChessSpectateSessions();
+              }
+            }}
+          >
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" aria-label={connected ? `${onlineCount} connectés` : 'Déconnecté'}>
+                <Users />
+                <span className="tabular-nums">{onlineCount}</span>
+                <span
+                  className={connected ? 'size-2 rounded-full bg-primary' : 'size-2 rounded-full bg-muted-foreground'}
+                  aria-hidden
+                />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-0">
+              <div className="p-3 text-sm font-semibold">En ligne ({onlineCount})</div>
+              <Separator />
+              <ScrollArea className="h-72">
+                <ItemGroup className="p-1">
+                  {onlineUsers.map((onlineUser) => {
+                    const pageMeta = getPageMeta(onlineUser.currentPage);
+                    const PageIcon = pageMeta.icon;
+                    const doodleSession = doodleSpectateSessionMap.get(onlineUser.userId);
+                    const canSpectateDoodle = Boolean(
+                      doodleSession &&
+                        onlineUser.userId !== user?.id &&
+                        onlineUser.currentPage?.startsWith('/games/doodle-jump')
+                    );
+                    const chessSession = chessSpectateSessionMap.get(onlineUser.userId);
+                    const canSpectateChess = Boolean(
+                      chessSession &&
+                        onlineUser.userId !== user?.id &&
+                        onlineUser.currentPage?.startsWith('/games/echecs')
+                    );
+
+                    return (
+                      <Item key={onlineUser.userId} size="sm">
+                        <ItemMedia>
+                          <Avatar className="size-8">
+                            {onlineUser.profilePicture ? (
+                              <AvatarImage src={resolveImageUrl(onlineUser.profilePicture)} alt={onlineUser.username} />
+                            ) : null}
+                            <AvatarFallback>{onlineUser.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                        </ItemMedia>
+                        <ItemContent>
+                          <ItemTitle>
+                            <button
+                              type="button"
+                              className="min-w-0 text-left"
+                              onClick={() => {
+                                setShowUsers(false);
+                                navigate(`/profile/${onlineUser.userId}`);
+                              }}
+                            >
+                              <PlayerHoverCard
+                                userId={onlineUser.userId}
+                                username={onlineUser.username}
+                                usernameColor={onlineUser.usernameColor}
+                                profilePicture={onlineUser.profilePicture}
+                              >
+                                <UsernameDisplay
+                                  username={onlineUser.username}
+                                  usernameColor={onlineUser.usernameColor}
+                                  className="block"
+                                />
+                              </PlayerHoverCard>
+                            </button>
+                          </ItemTitle>
+                          <ItemDescription className="flex items-center gap-1">
+                            <PageIcon className="size-3" />
+                            <span className="truncate">{pageMeta.label}</span>
+                            {canViewConnectedStatus ? (
+                              <>
+                                <Monitor className="ml-1 size-3" />
+                                <span>{onlineUser.isPageActive ? 'sur page' : 'arrière-plan'}</span>
+                              </>
+                            ) : null}
+                          </ItemDescription>
+                        </ItemContent>
+                        <ItemActions>
+                          {canSpectateDoodle && doodleSession
+                            ? spectateButton(onlineUser.userId, onlineUser.username, doodleSession.spectatorCount, () => {
+                                setShowUsers(false);
+                                navigate('/games/doodle-jump', { state: { spectateHostUserId: onlineUser.userId } });
+                              })
+                            : canSpectateChess && chessSession
+                              ? spectateButton(onlineUser.userId, onlineUser.username, chessSession.spectatorCount, () => {
+                                  setShowUsers(false);
+                                  navigate('/games/echecs', { state: { spectatePartyId: chessSession.partyId } });
+                                })
+                              : null}
+                        </ItemActions>
+                      </Item>
+                    );
+                  })}
+                </ItemGroup>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="text-muted-foreground sm:w-56 sm:justify-start"
+            onClick={() => setIsSearchOpen(true)}
+            aria-label={t('site_header_search_player')}
+          >
+            <Search />
+            <span className="hidden flex-1 text-left sm:block">Rechercher…</span>
+            <Kbd className="hidden md:inline-flex">Ctrl K</Kbd>
+          </Button>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild variant="outline" size="icon" className="relative" aria-label="Messagerie">
+                <Link to="/messages">
+                  <SendHorizonal />
+                  {messagesUnread > 0 ? (
+                    <Badge className="absolute -right-2 -top-2 h-5 min-w-5 justify-center rounded-full px-1 tabular-nums">
+                      {messagesUnread > 99 ? '99+' : messagesUnread}
+                    </Badge>
+                  ) : null}
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Messagerie</TooltipContent>
+          </Tooltip>
+
+          <InboxDropdown />
+
+          <Badge variant="outline" className="hidden h-9 gap-1.5 px-3 text-sm sm:inline-flex">
+            <CurrencyIcon type="aura" />
+            <span className="tabular-nums">{user?.aura?.toLocaleString() ?? '0'}</span>
+          </Badge>
+          <div className="hidden sm:block">
+            <MoneyHistoryChip amount={user?.money} />
           </div>
-          {standardHeaderControls}
         </div>
       </header>
+
+      {announcement ? (
+        <Alert className="rounded-none border-x-0 border-t-0">
+          <Megaphone />
+          <AlertDescription>{announcement}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <TopbarCommandPalette open={isSearchOpen} onOpenChange={setIsSearchOpen} currentUserId={user?.id} />
     </>
   );

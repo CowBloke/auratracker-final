@@ -3,9 +3,7 @@ import { ChevronsUpDown, LogOut, Moon, Settings, Shield, Sun, User } from 'lucid
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { resolveImageUrl } from '@/lib/images';
-import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,16 +13,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { SidebarMenuButton, useSidebar } from '@/components/ui/sidebar';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
-type UserAccountMenuProps = {
-  className?: string;
-  showLabel?: boolean;
-};
-
-export function UserAccountMenu({ className, showLabel = true }: UserAccountMenuProps) {
+export function UserAccountMenu() {
   const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { isMobile } = useSidebar();
 
   if (!user) return null;
 
@@ -34,63 +29,43 @@ export function UserAccountMenu({ className, showLabel = true }: UserAccountMenu
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const canAccessAdmin = user.isAdmin || user.isSuperAdmin || user.isFiscalInspector || user.isJudge;
+  const isAdmin = user.isAdmin || user.isSuperAdmin;
+
+  const identity = (
+    <>
+      <Avatar className="size-8 rounded-lg">
+        {user.profilePicture ? <AvatarImage src={resolveImageUrl(user.profilePicture)} alt={user.username} /> : null}
+        <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+      </Avatar>
+      <div className="grid flex-1 text-left text-sm leading-tight">
+        <UsernameDisplay
+          username={user.username}
+          firstName={user.firstName}
+          usernameColor={user.usernameColor}
+          usernameClassName="font-medium"
+        />
+        <span className="truncate text-xs text-muted-foreground">{user.email || 'Utilisateur'}</span>
+      </div>
+    </>
+  );
 
   return (
-    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className={cn(
-            showLabel
-              ? 'h-9 gap-2 rounded-full border border-border/50 bg-background/70 px-2 hover:bg-muted/70'
-              : 'h-8 w-8 rounded-full border-0 bg-transparent p-0 hover:bg-transparent',
-            className
-          )}
-        >
-          <Avatar className="h-7 w-7 rounded-full">
-            {user.profilePicture ? (
-              <AvatarImage src={resolveImageUrl(user.profilePicture)} alt={user.username} className="rounded-full object-cover" />
-            ) : null}
-            <AvatarFallback className="rounded-full bg-primary text-primary-foreground">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          {showLabel ? (
-            <>
-              <UsernameDisplay
-                username={user.username}
-                firstName={user.firstName}
-                usernameColor={user.usernameColor}
-                className="hidden max-w-32 truncate sm:block"
-                usernameClassName="font-medium"
-              />
-              <ChevronsUpDown className="hidden h-4 w-4 text-muted-foreground sm:block" />
-            </>
-          ) : null}
-        </Button>
+        <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+          {identity}
+          <ChevronsUpDown className="ml-auto size-4" />
+        </SidebarMenuButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-56 rounded-lg">
+      <DropdownMenuContent
+        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+        side={isMobile ? 'bottom' : 'right'}
+        align="end"
+        sideOffset={4}
+      >
         <DropdownMenuLabel className="p-0 font-normal">
-          <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-            <Avatar className="h-8 w-8 rounded-full">
-              {user.profilePicture ? (
-                <AvatarImage src={resolveImageUrl(user.profilePicture)} alt={user.username} className="rounded-full object-cover" />
-              ) : null}
-              <AvatarFallback className="rounded-full bg-primary text-primary-foreground">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <UsernameDisplay
-                username={user.username}
-                firstName={user.firstName}
-                usernameColor={user.usernameColor}
-                usernameClassName="font-semibold"
-              />
-              <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
-            </div>
-          </div>
+          <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">{identity}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -103,34 +78,28 @@ export function UserAccountMenu({ className, showLabel = true }: UserAccountMenu
           <DropdownMenuItem asChild>
             <Link to="/settings">
               <Settings />
-              Reglages
+              Réglages
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={toggleTheme}>
             {theme === 'dark' ? <Sun /> : <Moon />}
             {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
           </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          {(user.isAdmin || user.isSuperAdmin || user.isFiscalInspector || user.isJudge) && (
+          {canAccessAdmin ? (
             <DropdownMenuItem asChild>
               <Link to="/admin">
-                <Shield className={user.isAdmin || user.isSuperAdmin ? 'text-amber-500' : 'text-emerald-500'} />
-                <span className={user.isAdmin || user.isSuperAdmin ? 'text-amber-500' : 'text-emerald-500'}>
-                  {user.isAdmin || user.isSuperAdmin ? 'Administration' : 'Inspection fiscale'}
-                </span>
+                <Shield />
+                {isAdmin ? 'Administration' : 'Inspection fiscale'}
               </Link>
             </DropdownMenuItem>
-          )}
+          ) : null}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>
           <LogOut />
-          Deconnexion
+          Déconnexion
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-    </>
   );
 }

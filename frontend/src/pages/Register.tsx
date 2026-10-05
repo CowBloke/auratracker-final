@@ -1,25 +1,20 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { authApi } from '../services/api';
-import { Loader2, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, CircleAlert } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from '@/components/ui/form';
+import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TYPOGRAPHY } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { CenteredShell } from '@/components/layout/CenteredShell';
+import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
+import { AuthShell } from '@/components/layout/AuthShell';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { t } from '@/lib/i18n';
 
@@ -110,50 +105,6 @@ const STEPS: OnboardingStep[] = [
   },
 ];
 
-// Progress step indicator component
-function StepIndicator({ steps, currentStep }: { steps: OnboardingStep[]; currentStep: number }) {
-  return (
-    <div className="space-y-4">
-      {/* Progress bar */}
-      <div className="flex gap-1">
-        {steps.map((_, index) => (
-          <div
-            key={index}
-            className={cn(
-              'h-1 flex-1 rounded-full transition-colors',
-              index <= currentStep ? 'bg-foreground' : 'bg-border'
-            )}
-          />
-        ))}
-      </div>
-      
-      {/* Step labels */}
-      <div className="flex items-center justify-between gap-2">
-        {steps.map((step, index) => (
-          <div
-            key={step.id}
-            className={cn(
-              'flex flex-col items-center gap-1 flex-1 text-center',
-              index <= currentStep && 'opacity-100',
-              index > currentStep && 'opacity-50'
-            )}
-          >
-            <div
-              className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors',
-                index < currentStep ? 'bg-foreground text-background' : index === currentStep ? 'bg-foreground text-background' : 'bg-border text-muted-foreground'
-              )}
-            >
-              {index < currentStep ? '✓' : index + 1}
-            </div>
-            <span className={cn(TYPOGRAPHY.XS, 'hidden sm:inline')}>{step.title}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function Register() {
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState('');
@@ -185,7 +136,7 @@ export default function Register() {
   const steps = useMemo(() => {
     if (referralEnabled) return STEPS;
     // Remove referralCode from motivation step if referral is disabled
-    return STEPS.map(step =>
+    return STEPS.map((step) =>
       step.id === 'motivation'
         ? { ...step, fields: ['motivationMessage'] as (keyof RegisterForm)[] }
         : step
@@ -195,15 +146,13 @@ export default function Register() {
   const currentStepData = steps[currentStep];
 
   const handleNextStep = async () => {
-    const fieldsToValidate = currentStepData.fields;
-    const isValid = await form.trigger(fieldsToValidate);
-    
+    const isValid = await form.trigger(currentStepData.fields);
+
     if (isValid) {
       setError('');
       if (currentStep < steps.length - 1) {
         setCurrentStep(currentStep + 1);
       } else {
-        // Submit form
         await onSubmit(form.getValues());
       }
     }
@@ -242,50 +191,55 @@ export default function Register() {
 
   if (success) {
     return (
-      <CenteredShell widthClassName="max-w-sm">
+      <AuthShell>
         <Card>
-          <CardContent className="space-y-8 pt-6 text-center">
-            <div className="space-y-4">
-              <CheckCircle2 className="mx-auto h-16 w-16 text-green-500" />
-              <h1 className={TYPOGRAPHY.H2}>
-                {t('register_success_title')}
-              </h1>
-              <p className={TYPOGRAPHY.MUTED}>
-                {successMessage || t('register_success_description')}
-              </p>
-            </div>
-
-            <Button asChild className="h-12 w-full">
-              <Link to="/login">
-                {t('register_back_to_login')}
-              </Link>
-            </Button>
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">{t('register_success_title')}</CardTitle>
+            <CardDescription>{successMessage || t('register_success_description')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert>
+              <CheckCircle2 />
+              <AlertTitle>{t('register_success_title')}</AlertTitle>
+            </Alert>
           </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link to="/login">{t('register_back_to_login')}</Link>
+            </Button>
+          </CardFooter>
         </Card>
-      </CenteredShell>
+      </AuthShell>
     );
   }
 
+  const isLastStep = currentStep === steps.length - 1;
+
   return (
-    <CenteredShell widthClassName="max-w-sm">
+    <AuthShell>
       <Card>
-        <CardHeader className="space-y-4 text-center pb-6">
-          <StepIndicator steps={steps} currentStep={currentStep} />
-          
-          <div className="space-y-2">
-            <CardTitle className={TYPOGRAPHY.H2}>{currentStepData.title}</CardTitle>
-            <CardDescription>{currentStepData.description}</CardDescription>
+        <CardHeader>
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>
+              Étape {currentStep + 1} sur {steps.length}
+            </span>
+            <span>{currentStepData.title}</span>
           </div>
+          <Progress value={((currentStep + 1) / steps.length) * 100} />
+          <CardTitle className="pt-2 text-xl">{currentStepData.title}</CardTitle>
+          <CardDescription>{currentStepData.description}</CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          {error && (
-            <p className={cn(TYPOGRAPHY.SMALL, 'text-destructive text-center')}>{error}</p>
-          )}
+        <CardContent className="flex flex-col gap-4">
+          {error ? (
+            <Alert variant="destructive">
+              <CircleAlert />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
 
           <Form {...form}>
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-              {/* Step 0: Profile */}
+            <form onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-4">
               {currentStep === 0 && (
                 <>
                   <FormField
@@ -293,40 +247,30 @@ export default function Register() {
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
+                        <FormLabel>{t('register_first_name_placeholder')}</FormLabel>
                         <FormControl>
-                          <Input
-                            type="text"
-                            placeholder={t('register_first_name_placeholder')}
-                            className="h-12 border-border/50 text-center"
-                            {...field}
-                          />
+                          <Input type="text" autoComplete="given-name" {...field} />
                         </FormControl>
-                        <FormMessage className="text-center" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="username"
                     render={({ field }) => (
                       <FormItem>
+                        <FormLabel>{t('register_username_placeholder')}</FormLabel>
                         <FormControl>
-                          <Input
-                            type="text"
-                            placeholder={t('register_username_placeholder')}
-                            className="h-12 border-border/50 text-center"
-                            {...field}
-                          />
+                          <Input type="text" autoComplete="username" {...field} />
                         </FormControl>
-                        <FormMessage className="text-center" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
                 </>
               )}
 
-              {/* Step 1: Education */}
               {currentStep === 1 && (
                 <>
                   <FormField
@@ -334,27 +278,30 @@ export default function Register() {
                     name="schoolChoice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormControl>
-                          <Select
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              form.setValue('school', value === 'SAINT_DOMINIQUE' ? 'Saint-Dominique' : '', { shouldValidate: true });
-                            }}
-                            value={field.value}
-                          >
-                            <SelectTrigger className="h-12 border-border/50 text-center">
+                        <FormLabel>{t('register_school_placeholder')}</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue('school', value === 'SAINT_DOMINIQUE' ? 'Saint-Dominique' : '', {
+                              shouldValidate: true,
+                            });
+                          }}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full">
                               <SelectValue placeholder={t('register_school_placeholder')} />
                             </SelectTrigger>
-                            <SelectContent>
-                              {SCHOOL_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage className="text-center" />
+                          </FormControl>
+                          <SelectContent>
+                            {SCHOOL_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -365,65 +312,62 @@ export default function Register() {
                       name="school"
                       render={({ field }) => (
                         <FormItem>
+                          <FormLabel>{t('register_school_other_placeholder')}</FormLabel>
                           <FormControl>
-                            <Input
-                              type="text"
-                              placeholder={t('register_school_other_placeholder')}
-                              className="h-12 border-border/50 text-center"
-                              {...field}
-                            />
+                            <Input type="text" {...field} />
                           </FormControl>
-                          <FormMessage className="text-center" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   )}
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="schoolLevel"
                       render={({ field }) => (
                         <FormItem>
-                          <FormControl>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger className="h-12 border-border/50">
+                          <FormLabel>{t('register_school_level_placeholder')}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="w-full">
                                 <SelectValue placeholder={t('register_school_level_placeholder')} />
                               </SelectTrigger>
-                              <SelectContent>
-                                {SCHOOL_LEVELS.map((level) => (
-                                  <SelectItem key={level.value} value={level.value}>
-                                    {level.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage className="text-center" />
+                            </FormControl>
+                            <SelectContent>
+                              {SCHOOL_LEVELS.map((level) => (
+                                <SelectItem key={level.value} value={level.value}>
+                                  {level.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={form.control}
                       name="classLetter"
                       render={({ field }) => (
                         <FormItem>
-                          <FormControl>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <SelectTrigger className="h-12 border-border/50">
+                          <FormLabel>{t('register_class_letter_placeholder')}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="w-full">
                                 <SelectValue placeholder={t('register_class_letter_placeholder')} />
                               </SelectTrigger>
-                              <SelectContent>
-                                {CLASS_LETTERS.map((letter) => (
-                                  <SelectItem key={letter} value={letter}>
-                                    {letter}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage className="text-center" />
+                            </FormControl>
+                            <SelectContent>
+                              {CLASS_LETTERS.map((letter) => (
+                                <SelectItem key={letter} value={letter}>
+                                  {letter}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -431,7 +375,6 @@ export default function Register() {
                 </>
               )}
 
-              {/* Step 2: Credentials */}
               {currentStep === 2 && (
                 <>
                   <FormField
@@ -439,58 +382,43 @@ export default function Register() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
+                        <FormLabel>{t('register_email_placeholder')}</FormLabel>
                         <FormControl>
-                          <Input
-                            type="email"
-                            placeholder={t('register_email_placeholder')}
-                            className="h-12 border-border/50 text-center"
-                            {...field}
-                          />
+                          <Input type="email" autoComplete="email" {...field} />
                         </FormControl>
-                        <FormMessage className="text-center" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="password"
                     render={({ field }) => (
                       <FormItem>
+                        <FormLabel>{t('register_password_placeholder')}</FormLabel>
                         <FormControl>
-                          <Input
-                            type="password"
-                            placeholder={t('register_password_placeholder')}
-                            className="h-12 border-border/50 text-center"
-                            {...field}
-                          />
+                          <Input type="password" autoComplete="new-password" {...field} />
                         </FormControl>
-                        <FormMessage className="text-center" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
+                        <FormLabel>{t('register_confirm_password_placeholder')}</FormLabel>
                         <FormControl>
-                          <Input
-                            type="password"
-                            placeholder={t('register_confirm_password_placeholder')}
-                            className="h-12 border-border/50 text-center"
-                            {...field}
-                          />
+                          <Input type="password" autoComplete="new-password" {...field} />
                         </FormControl>
-                        <FormMessage className="text-center" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
                 </>
               )}
 
-              {/* Step 3: Motivation */}
               {currentStep === 3 && (
                 <>
                   <FormField
@@ -498,15 +426,11 @@ export default function Register() {
                     name="motivationMessage"
                     render={({ field }) => (
                       <FormItem>
+                        <FormLabel>{t('register_motivation_placeholder')}</FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder={t('register_motivation_placeholder')}
-                            className="min-h-28 border-border/50"
-                            maxLength={500}
-                            {...field}
-                          />
+                          <Textarea className="min-h-28" maxLength={500} {...field} />
                         </FormControl>
-                        <FormMessage className="text-center" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -517,17 +441,17 @@ export default function Register() {
                       name="referralCode"
                       render={({ field }) => (
                         <FormItem>
+                          <FormLabel>{t('register_referral_placeholder')}</FormLabel>
                           <FormControl>
                             <Input
                               type="text"
-                              placeholder={t('register_referral_placeholder')}
-                              className="h-12 border-border/50 text-center uppercase tracking-[0.24em]"
+                              className="font-mono uppercase tracking-widest"
                               {...field}
                               value={field.value || ''}
                               onChange={(event) => field.onChange(event.target.value.toUpperCase())}
                             />
                           </FormControl>
-                          <FormMessage className="text-center" />
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -536,48 +460,28 @@ export default function Register() {
               )}
             </form>
           </Form>
+        </CardContent>
 
-          {/* Navigation Buttons */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={handlePrevStep}
-              disabled={currentStep === 0 || loading}
-              className="h-12 flex-1"
-            >
-              <ChevronLeft className="mr-2 h-4 w-4" />
+        <CardFooter className="flex-col gap-4">
+          <div className="flex w-full gap-2">
+            <Button variant="outline" onClick={handlePrevStep} disabled={currentStep === 0 || loading} className="flex-1">
+              <ChevronLeft />
               Précédent
             </Button>
-
-            <Button
-              onClick={handleNextStep}
-              disabled={loading}
-              className="h-12 flex-1"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : currentStep === steps.length - 1 ? (
-                <>
-                  Envoyer
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Suivant
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </>
-              )}
+            <Button onClick={handleNextStep} disabled={loading} className="flex-1">
+              {loading ? <Spinner /> : null}
+              {isLastStep ? 'Envoyer' : 'Suivant'}
+              {!loading ? <ChevronRight /> : null}
             </Button>
           </div>
-
-          <p className={cn(TYPOGRAPHY.SMALL, 'text-center text-muted-foreground')}>
+          <p className="text-sm text-muted-foreground">
             {t('register_have_account')}{' '}
-            <Link to="/login" className="text-foreground hover:underline">
+            <Link to="/login" className="text-foreground underline-offset-4 hover:underline">
               {t('register_login_link')}
             </Link>
           </p>
-        </CardContent>
+        </CardFooter>
       </Card>
-    </CenteredShell>
+    </AuthShell>
   );
 }

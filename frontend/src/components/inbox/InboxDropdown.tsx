@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType, type UIEvent } from 'react';
+import { useState, type ComponentType, type UIEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Archive,
@@ -37,11 +37,19 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { youApi, type Notification } from '@/services/api';
 import { t } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
 
 const TYPE_ICON: Record<string, ComponentType<{ className?: string }>> = {
   AURA_RECEIVED: Star,
@@ -60,25 +68,6 @@ const TYPE_ICON: Record<string, ComponentType<{ className?: string }>> = {
   PARTY_INVITE: Sword,
   ADMIN: Megaphone,
   SYSTEM: Info,
-};
-
-const TYPE_COLOR: Record<string, { bg: string; text: string }> = {
-  AURA_RECEIVED:      { bg: 'bg-amber-500/15',   text: 'text-amber-500' },
-  MONEY_RECEIVED:     { bg: 'bg-emerald-500/15',  text: 'text-emerald-500' },
-  ITEM_RECEIVED:      { bg: 'bg-blue-500/15',     text: 'text-blue-500' },
-  CLAN_JOIN_REQUEST:  { bg: 'bg-violet-500/15',   text: 'text-violet-500' },
-  CLAN_JOIN_ACCEPTED: { bg: 'bg-emerald-500/15',  text: 'text-emerald-500' },
-  CLAN_JOIN_REJECTED: { bg: 'bg-red-500/15',      text: 'text-red-500' },
-  CLAN_WAR_DECLARED:  { bg: 'bg-orange-500/15',   text: 'text-orange-500' },
-  CLAN_WAR_COMPLETED: { bg: 'bg-blue-500/15',     text: 'text-blue-500' },
-  CLAN_WAR_WON:       { bg: 'bg-amber-500/15',    text: 'text-amber-500' },
-  CLAN_WAR_LOST:      { bg: 'bg-red-500/15',      text: 'text-red-500' },
-  QUEST_COMPLETED:    { bg: 'bg-purple-500/15',   text: 'text-purple-500' },
-  POLYMARKET_WIN:     { bg: 'bg-emerald-500/15',  text: 'text-emerald-500' },
-  POLYMARKET_LOSS:    { bg: 'bg-red-500/15',      text: 'text-red-500' },
-  PARTY_INVITE:       { bg: 'bg-orange-500/15',   text: 'text-orange-500' },
-  ADMIN:              { bg: 'bg-rose-500/15',      text: 'text-rose-500' },
-  SYSTEM:             { bg: 'bg-sky-500/15',       text: 'text-sky-500' },
 };
 
 const ICON_NAME_MAP: Record<string, ComponentType<{ className?: string }>> = {
@@ -173,87 +162,89 @@ function NotificationCard({
 }) {
   const ago = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: fr });
   const ResolvedIcon = (notification.icon && ICON_NAME_MAP[notification.icon]) || TYPE_ICON[notification.type] || Bell;
-  const color = TYPE_COLOR[notification.type] ?? { bg: 'bg-muted/30', text: 'text-muted-foreground' };
   const isUnread = !notification.isRead;
   const isInviteActionable = isBusinessInvitationActionable(notification);
 
   return (
-    <article
-      className={cn(
-        'group relative flex items-start gap-2.5 rounded-xl px-3 py-2.5 transition-colors duration-150',
-        isUnread ? 'bg-muted/30' : 'hover:bg-muted/15',
-        notification.link && 'cursor-pointer',
-      )}
-      onClick={() => {
-        if (!notification.link) return;
-        void onNavigate(notification);
-      }}
+    <Item
+      size="sm"
+      variant={isUnread ? 'muted' : 'default'}
+      asChild={Boolean(notification.link)}
     >
-      {/* Colorful icon */}
-      <div className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full', color.bg)}>
-        <ResolvedIcon className={cn('h-4 w-4', color.text)} />
-      </div>
-
-      {/* Content */}
-      <div className="min-w-0 flex-1 pr-5">
-        <div className="flex items-center gap-1.5">
-          {isUnread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/70" />}
-          <p className="truncate text-[12px] font-semibold leading-tight text-foreground">{notification.title}</p>
-          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground/50">{ago}</span>
-        </div>
-        <p className="mt-0.5 line-clamp-1 text-[11px] leading-4 text-muted-foreground">{notification.body}</p>
-
-        {isInviteActionable && (
-          <div className="mt-2 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-            <Button
-              type="button"
-              size="sm"
-              disabled={actingKey !== null}
-              onClick={() => void onAcceptBusinessInvite(notification)}
-              className="h-6 rounded-full px-2.5 text-[10px] font-medium"
-            >
-              <Check className="mr-1 h-3 w-3" />
-              {actingKey === `${notification.id}:accept` ? '…' : t('inbox_accept')}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={actingKey !== null}
-              onClick={() => void onDeclineBusinessInvite(notification)}
-              className="h-6 rounded-full px-2.5 text-[10px] font-medium"
-            >
-              <X className="mr-1 h-3 w-3" />
-              {actingKey === `${notification.id}:decline` ? '…' : t('inbox_decline')}
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Dismiss button (visible on hover) */}
-      <button
-        type="button"
-        className="absolute right-2 top-2.5 rounded-full p-0.5 text-muted-foreground/40 opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
-        onClick={(e) => {
-          e.stopPropagation();
-          void onDismiss(notification);
+      <div
+        role={notification.link ? 'button' : undefined}
+        tabIndex={notification.link ? 0 : undefined}
+        onClick={() => {
+          if (notification.link) void onNavigate(notification);
         }}
-        title={t('inbox_dismiss')}
+        onKeyDown={(event) => {
+          if (notification.link && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            void onNavigate(notification);
+          }
+        }}
       >
-        <X className="h-3 w-3" />
-      </button>
-    </article>
+        <ItemMedia variant="icon">
+          <ResolvedIcon />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>
+            {notification.title}
+            {isUnread ? <Badge variant="secondary">Nouveau</Badge> : null}
+          </ItemTitle>
+          <ItemDescription>{notification.body}</ItemDescription>
+          <span className="text-xs text-muted-foreground">{ago}</span>
+          {isInviteActionable ? (
+            <div className="flex gap-2 pt-1" onClick={(event) => event.stopPropagation()}>
+              <Button
+                type="button"
+                size="xs"
+                disabled={actingKey !== null}
+                onClick={() => void onAcceptBusinessInvite(notification)}
+              >
+                <Check />
+                {actingKey === `${notification.id}:accept` ? '…' : t('inbox_accept')}
+              </Button>
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                disabled={actingKey !== null}
+                onClick={() => void onDeclineBusinessInvite(notification)}
+              >
+                <X />
+                {actingKey === `${notification.id}:decline` ? '…' : t('inbox_decline')}
+              </Button>
+            </div>
+          ) : null}
+        </ItemContent>
+        <ItemActions>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={t('inbox_dismiss')}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void onDismiss(notification);
+                }}
+              >
+                <X />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('inbox_dismiss')}</TooltipContent>
+          </Tooltip>
+        </ItemActions>
+      </div>
+    </Item>
   );
 }
 
-export function InboxDropdown({
-  buttonClassName,
-}: {
-  buttonClassName?: string;
-} = {}) {
+export function InboxDropdown() {
   const [open, setOpen] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const {
     notifications,
@@ -270,16 +261,6 @@ export function InboxDropdown({
     archiveAllRead,
     dismissNotification,
   } = useNotifications();
-
-  useEffect(() => {
-    const handler = (event: MouseEvent) => {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const handleDismiss = async (notification: Notification) => {
     const actionKey = `${notification.id}:dismiss`;
@@ -323,7 +304,7 @@ export function InboxDropdown({
   };
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
-    const element = event.currentTarget;
+    const element = event.target as HTMLElement;
     const remaining = element.scrollHeight - element.scrollTop - element.clientHeight;
     if (remaining < 120 && hasMore && !loading) {
       void fetchNotifications();
@@ -331,131 +312,114 @@ export function InboxDropdown({
   };
 
   return (
-    <div className="relative" ref={ref}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={() => setOpen((value) => !value)}
-        className={cn('relative h-8 w-8 text-muted-foreground hover:text-foreground', buttonClassName)}
-        title={t('inbox_title')}
-      >
-        <Bell className="h-4 w-4" />
-        {unreadCount > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-bold text-background">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        ) : null}
-      </Button>
-
-      {open ? (
-        <div className="absolute right-0 top-full z-50 mt-3 w-[22rem] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-border/60 bg-background/95 shadow-xl backdrop-blur-xl dark:bg-card/95">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground">{t('inbox_title')}</span>
-              {unreadCount > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-bold text-background">
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" size="icon" className="relative" aria-label={t('inbox_title')}>
+              <Bell />
+              {unreadCount > 0 ? (
+                <Badge className="absolute -right-2 -top-2 h-5 min-w-5 justify-center rounded-full px-1 tabular-nums">
                   {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              {notifications.length > 0 && (
-                <>
-                  {unreadCount > 0 && (
-                    <button
-                      type="button"
-                      title={t('inbox_mark_all_read')}
-                      onClick={() => void markAllRead()}
-                      className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground"
-                    >
-                      <CheckCheck className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    title={t('inbox_archive_read')}
-                    onClick={() => void archiveAllRead()}
-                    className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground"
-                  >
-                    <Archive className="h-3.5 w-3.5" />
-                  </button>
-                </>
-              )}
-              <Link
-                to="/inbox"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-              >
-                {t('inbox_see_all')}
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-
-          {/* List */}
-          <div className="max-h-[min(28rem,65vh)] overflow-y-auto px-2 py-2" onScroll={handleScroll}>
-            {browserNotificationSupported && browserNotificationPermission !== 'granted' ? (
-              <div className="mb-2 rounded-xl border border-border/50 bg-muted/25 px-3 py-2">
-                <div className="flex items-start gap-2">
-                  <BellRing className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-medium text-foreground">Activer les notifications systeme</p>
-                    <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
-                      {isIosBrowser
-                        ? "Sur iOS: ajoute l'app a l'ecran d'accueil, puis active les notifications."
-                        : 'Active les notifications du navigateur pour recevoir les alertes meme en arriere-plan.'}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-6 rounded-full px-2.5 text-[10px]"
-                    onClick={() => void requestBrowserNotificationPermission()}
-                  >
-                    Activer
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
-            {loading && notifications.length === 0 ? (
-              <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-                {t('common_loading')}
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-10 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/30">
-                  <Bell className="h-5 w-5 text-muted-foreground/40" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-foreground">{t('inbox_empty_title')}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{t('inbox_empty_message')}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-0.5">
-                {notifications.map((notification) => (
-                  <NotificationCard
-                    key={notification.id}
-                    notification={notification}
-                    actingKey={actingKey}
-                    onDismiss={handleDismiss}
-                    onNavigate={handleNavigate}
-                    onAcceptBusinessInvite={(entry) => handleBusinessInvitationDecision(entry, 'accept')}
-                    onDeclineBusinessInvite={(entry) => handleBusinessInvitationDecision(entry, 'reject')}
-                  />
-                ))}
-                {loading && notifications.length > 0 ? (
-                  <p className="pb-1 pt-2 text-center text-[10px] text-muted-foreground">{t('common_loading')}</p>
+                </Badge>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{t('inbox_title')}</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" className="w-96 max-w-[calc(100vw-1rem)] p-0">
+        <div className="flex items-center justify-between gap-2 p-3">
+          <span className="text-sm font-semibold">{t('inbox_title')}</span>
+          <div className="flex items-center gap-1">
+            {notifications.length > 0 ? (
+              <>
+                {unreadCount > 0 ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={t('inbox_mark_all_read')} onClick={() => void markAllRead()}>
+                        <CheckCheck />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('inbox_mark_all_read')}</TooltipContent>
+                  </Tooltip>
                 ) : null}
-              </div>
-            )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon-sm" aria-label={t('inbox_archive_read')} onClick={() => void archiveAllRead()}>
+                      <Archive />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('inbox_archive_read')}</TooltipContent>
+                </Tooltip>
+              </>
+            ) : null}
+            <Button asChild variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              <Link to="/inbox">
+                {t('inbox_see_all')}
+                <ExternalLink />
+              </Link>
+            </Button>
           </div>
         </div>
-      ) : null}
-    </div>
+        <Separator />
+        {browserNotificationSupported && browserNotificationPermission !== 'granted' ? (
+          <div className="p-2">
+            <Alert>
+              <BellRing />
+              <AlertTitle>Activer les notifications système</AlertTitle>
+              <AlertDescription>
+                <p>
+                  {isIosBrowser
+                    ? "Sur iOS : ajoutez l'app à l'écran d'accueil, puis activez les notifications."
+                    : 'Activez les notifications du navigateur pour recevoir les alertes en arrière-plan.'}
+                </p>
+                <Button type="button" size="sm" variant="outline" onClick={() => void requestBrowserNotificationPermission()}>
+                  Activer
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
+        <ScrollArea className="h-[min(28rem,65vh)]" onScrollCapture={handleScroll}>
+          {loading && notifications.length === 0 ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+              <Spinner />
+              {t('common_loading')}
+            </div>
+          ) : notifications.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Bell />
+                </EmptyMedia>
+                <EmptyTitle>{t('inbox_empty_title')}</EmptyTitle>
+                <EmptyDescription>{t('inbox_empty_message')}</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <div className="flex flex-col p-1">
+              {notifications.map((notification) => (
+                <NotificationCard
+                  key={notification.id}
+                  notification={notification}
+                  actingKey={actingKey}
+                  onDismiss={handleDismiss}
+                  onNavigate={handleNavigate}
+                  onAcceptBusinessInvite={(entry) => handleBusinessInvitationDecision(entry, 'accept')}
+                  onDeclineBusinessInvite={(entry) => handleBusinessInvitationDecision(entry, 'reject')}
+                />
+              ))}
+              {loading ? (
+                <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
+                  <Spinner />
+                  {t('common_loading')}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 }

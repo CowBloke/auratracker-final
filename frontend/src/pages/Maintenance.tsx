@@ -1,9 +1,8 @@
-﻿import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
 import { Wrench } from 'lucide-react';
-import { TYPOGRAPHY } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { CenteredShell } from '@/components/layout/CenteredShell';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { AuthShell } from '@/components/layout/AuthShell';
 
 interface MaintenanceProps {
   message?: string;
@@ -54,77 +53,50 @@ export default function Maintenance({ message, endDate }: MaintenanceProps) {
     return () => clearInterval(interval);
   }, [endDate]);
 
-  return (
-    <CenteredShell widthClassName="max-w-2xl">
-      <div className="space-y-6 text-center">
-        <div className="flex justify-center">
-          <Wrench className="h-14 w-14 text-muted-foreground" />
-        </div>
-        <div className={TYPOGRAPHY.H2}>
-          Site en maintenance
-        </div>
-        <p className={TYPOGRAPHY.MUTED}>
-          Le site est temporairement indisponible. Merci de revenir plus tard.
-        </p>
-        
-        {timeLeft && (
-          <div className="space-y-4">
-            <div className={TYPOGRAPHY.H5}>
-              Retour prévu dans :
-            </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
-                    {String(timeLeft.days).padStart(2, '0')}
-                  </div>
-                  <div className={cn(TYPOGRAPHY.SMALL, "")}>
-                    {timeLeft.days === 1 ? 'Jour' : 'Jours'}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
-                    {String(timeLeft.hours).padStart(2, '0')}
-                  </div>
-                  <div className={cn(TYPOGRAPHY.SMALL, "")}>
-                    {timeLeft.hours === 1 ? 'Heure' : 'Heures'}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
-                    {String(timeLeft.minutes).padStart(2, '0')}
-                  </div>
-                  <div className={cn(TYPOGRAPHY.SMALL, "")}>
-                    {timeLeft.minutes === 1 ? 'Minute' : 'Minutes'}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className={cn(TYPOGRAPHY.H1, "mb-2 tabular-nums")}>
-                    {String(timeLeft.seconds).padStart(2, '0')}
-                  </div>
-                  <div className={cn(TYPOGRAPHY.SMALL, "")}>
-                    {timeLeft.seconds === 1 ? 'Seconde' : 'Secondes'}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
+  const units = timeLeft
+    ? [
+        { value: timeLeft.days, singular: 'Jour', plural: 'Jours' },
+        { value: timeLeft.hours, singular: 'Heure', plural: 'Heures' },
+        { value: timeLeft.minutes, singular: 'Minute', plural: 'Minutes' },
+        { value: timeLeft.seconds, singular: 'Seconde', plural: 'Secondes' },
+      ]
+    : [];
 
-        {message && message.trim().length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <p className={TYPOGRAPHY.SMALL}>{message}</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </CenteredShell>
+  return (
+    <AuthShell size="lg">
+      <Card>
+        <CardContent>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Wrench />
+              </EmptyMedia>
+              <EmptyTitle>Site en maintenance</EmptyTitle>
+              <EmptyDescription>Le site est temporairement indisponible. Merci de revenir plus tard.</EmptyDescription>
+            </EmptyHeader>
+            {message && message.trim().length > 0 ? <EmptyContent>{message}</EmptyContent> : null}
+          </Empty>
+        </CardContent>
+      </Card>
+
+      {timeLeft ? (
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle>Retour prévu dans</CardTitle>
+            <CardDescription>Le site sera de nouveau accessible à la fin du compte à rebours.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {units.map((unit) => (
+                <div key={unit.singular} className="flex flex-col items-center gap-1 rounded-lg border p-4">
+                  <span className="text-3xl font-semibold tabular-nums">{String(unit.value).padStart(2, '0')}</span>
+                  <span className="text-sm text-muted-foreground">{unit.value === 1 ? unit.singular : unit.plural}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+    </AuthShell>
   );
 }

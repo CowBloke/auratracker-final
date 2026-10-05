@@ -1,54 +1,40 @@
-import type { ReactNode } from 'react';
-import { CONTAINER, SPACING, TYPOGRAPHY } from '@/lib/design-system';
+import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-type PageShellSize = 'compact' | 'default' | 'wide' | 'full';
+type PageShellSize = 'default' | 'wide' | 'full';
 
 const sizeClasses: Record<PageShellSize, string> = {
-  compact: CONTAINER.DEFAULT,
-  default: CONTAINER.DEFAULT,
-  wide: CONTAINER.WIDE,
-  full: CONTAINER.FULL,
+  default: 'max-w-7xl',
+  wide: 'max-w-screen-2xl',
+  full: 'max-w-none',
 };
 
-interface PageShellProps {
-  children: ReactNode;
-  className?: string;
+interface PageShellProps extends ComponentProps<'div'> {
   size?: PageShellSize;
-  padTop?: boolean;
+}
+
+/** Conteneur unique de toutes les pages applicatives : largeur, marges et espacement verticaux identiques. */
+export function PageShell({ children, className, size = 'default', ...props }: PageShellProps) {
+  return (
+    <div className={cn('mx-auto flex w-full flex-col gap-6 p-4 md:p-6', sizeClasses[size], className)} {...props}>
+      {children}
+    </div>
+  );
 }
 
 interface PageHeaderProps {
   title: string;
   description?: string;
   actions?: ReactNode;
-  className?: string;
 }
 
-export function PageShell({ children, className, size = 'compact', padTop = false }: PageShellProps) {
+/** En-tête unique de page : titre, description et actions principales. */
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <div
-      className={cn(
-        'mx-auto w-full',
-        sizeClasses[size],
-        padTop ? SPACING.PAGE_PADDING : SPACING.PAGE_BODY_PADDING,
-        SPACING.PAGE_SPACING,
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
-  return (
-    <div className={cn('flex flex-col gap-4 md:flex-row md:items-start md:justify-between', className)}>
-      <div className="space-y-2">
-        <div className="space-y-1">
-          <h1 className={TYPOGRAPHY.PAGE_TITLE}>{title}</h1>
-          {description ? <p className={cn(TYPOGRAPHY.PAGE_DESCRIPTION, 'max-w-2xl')}>{description}</p> : null}
-        </div>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>

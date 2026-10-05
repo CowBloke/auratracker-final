@@ -1,24 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Loader2, ReceiptText } from 'lucide-react';
+import { ReceiptText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Spinner } from '@/components/ui/spinner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
-import { cn } from '@/lib/utils';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
 import { usersApi, type UserMoneyHistoryEntry } from '@/services/api';
 
 type MoneyHistoryChipProps = {
   amount: number | undefined;
-  className?: string;
 };
 
-export function MoneyHistoryChip({ amount, className }: MoneyHistoryChipProps) {
+const formatEntryDate = (date: string) =>
+  new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(date));
+
+export function MoneyHistoryChip({ amount }: MoneyHistoryChipProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [entries, setEntries] = useState<UserMoneyHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,68 +49,66 @@ export function MoneyHistoryChip({ amount, className }: MoneyHistoryChipProps) {
     void fetchEntries();
   }, [isOpen]);
 
-  const formatEntryDate = (date: string) =>
-    new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(date));
-
   return (
     <>
-      <div className="group relative flex shrink-0 items-center">
-        <div ref={setMoneyIndicatorElement} className={cn(className)}>
-          <CurrencyIcon type="money" className="h-3.5 w-3.5 text-emerald-400" />
-          <span className="tabular-nums">{amount?.toLocaleString() ?? '0'} {'\u20AC'}</span>
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          onClick={() => setIsOpen(true)}
-          className="pointer-events-none absolute right-0 top-[calc(100%-1px)] z-50 h-8 gap-2 whitespace-nowrap opacity-0 shadow-lg transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
-        >
-          <ReceiptText className="h-4 w-4" />
-          Historique
-        </Button>
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            ref={setMoneyIndicatorElement}
+            type="button"
+            variant="outline"
+            onClick={() => setIsOpen(true)}
+            aria-label="Historique du money"
+          >
+            <CurrencyIcon type="money" />
+            <span className="tabular-nums">{amount?.toLocaleString() ?? '0'} €</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Historique du money</TooltipContent>
+      </Tooltip>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Historique du money</DialogTitle>
+            <DialogDescription>Vos derniers mouvements d'argent.</DialogDescription>
           </DialogHeader>
 
           {isLoading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Chargement...
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+              <Spinner />
+              Chargement…
             </div>
           ) : error ? (
-            <p className="py-8 text-sm text-muted-foreground">{error}</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{error}</p>
           ) : entries.length === 0 ? (
-            <p className="py-8 text-sm text-muted-foreground">Aucun mouvement trouve.</p>
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <ReceiptText />
+                </EmptyMedia>
+                <EmptyTitle>Aucun mouvement</EmptyTitle>
+                <EmptyDescription>Vos transactions apparaîtront ici.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
-            <ScrollArea className="max-h-[55vh] pr-4">
-              <div className="divide-y divide-border/60">
+            <ScrollArea className="max-h-[55vh]">
+              <ItemGroup>
                 {entries.map((entry) => (
-                  <div key={entry.id} className="flex items-center justify-between gap-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{entry.reason}</p>
-                      <p className="text-xs text-muted-foreground">{formatEntryDate(entry.createdAt)}</p>
-                    </div>
-                    <span
-                      className={cn(
-                        'shrink-0 text-sm font-semibold',
-                        entry.direction === 'in' ? 'text-emerald-500' : 'text-destructive'
-                      )}
-                    >
-                      {entry.amount > 0 ? '+' : '-'}{Math.abs(entry.amount).toLocaleString()} {'\u20AC'}
-                    </span>
-                  </div>
+                  <Item key={entry.id} size="sm">
+                    <ItemContent>
+                      <ItemTitle>{entry.reason}</ItemTitle>
+                      <ItemDescription>{formatEntryDate(entry.createdAt)}</ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <span className={entry.direction === 'in' ? 'font-semibold' : 'font-semibold text-destructive'}>
+                        {entry.amount > 0 ? '+' : '-'}
+                        {Math.abs(entry.amount).toLocaleString()} €
+                      </span>
+                    </ItemActions>
+                  </Item>
                 ))}
-              </div>
+              </ItemGroup>
             </ScrollArea>
           )}
         </DialogContent>
