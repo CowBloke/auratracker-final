@@ -24,9 +24,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from '@/components/ui/empty';
-import { Item, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -363,45 +364,13 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
 
 // ─── Contracts ────────────────────────────────────────────────────────────────
 
-function ParticipantAvatar({ user, signed }: { user: YouContract['participants'][number]['user']; signed: boolean }) {
+function ParticipantAvatar({ user }: { user: YouContract['participants'][number]['user'] }) {
   const initials = (user.firstName?.[0] ?? user.username[0]).toUpperCase();
   return (
-    <div className="relative">
-      <Avatar className="h-8 w-8 ring-2 ring-border/40">
-        <AvatarImage src={user.profilePicture ? resolveImageUrl(user.profilePicture) : undefined} alt={user.username} />
-        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-      </Avatar>
-      {signed ? (
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success ring-1 ring-background">
-          <CheckCircle2 className="h-2.5 w-2.5 text-white" strokeWidth={3} />
-        </span>
-      ) : (
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning ring-1 ring-background">
-          <Clock className="h-2.5 w-2.5 text-white" strokeWidth={3} />
-        </span>
-      )}
-    </div>
-  );
-}
-
-function WaxSeal({ allSigned }: { allSigned: boolean }) {
-  return (
-    <div className={cn(
-      'relative flex h-16 w-16 items-center justify-center rounded-full transition-all',
-      allSigned
-        ? ''
-        : '',
-    )}>
-      <div className={cn(
-        'absolute inset-1 rounded-full border-2',
-        allSigned ? 'border-destructive/40' : 'border-border/40',
-      )} />
-      {allSigned ? (
-        <Stamp className="h-7 w-7 text-destructive" />
-      ) : (
-        <PenLine className="h-7 w-7 text-muted-foreground" />
-      )}
-    </div>
+    <Avatar className="size-8">
+      <AvatarImage src={user.profilePicture ? resolveImageUrl(user.profilePicture) : undefined} alt={user.username} />
+      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -418,120 +387,74 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
   const isCreator = contract.creatorId === currentUserId;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-warning/30 from-[#fdfaf4] to-[#f5f0e8] dark:from-[#1e1a12] dark:to-[#161208]">
-      {/* Top decorative border */}
-      <div className="h-1.5 w-full " />
+    <Card>
+      <CardHeader>
+        <CardTitle>{contract.title}</CardTitle>
+        <CardDescription>
+          Établi le {new Date(contract.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </CardDescription>
+        <CardAction>
+          <Badge variant={allSigned ? 'success' : 'warning'}>
+            {allSigned ? <Stamp /> : <PenLine />}
+            {allSigned ? 'Signé' : 'En attente'}
+          </Badge>
+        </CardAction>
+      </CardHeader>
 
-      {/* Corner ornaments */}
-      <div className="pointer-events-none absolute left-3 top-3 h-6 w-6 rounded-tl border-l-2 border-t-2 border-warning/40" />
-      <div className="pointer-events-none absolute right-3 top-3 h-6 w-6 rounded-tr border-r-2 border-t-2 border-warning/40" />
-      <div className="pointer-events-none absolute bottom-3 left-3 h-6 w-6 rounded-bl border-b-2 border-l-2 border-warning/40" />
-      <div className="pointer-events-none absolute bottom-3 right-3 h-6 w-6 rounded-br border-b-2 border-r-2 border-warning/40" />
+      <CardContent className="flex flex-col gap-5">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{contract.content}</p>
 
-      <div className="px-8 py-6 space-y-5">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 text-center space-y-1">
-            <p className="text-xs font-semibold text-warning/60">
-              Contrat Officiel
-            </p>
-            <h2 className="text-lg font-bold text-warning">{contract.title}</h2>
-            <p className="text-xs text-warning/50">
-              Établi le {new Date(contract.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-          <WaxSeal allSigned={allSigned} />
-        </div>
+        <Separator />
 
-        {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-warning/20" />
-          <ScrollText className="h-3.5 w-3.5 text-warning/40" />
-          <div className="h-px flex-1 bg-warning/20" />
-        </div>
-
-        {/* Content */}
-        <Alert variant="warning" className="min-h-[100px]">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-warning/80">
-            {contract.content}
-          </p>
-        </Alert>
-
-        {/* Divider */}
-        <div className="h-px bg-warning/20" />
-
-        {/* Signatures section */}
-        <div>
-          <p className="mb-3 text-center text-xs font-semibold text-warning/60">
-            Signatures des parties
-          </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium text-muted-foreground">Signatures des parties</p>
+          <ItemGroup className="grid gap-2 sm:grid-cols-2">
             {contract.participants.map((p) => (
-              <div
-                key={p.id}
-                className={cn(
-                  'relative flex flex-col items-center gap-2 rounded-xl border px-3 py-3 text-center transition-all',
-                  p.signedAt
-                    ? 'border-success/30 bg-success/50'
-                    : 'border-warning/20 bg-warning/30',
-                )}
-              >
-                <ParticipantAvatar user={p.user} signed={!!p.signedAt} />
-                <div>
-                  <p className="text-xs font-semibold text-warning">{p.user.username}</p>
-                  {p.signedAt ? (
-                    <p className="mt-0.5 text-xs italic text-success">
-                      Signé le {new Date(p.signedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-xs italic text-warning/60">En attente</p>
-                  )}
-                </div>
-                {p.signedAt && (
-                  <div className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-success shadow-sm">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
-                  </div>
-                )}
-              </div>
+              <Item key={p.id} variant="outline" size="sm">
+                <ItemMedia>
+                  <ParticipantAvatar user={p.user} />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>{p.user.username}</ItemTitle>
+                  <ItemDescription className={p.signedAt ? 'text-success' : undefined}>
+                    {p.signedAt
+                      ? `Signé le ${new Date(p.signedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+                      : 'En attente'}
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  {p.signedAt ? <CheckCircle2 className="size-4 text-success" /> : <Clock className="size-4 text-warning" />}
+                </ItemActions>
+              </Item>
             ))}
-          </div>
+          </ItemGroup>
         </div>
 
-        {/* Status badge */}
         {allSigned && (
-          <Alert variant="success" className="flex items-center justify-center gap-2">
-            <Stamp className="h-4 w-4 text-success" />
-            <span className="text-xs font-semibold text-success">Contrat signé par toutes les parties</span>
+          <Alert variant="success">
+            <Stamp />
+            <AlertDescription>Contrat signé par toutes les parties</AlertDescription>
           </Alert>
         )}
+      </CardContent>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {!iSigned && myParticipation && (
-              <Button
-                size="sm"
-                className="gap-1.5 bg-warning text-warning-foreground hover:bg-warning/90"
-                disabled={signing}
-                onClick={onSign}
-              >
-                <PenLine className="h-3.5 w-3.5" />
-                Signer ce contrat
-              </Button>
-            )}
-          </div>
+      {((!iSigned && myParticipation) || isCreator) && (
+        <CardFooter className="justify-between">
+          {!iSigned && myParticipation ? (
+            <Button size="sm" disabled={signing} onClick={onSign}>
+              <PenLine />
+              Signer ce contrat
+            </Button>
+          ) : <span />}
           {isCreator && (
-            <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-muted-foreground hover:text-destructive" onClick={onDelete}>
-              <Trash2 className="h-3.5 w-3.5" />
+            <Button size="sm" variant="ghost" onClick={onDelete}>
+              <Trash2 />
               Supprimer
             </Button>
           )}
-        </div>
-      </div>
-
-      {/* Bottom decorative border */}
-      <div className="h-1.5 w-full " />
-    </div>
+        </CardFooter>
+      )}
+    </Card>
   );
 }
 
@@ -544,31 +467,21 @@ function ContractListItem({ contract, selected, onClick }: {
   const pendingCount = contract.participants.filter((p) => !p.signedAt).length;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all',
-        selected ? 'bg-warning/10 ring-1 ring-warning/30' : 'hover:bg-muted/20',
-      )}
-    >
-      <div className={cn(
-        'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
-        allSigned ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning',
-      )}>
-        {allSigned ? <Stamp className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{contract.title}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {allSigned ? (
-            <span className="text-success">Signé par tous</span>
-          ) : (
-            <span className="text-warning">{pendingCount} signature{pendingCount > 1 ? 's' : ''} manquante{pendingCount > 1 ? 's' : ''}</span>
-          )}
-        </p>
-      </div>
-    </button>
+    <Item asChild size="sm" variant={selected ? 'muted' : 'default'}>
+      <button type="button" onClick={onClick} className="w-full text-left">
+        <ItemMedia variant="icon">
+          {allSigned ? <Stamp /> : <FileText />}
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{contract.title}</ItemTitle>
+          <ItemDescription className={allSigned ? 'text-success' : 'text-warning'}>
+            {allSigned
+              ? 'Signé par tous'
+              : `${pendingCount} signature${pendingCount > 1 ? 's' : ''} manquante${pendingCount > 1 ? 's' : ''}`}
+          </ItemDescription>
+        </ItemContent>
+      </button>
+    </Item>
   );
 }
 

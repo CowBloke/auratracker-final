@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { ButtonGroup, ButtonGroupText } from '@/components/ui/button-group';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -151,16 +152,10 @@ function CreateListingModal({
   return (
     <>
       {/* Trigger Button */}
-      <button
-        type="button"
-        onClick={handleOpen}
-        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-success/40 bg-success/5 px-4 py-3 text-sm font-semibold text-success transition hover:border-success/60 hover:bg-success/10"
-      >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-success/20 bg-success/15">
-          <Tag className="h-4 w-4" />
-        </span>
-        Vendre une ressource au marché
-      </button>
+      <Button type="button" variant="outline" onClick={handleOpen}>
+        <Tag />
+        Vendre une ressource
+      </Button>
 
       {/* Modal */}
       <AppModal open={open} onClose={() => setOpen(false)} tone="money" size="md">
@@ -228,15 +223,15 @@ function CreateListingModal({
           </div>
 
           {resourceType && (
-            <div className={cn("rounded-xl border p-4 shadow-sm", meta?.bg ? meta.bg.replace('bg-', 'border-').replace('/15', '/30') : 'border-border/40', meta?.bg ?? 'bg-muted/10')}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg shadow-sm', meta?.bg ? meta.bg.replace('/15', '/30') : 'bg-muted/40')}>
-                  <ResourceIcon className={cn("h-4 w-4", meta?.iconColor)} />
-                </span>
-                <span className="font-bold text-foreground">{resourceLabel(resourceType)}</span>
-                <span className="text-xs font-bold text-muted-foreground ml-auto">Stats du marché</span>
-              </div>
-              
+            <Card className="gap-3 py-4">
+              <CardHeader className="px-4">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <ResourceIcon className="size-4" />
+                  {resourceLabel(resourceType)}
+                </CardTitle>
+                <CardDescription>Stats du marché</CardDescription>
+              </CardHeader>
+              <CardContent className="px-4">
               {stats ? (
                 <div className="grid grid-cols-1 gap-2">
                   <Item variant="outline" className="justify-between">
@@ -249,7 +244,8 @@ function CreateListingModal({
                    Aucune donnée de marché récente pour ce produit.
                  </EmptyDescription></EmptyHeader></Empty>
               )}
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -335,32 +331,19 @@ function BuyFlow({
           </SelectContent>
         </Select>
       )}
-      <Card className="gap-0 py-0 shadow-none h-8"><CardContent className="inline-flex items-center">
-        <button
-          type="button"
-          onClick={() => setQty((q) => Math.max(1, q - 1))}
-          className="flex h-full w-7 items-center justify-center text-muted-foreground hover:text-foreground"
-        >
-          <Minus className="h-3 w-3" />
-        </button>
-        <span className="min-w-[1.5rem] text-center text-sm font-bold tabular-nums text-foreground">{qty}</span>
-        <button
-          type="button"
-          onClick={() => setQty((q) => Math.min(listing.quantity, q + 1))}
-          className="flex h-full w-7 items-center justify-center text-muted-foreground hover:text-foreground"
-        >
-          <Plus className="h-3 w-3" />
-        </button>
-      </CardContent></Card>
-      <button
-        type="button"
-        onClick={() => void buy()}
-        disabled={loading}
-        className="flex items-center gap-1.5 rounded-lg border-none bg-success px-3 py-1.5 text-xs font-bold text-[#06281c] transition hover:bg-success disabled:opacity-60"
-      >
-        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
+      <ButtonGroup>
+        <Button type="button" variant="outline" size="icon-sm" aria-label="Moins" onClick={() => setQty((q) => Math.max(1, q - 1))}>
+          <Minus />
+        </Button>
+        <ButtonGroupText className="min-w-8 justify-center tabular-nums">{qty}</ButtonGroupText>
+        <Button type="button" variant="outline" size="icon-sm" aria-label="Plus" onClick={() => setQty((q) => Math.min(listing.quantity, q + 1))}>
+          <Plus />
+        </Button>
+      </ButtonGroup>
+      <Button type="button" size="sm" onClick={() => void buy()} disabled={loading}>
+        {loading ? <Spinner /> : <ShoppingCart />}
         Acheter · {fmt(total)}€
-      </button>
+      </Button>
     </div>
   );
 }
@@ -404,19 +387,12 @@ function ItemBuyFlow({ listing, onBought }: { listing: YouResourceMarketListing;
   return (
     <div className="flex items-center gap-2">
       {effectLabel && (
-        <span className="rounded-full bg-muted/10 px-2 py-0.5 text-xs font-bold text-primary border border-border/20">
-          {effectLabel}
-        </span>
+        <Badge variant="secondary">{effectLabel}</Badge>
       )}
-      <button
-        type="button"
-        onClick={() => void buy()}
-        disabled={loading}
-        className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-muted disabled:opacity-60"
-      >
-        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+      <Button type="button" size="sm" onClick={() => void buy()} disabled={loading}>
+        {loading ? <Spinner /> : <Sparkles />}
         Acheter · {fmt(listing.unitPrice)}€
-      </button>
+      </Button>
     </div>
   );
 }

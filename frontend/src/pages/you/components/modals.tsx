@@ -2262,13 +2262,13 @@ export function MemberEditModal({
             />
             <p className="text-xs text-muted-foreground/60">Les avocats sont triés par ordre croissant, puis alphabétiquement.</p>
           </div>
-          <label className="flex cursor-pointer select-none items-center gap-3 rounded-xl border border-border/40 bg-background/40 px-4 py-3">
+          <Item asChild variant="outline" size="sm"><label className="cursor-pointer select-none">
             <Checkbox checked={isPrimary} onCheckedChange={(checked) => setIsPrimary(checked === true)} />
             <div>
               <p className="text-sm font-medium text-warning">Avocat principal</p>
               <p className="text-xs text-muted-foreground/70">Mis en avant sur la fiche publique du cabinet.</p>
             </div>
-          </label>
+          </label></Item>
         </CardContent></Card>
       ) : null}
 
@@ -2451,7 +2451,7 @@ export function BankAccountModal({
               const isEpargne = account.accountType === 'EPARGNE';
               const isActive = activeAccountId === account.id;
               return (
-                <div key={account.id} className={cn('rounded-xl border bg-muted/10 px-4 py-4', isEpargne ? 'border-warning/25' : 'border-border/40')}>
+                <Card key={account.id} className={cn('gap-0 py-0 shadow-none', isEpargne && 'border-warning/40')}><CardContent className="p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
@@ -2483,7 +2483,7 @@ export function BankAccountModal({
                       <Button size="sm" variant="ghost" onClick={() => { setAction(null); setActiveAccountId(null); }}>Annuler</Button>
                     </div>
                   ) : null}
-                </div>
+                </CardContent></Card>
               );
             })
           )}
@@ -3284,7 +3284,7 @@ export function ManageMenuModal({
               setMenu(newMenu);
               setDraggedItemIdx(null);
             }}
-            className="flex flex-col gap-2 rounded-xl border border-border/40 p-2 cursor-grab active:cursor-grabbing hover:bg-muted/10 transition-colors"
+            className="flex cursor-grab flex-col gap-2 rounded-md border p-2 transition-colors hover:bg-accent active:cursor-grabbing"
           >
             <div className="flex gap-2 items-center w-full">
               <div title="Maintient pour glisser" className="select-none text-muted-foreground mr-1">⋮⋮</div>
