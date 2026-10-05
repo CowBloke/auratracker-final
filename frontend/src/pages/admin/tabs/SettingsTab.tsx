@@ -451,7 +451,7 @@ export function SettingsTab(props: SettingsTabProps) {
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-border/20 bg-background/40 p-3 text-xs text-muted-foreground md:w-64">
+                <Card className="gap-0 py-0 shadow-none md:w-64"><CardContent className="p-3 text-xs text-muted-foreground">
                   <p className="font-medium text-foreground">État actuel</p>
                   <p className="mt-1">
                     {chatBlockEnabled
@@ -461,7 +461,7 @@ export function SettingsTab(props: SettingsTabProps) {
                         : 'Chat ouvert'}
                   </p>
                   <p className="mt-1">Fuseau horaire: {CHAT_BLOCK_TIMEZONE}</p>
-                </div>
+                </CardContent></Card>
               </div>
 
               <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">

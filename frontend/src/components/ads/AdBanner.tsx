@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { resolveImageUrl } from '@/lib/images';
 import { type Ad, adsApi } from '@/services/api';
+import { Alert } from '@/components/ui/alert';
 
 function isExternalLink(url: string) {
   return /^https?:\/\//i.test(url);
@@ -16,7 +17,7 @@ export function AdBanner({ ad, onDismiss }: { ad: Ad; onDismiss: () => void }) {
   const external = isExternalLink(ad.ctaLink);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning/10 p-3 sm:flex-row sm:items-center">
+    <Alert variant="warning" className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <div className="h-16 w-full overflow-hidden rounded-lg bg-black/20 sm:w-24">
         {ad.imageUrl ? (
           <img src={resolveImageUrl(ad.imageUrl)} alt={ad.title} className="h-full w-full object-cover" loading="lazy" />
@@ -48,6 +49,6 @@ export function AdBanner({ ad, onDismiss }: { ad: Ad; onDismiss: () => void }) {
           <X className="h-4 w-4" />
         </Button>
       </div>
-    </div>
+    </Alert>
   );
 }

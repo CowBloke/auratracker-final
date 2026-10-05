@@ -76,7 +76,7 @@ export function GameLimitsTab() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border/40 bg-card/50 p-4 space-y-4 hover:border-primary/20 transition-colors shadow-sm">
+            <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-muted/10 flex items-center justify-center text-primary">
                   <Sparkles className="h-5 w-5" />
@@ -99,9 +99,9 @@ export function GameLimitsTab() {
                 </div>
                 <Badge variant="outline" className="h-10 px-3 bg-muted/5 text-primary border-border/10">Default</Badge>
               </div>
-            </div>
+            </CardContent></Card>
 
-            <div className="rounded-xl border border-border/40 bg-card/50 p-4 space-y-4 hover:border-primary/20 transition-colors shadow-sm">
+            <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-warning/10 flex items-center justify-center text-warning">
                   <Coins className="h-5 w-5" />
@@ -124,7 +124,7 @@ export function GameLimitsTab() {
                 </div>
                 <Badge variant="outline" className="h-10 px-3 bg-warning/5 text-warning border-warning/10">Default</Badge>
               </div>
-            </div>
+            </CardContent></Card>
           </div>
         </div>
 

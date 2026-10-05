@@ -80,7 +80,7 @@ export function BadgesTab(props: BadgesTabProps) {
             ) : (
               <div className="space-y-2">
                 {badges.map((badge: any) => (
-                  <div key={badge.id} className="flex items-center gap-3 p-3 rounded-md border border-border/40 hover:bg-muted/30">
+                  <Item key={badge.id} variant="outline" className="gap-3">
                     <BadgeIcon badge={badge} size="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ export function BadgesTab(props: BadgesTabProps) {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                  </div>
+                  </Item>
                 ))}
               </div>
             )}
