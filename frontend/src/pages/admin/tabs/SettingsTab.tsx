@@ -1078,7 +1078,7 @@ export function SettingsTab(props: SettingsTabProps) {
                     {pages.filter((p) => !blockedPages.includes(p.key)).length}/{pages.length}
                   </span>
                 </div>
-                <Alert className="mx-4 overflow-hidden divide-y divide-border/30"><AlertDescription>
+                <Card className="mx-4 gap-0 overflow-hidden py-0 shadow-none"><CardContent className="divide-y p-0">
                   {pages.map((page) => {
                     const isBlocked = blockedPages.includes(page.key);
                     const blockedReason = blockedPageMessages[page.key] || '';
@@ -1106,7 +1106,7 @@ export function SettingsTab(props: SettingsTabProps) {
                       </div>
                     );
                   })}
-                </AlertDescription></Alert>
+                </CardContent></Card>
               </div>
             ))}
             <div className="h-4" />

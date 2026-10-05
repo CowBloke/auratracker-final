@@ -2,11 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight, Building2, CalendarDays, ChevronLeft, ChevronRight,
-  GraduationCap, HandCoins, Landmark, LayoutGrid,
+  GraduationCap, HandCoins, Hammer, Landmark, LayoutGrid,
   MapPin, MessageSquare, Search, ShoppingCart,
   Sparkles, Star, TrendingUp, UserCheck, Users, X, Scale, Crown,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import type { LucideIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,14 +23,15 @@ import {
 } from './modals';
 import { FieldRow } from './YouPrimitives';
 import { AppModal } from '@/components/ui/app-modal';
-import { getBusinessPinColor, TYPE_LABELS_FR } from '../mapConstants';
+import { TYPE_LABELS_FR } from '../mapConstants';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { withRouteError } from '../utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent } from '@/components/ui/card';
-import { Item } from '@/components/ui/item';
-
-const CONSTRUCTION_STRIPES = 'repeating-linear-gradient(135deg, #facc15 0 8px, #111827 8px 16px)';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from '@/components/ui/empty';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 
 const PURCHASE_TYPES = ['lemonade', 'epicerie', 'restaurant', 'agency', 'illegal_market'];
 
@@ -219,70 +224,55 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
 // ── Business grid card ────────────────────────────────────────────────────────
 
 function GridCard({ business, onClick }: { business: YouBusiness; onClick: () => void }) {
-  const pinColor = getBusinessPinColor(business.typeKey);
   const BizIcon = getBizIcon(business.typeKey);
   const underConstruction = Boolean(business.underConstruction && business.constructionProject);
 
   return (
-    <button
-      type="button"
+    <Card
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className="group flex flex-col gap-0 overflow-hidden rounded-lg border border-border/60 bg-card text-left shadow-sm transition-all hover:border-border active:scale-[0.99]"
-      style={{ borderTopColor: pinColor + '60' }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      className="cursor-pointer gap-3 py-4 transition-colors hover:bg-accent"
     >
-      {underConstruction && <div className="h-1.5 w-full shrink-0" style={{ background: CONSTRUCTION_STRIPES }} />}
-      <div className="flex flex-col gap-3 p-4">
-        {/* Header */}
-        <div className="flex items-start gap-3">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-105"
-            style={{ backgroundColor: pinColor + '20', border: `1.5px solid ${pinColor}40` }}
-          >
-            <BizIcon className="h-5 w-5" style={{ color: pinColor }} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-tight text-foreground">{business.name}</p>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">{getBizLabel(business)}</p>
-            {business.isStateOwned && (
-              <span className="mt-1 inline-flex items-center rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">État</span>
-            )}
-            <p className="truncate text-xs text-muted-foreground/70">@{business.owner.username}</p>
-          </div>
-          <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-muted-foreground" />
-        </div>
-
-        {/* Color-coded pastilles */}
-        <div className="flex flex-wrap gap-1.5">
-          <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums"
-            style={{ backgroundColor: pinColor + '25', color: pinColor }}
-          >
-            {fmt(business.treasuryMoney)}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            <Users className="h-2.5 w-2.5" />{displayedMemberCount(business)}
-          </span>
+        <CardHeader className="px-4">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <BizIcon className="size-4 shrink-0" />
+            <span className="truncate">{business.name}</span>
+          </CardTitle>
+          <CardDescription className="truncate">
+            {getBizLabel(business)} · @{business.owner.username}
+          </CardDescription>
+          <CardAction>
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </CardAction>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-1.5 px-4">
+          <Badge variant="secondary" className="tabular-nums">{fmt(business.treasuryMoney)}</Badge>
+          <Badge variant="outline">
+            <Users />{displayedMemberCount(business)}
+          </Badge>
+          {business.isStateOwned && <Badge variant="outline">État</Badge>}
           {business.avgRating != null && business.ratingCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-bold text-warning">
-              <Star className="h-2.5 w-2.5 fill-warning/40" />{business.avgRating.toFixed(1)}
-            </span>
+            <Badge variant="warning">
+              <Star />{business.avgRating.toFixed(1)}
+            </Badge>
           )}
-          <span className={cn(
-            'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums',
-            business.satisfaction >= 70 ? 'bg-success/15 text-success'
-            : business.satisfaction >= 40 ? 'bg-warning/15 text-warning'
-            : 'bg-destructive/15 text-destructive',
-          )}>
+          <Badge variant={business.satisfaction >= 70 ? 'success' : business.satisfaction >= 40 ? 'warning' : 'destructive'} className="tabular-nums">
             {business.satisfaction}%
-          </span>
+          </Badge>
           {underConstruction && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning">
-              🏗 {business.constructionProject?.progress.percent ?? 0}%
-            </span>
+            <Badge variant="warning">
+              <Hammer />{business.constructionProject?.progress.percent ?? 0}%
+            </Badge>
           )}
-        </div>
-      </div>
-    </button>
+        </CardContent>
+    </Card>
   );
 }
 
@@ -529,7 +519,7 @@ function FilePlainteModal({
             {selectedPlayer ? (
               <Item variant="muted" className="gap-2">
                 <span className="flex-1 text-sm font-medium">{selectedPlayer.username}</span>
-                <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => { setDefendantId(''); setDefendantSearch(''); }}>✕</button>
+                <Button type="button" variant="ghost" size="icon-xs" aria-label="Retirer" onClick={() => { setDefendantId(''); setDefendantSearch(''); }}><X /></Button>
               </Item>
             ) : (
               <div className="space-y-2">
@@ -539,18 +529,22 @@ function FilePlainteModal({
                   placeholder="Rechercher un joueur..."
                 />
                 {defendantSearch.length > 0 && filteredPlayers.length > 0 && (
-                  <Alert className="max-h-40 overflow-y-auto"><AlertDescription>
-                    {filteredPlayers.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => { setDefendantId(p.id); setDefendantSearch(''); }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/20 first:rounded-t-lg last:rounded-b-lg"
-                      >
-                        <span>{p.username}</span>
-                      </button>
-                    ))}
-                  </AlertDescription></Alert>
+                  <Card className="max-h-40 gap-0 overflow-y-auto py-1">
+                    <CardContent className="flex flex-col px-1">
+                      {filteredPlayers.map((p) => (
+                        <Button
+                          key={p.id}
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="justify-start"
+                          onClick={() => { setDefendantId(p.id); setDefendantSearch(''); }}
+                        >
+                          {p.username}
+                        </Button>
+                      ))}
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             )}
@@ -605,7 +599,6 @@ function DetailPanel({
   const [showReviews, setShowReviews] = useState(false);
   const [showInvestments, setShowInvestments] = useState(false);
 
-  const pinColor = getBusinessPinColor(business.typeKey);
   const BizIcon = getBizIcon(business.typeKey);
   const isPlaced = business.mapX != null && business.mapY != null;
   const isOwned = business.ownerId === userId;
@@ -614,238 +607,184 @@ function DetailPanel({
   const hasPendingApplication = business.pendingInvitations.some((inv) => inv.employee.id === userId);
   const canApply = !isOwned && !isEmployee && !hasPendingApplication && business.hiring;
 
+  const serviceItem = (opts: {
+    icon: LucideIcon;
+    title: string;
+    description: string;
+    onClick: () => void;
+    disabled?: boolean;
+  }) => (
+    <Item asChild variant="outline" className={cn(opts.disabled && 'pointer-events-none opacity-50')}>
+      <button type="button" disabled={opts.disabled} onClick={opts.onClick} className="w-full text-left">
+        <ItemMedia variant="icon">
+          <opts.icon />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{opts.title}</ItemTitle>
+          <ItemDescription>{opts.description}</ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </ItemActions>
+      </button>
+    </Item>
+  );
+
   return (
     <>
-      {underConstruction && <div className="h-1.5 w-full shrink-0" style={{ background: CONSTRUCTION_STRIPES }} />}
+      <div className="flex shrink-0 flex-wrap items-start gap-4 px-4 pb-4 pt-3">
+        <Item className="min-w-0 flex-1 p-0">
+          <ItemMedia variant="icon" className="size-12">
+            <BizIcon className="size-6" />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle className="text-lg">{business.name}</ItemTitle>
+            <ItemDescription>@{business.owner.username}</ItemDescription>
+            {business.description && <p className="line-clamp-2 text-xs italic text-muted-foreground">{business.description}</p>}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <Button type="button" size="xs" variant="outline" onClick={() => setShowFinance(true)}>
+                <TrendingUp />{fmtCompact(business.treasuryMoney)}
+              </Button>
+              {business.avgRating != null && business.ratingCount > 0 && (
+                <Button type="button" size="xs" variant="outline" onClick={() => setShowReviews(true)}>
+                  <Star />{business.avgRating.toFixed(1)}
+                </Button>
+              )}
+              {onShowTeam && (
+                <Button type="button" size="xs" variant="outline" onClick={onShowTeam}>
+                  <Users />{displayedMemberCount(business)}
+                </Button>
+              )}
+              {business.isShared && onShowShareholders && (
+                <Button type="button" size="xs" variant="outline" onClick={onShowShareholders}>
+                  <Crown />{business.shareholders.length + 1}
+                </Button>
+              )}
+              {business.recentInvestments.length > 0 && (
+                <Button type="button" size="xs" variant="outline" onClick={() => setShowInvestments(true)}>
+                  <TrendingUp />{business.recentInvestments.length}
+                </Button>
+              )}
+              {underConstruction && (
+                <Badge variant="warning">
+                  <Hammer />{business.constructionProject?.progress.percent ?? 0}%
+                </Badge>
+              )}
+            </div>
+          </ItemContent>
+        </Item>
 
-      {/* Hero: icon + info left, action pills right */}
-      <div
-        className="shrink-0 flex items-start gap-4 px-4 pb-4 pt-3"
-        style={{ background: `linear-gradient(to bottom, ${pinColor}0a, transparent)` }}
-      >
-        {/* Icon */}
-        <div
-          className="mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
-          style={{ backgroundColor: pinColor + '22', border: `2px solid ${pinColor}50` }}
-        >
-          <BizIcon className="h-7 w-7" style={{ color: pinColor }} />
-        </div>
-
-        {/* Info */}
-        <div className="min-w-0 flex-1">
-          <p className="text-lg font-bold leading-tight text-foreground">{business.name}</p>
-          <p className="text-xs text-muted-foreground">@{business.owner.username}</p>
-          {business.description && (
-            <p className="mt-1.5 line-clamp-2 text-xs italic text-muted-foreground/70">{business.description}</p>
-          )}
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <button type="button" onClick={() => setShowFinance(true)}
-              className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success transition-colors hover:bg-success/25">
-              <TrendingUp className="h-2.5 w-2.5" />{fmtCompact(business.treasuryMoney)}
-            </button>
-            {business.avgRating != null && business.ratingCount > 0 && (
-              <button type="button" onClick={() => setShowReviews(true)}
-                className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-bold text-warning transition-colors hover:bg-warning/25">
-                <Star className="h-2.5 w-2.5 fill-warning/40" />{business.avgRating.toFixed(1)}
-              </button>
-            )}
-            {onShowTeam && (
-              <button type="button" onClick={onShowTeam}
-                className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-muted/25">
-                <Users className="h-2.5 w-2.5" />{displayedMemberCount(business)}
-              </button>
-            )}
-            {business.isShared && onShowShareholders && (
-              <button type="button" onClick={onShowShareholders}
-                className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning transition-colors hover:bg-warning/25">
-                <Crown className="h-2.5 w-2.5" />{business.shareholders.length + 1}
-              </button>
-            )}
-            {business.recentInvestments.length > 0 && (
-              <button type="button" onClick={() => setShowInvestments(true)}
-                className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-muted/25">
-                <TrendingUp className="h-2.5 w-2.5" />{business.recentInvestments.length}
-              </button>
-            )}
-            {underConstruction && (
-              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
-                🏗 {business.constructionProject?.progress.percent ?? 0}%
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Right: action pills */}
-        <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
           {!isOwned && business.supportEnabled && onOpenSupport && (
-            <button type="button" onClick={onOpenSupport}
-              className="flex items-center gap-1.5 rounded-lg border border-success/25 bg-success/10 px-2.5 py-1.5 text-xs font-medium text-success transition-colors hover:bg-success/20">
-              <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-              <span>Support</span>
-            </button>
+            <Button type="button" size="sm" variant="outline" onClick={onOpenSupport}>
+              <MessageSquare />Support
+            </Button>
           )}
           {canApply ? (
-            <button type="button" onClick={() => onAction(business.id, 'apply')}
-              className="flex items-center gap-1.5 rounded-lg border border-border/30 bg-muted/15 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-muted/25">
-              <UserCheck className="h-3.5 w-3.5 shrink-0" />
-              <span>Postuler</span>
-            </button>
+            <Button type="button" size="sm" variant="outline" onClick={() => onAction(business.id, 'apply')}>
+              <UserCheck />Postuler
+            </Button>
           ) : !isOwned && hasPendingApplication ? (
-            <span className="rounded-lg border border-border/20 bg-muted/5 px-2.5 py-1.5 text-xs text-muted-foreground">
-              Candidature en attente
-            </span>
+            <Badge variant="secondary">Candidature en attente</Badge>
           ) : null}
         </div>
       </div>
 
-      {/* Body */}
+      <Separator />
+
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-4 px-5 pb-6">
-
-
-          {/* Livret épargne */}
+        <div className="flex flex-col gap-4 px-5 py-4">
           {business.typeKey === 'bank' && business.livretEpargneUnlocked && (
-            <Alert variant="warning" className="flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 shrink-0" />
-              <span>Livret épargne disponible</span>
+            <Alert variant="warning">
+              <Sparkles />
+              <AlertDescription>Livret épargne disponible</AlertDescription>
             </Alert>
           )}
 
-          {/* Startup products */}
           {business.typeKey === 'startup' && business.startupProducts.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-bold text-muted-foreground">Produits</p>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">Produits</p>
               {business.startupProducts.map((product) => (
-                <Card key={product.id} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-xs font-medium">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">Niv. {product.deployedLevel}/10</p>
-                    </div>
-                    <p className="text-xs font-semibold text-primary">+{product.currentRevenue.toLocaleString('fr-FR')} €</p>
-                  </div>
-                  {(product.isResearchActive || product.canDeploy) && (
-                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted/40">
-                      <div className="h-full rounded-full bg-muted" style={{ width: `${product.progressPercent}%` }} />
-                    </div>
-                  )}
-                </CardContent></Card>
+                <Item key={product.id} variant="outline" size="sm">
+                  <ItemContent>
+                    <ItemTitle>{product.name}</ItemTitle>
+                    <ItemDescription>Niv. {product.deployedLevel}/10</ItemDescription>
+                    {(product.isResearchActive || product.canDeploy) && <Progress value={product.progressPercent} />}
+                  </ItemContent>
+                  <ItemActions>
+                    <span className="text-xs font-semibold">+{product.currentRevenue.toLocaleString('fr-FR')} €</span>
+                  </ItemActions>
+                </Item>
               ))}
             </div>
           )}
 
-          {/* Primary actions */}
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-muted-foreground">Services disponibles</p>
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-medium text-muted-foreground">Services disponibles</p>
 
             {(() => {
-              if (business.typeKey === 'bank') return (
-                <button type="button" onClick={() => onAction(business.id, 'bank')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-success/20 bg-success/10 px-4 py-4 text-left text-success transition-all hover:opacity-90 active:scale-[0.99]">
-                  <Landmark className="h-5 w-5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">Gérer mes comptes</p>
-                    <p className="text-xs opacity-70">Taux d'emprunt : {business.loanInterestRate ?? 4}%</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-                </button>
-              );
-              if (business.typeKey === 'transfer') return (
-                <button type="button" onClick={() => onAction(business.id, 'transfer')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
-                  <ArrowLeftRight className="h-5 w-5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">Envoyer de l'argent</p>
-                    <p className="text-xs opacity-70">Frais de service : {business.transferFeeRate ?? 2}%</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-                </button>
-              );
-              if (business.typeKey === 'formation') return (
-                <button type="button"
-                  disabled={(business.formationProducts?.length ?? 0) === 0}
-                  onClick={() => onAction(business.id, 'formation')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-warning/20 bg-warning/10 px-4 py-4 text-left text-warning transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
-                  <GraduationCap className="h-5 w-5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">Accéder aux formations</p>
-                    <p className="text-xs opacity-70">{business.formationProducts?.length ?? 0} formation(s) disponible(s)</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-                </button>
-              );
-              if (PURCHASE_TYPES.includes(business.typeKey)) return (
-                <button type="button"
-                  disabled={isOwned}
-                  onClick={() => { if (!isOwned) onAction(business.id, 'purchase'); }}
-                  className="flex w-full items-center gap-3 rounded-lg border border-warning/20 bg-warning/10 px-4 py-4 text-left text-warning transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
-                  <ShoppingCart className="h-5 w-5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{isOwned ? 'Achat indisponible' : 'Acheter'}</p>
-                    <p className="text-xs opacity-70">{isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles'}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-                </button>
-              );
-              if (business.typeKey === 'supreme_court') return (
-                <button type="button" onClick={() => onAction(business.id, 'plainte')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
-                  <Scale className="h-5 w-5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">Déposer une plainte</p>
-                    <p className="text-xs opacity-70">Soumettre une plainte formelle aux juges</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-                </button>
-              );
-              if (!business.isStateOwned) return (
-                <button type="button" onClick={() => onAction(business.id, 'invest')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
-                  <TrendingUp className="h-5 w-5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">Investir</p>
-                    <p className="text-xs opacity-70">Le rendement dépend du niveau de risque choisi.</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-                </button>
-              );
+              if (business.typeKey === 'bank') return serviceItem({
+                icon: Landmark, title: 'Gérer mes comptes',
+                description: `Taux d'emprunt : ${business.loanInterestRate ?? 4}%`,
+                onClick: () => onAction(business.id, 'bank'),
+              });
+              if (business.typeKey === 'transfer') return serviceItem({
+                icon: ArrowLeftRight, title: "Envoyer de l'argent",
+                description: `Frais de service : ${business.transferFeeRate ?? 2}%`,
+                onClick: () => onAction(business.id, 'transfer'),
+              });
+              if (business.typeKey === 'formation') return serviceItem({
+                icon: GraduationCap, title: 'Accéder aux formations',
+                description: `${business.formationProducts?.length ?? 0} formation(s) disponible(s)`,
+                disabled: (business.formationProducts?.length ?? 0) === 0,
+                onClick: () => onAction(business.id, 'formation'),
+              });
+              if (PURCHASE_TYPES.includes(business.typeKey)) return serviceItem({
+                icon: ShoppingCart, title: isOwned ? 'Achat indisponible' : 'Acheter',
+                description: isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles',
+                disabled: isOwned,
+                onClick: () => { if (!isOwned) onAction(business.id, 'purchase'); },
+              });
+              if (business.typeKey === 'supreme_court') return serviceItem({
+                icon: Scale, title: 'Déposer une plainte',
+                description: 'Soumettre une plainte formelle aux juges',
+                onClick: () => onAction(business.id, 'plainte'),
+              });
+              if (!business.isStateOwned) return serviceItem({
+                icon: TrendingUp, title: 'Investir',
+                description: 'Le rendement dépend du niveau de risque choisi.',
+                onClick: () => onAction(business.id, 'invest'),
+              });
               return null;
             })()}
 
-            {business.typeKey === 'bank' && (
-              <button type="button" onClick={() => onAction(business.id, 'loan')}
-                className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
-                <HandCoins className="h-5 w-5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">Prendre un prêt</p>
-                  <p className="text-xs opacity-70">Emprunt avec remboursement mensuel</p>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-              </button>
-            )}
+            {business.typeKey === 'bank' && serviceItem({
+              icon: HandCoins, title: 'Prendre un prêt',
+              description: 'Emprunt avec remboursement mensuel',
+              onClick: () => onAction(business.id, 'loan'),
+            })}
           </div>
 
-          {/* Always-available actions — subdued, at the bottom */}
           {!business.isStateOwned && !isOwned && (
-            <div className="space-y-1.5 border-t border-border/20 pt-3">
-              <p className="text-xs font-medium text-muted-foreground/50">Autres options</p>
-              <button type="button" onClick={() => onAction(business.id, 'shareholder')}
-                className="flex w-full items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-3 py-2 text-left text-muted-foreground transition-all hover:bg-muted/15 hover:text-foreground">
-                <TrendingUp className="h-3.5 w-3.5 shrink-0" />
-                <span className="text-xs">{business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}</span>
-              </button>
-              <button type="button" onClick={() => onAction(business.id, 'buyout')}
-                className="flex w-full items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-3 py-2 text-left text-muted-foreground transition-all hover:bg-muted/15 hover:text-destructive">
-                <HandCoins className="h-3.5 w-3.5 shrink-0" />
-                <span className="text-xs">Faire une offre de rachat</span>
-              </button>
-            </div>
+            <>
+              <Separator />
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-medium text-muted-foreground">Autres options</p>
+                <Button type="button" variant="outline" className="justify-start" onClick={() => onAction(business.id, 'shareholder')}>
+                  <TrendingUp />
+                  {business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}
+                </Button>
+                <Button type="button" variant="outline" className="justify-start" onClick={() => onAction(business.id, 'buyout')}>
+                  <HandCoins />
+                  Faire une offre de rachat
+                </Button>
+              </div>
+            </>
           )}
 
-          {/* Map link */}
           {isPlaced && onSelectOnMap && (
-            <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => onSelectOnMap(business)}>
-              <MapPin className="mr-1.5 h-3 w-3" />Voir sur la carte
+            <Button size="sm" variant="outline" className="w-full" onClick={() => onSelectOnMap(business)}>
+              <MapPin />Voir sur la carte
             </Button>
           )}
         </div>
@@ -947,7 +886,6 @@ export function BusinessBrowserModal({
         key,
         label: TYPE_LABELS_FR[key] ?? key,
         count,
-        color: getBusinessPinColor(key),
         Icon: getBizIcon(key),
       }));
   }, [businesses]);
@@ -971,103 +909,76 @@ export function BusinessBrowserModal({
       <AppModal open={open} onClose={handleClose} tone="cyan" size="xl" description="Parcourir les entreprises du serveur.">
         <AppModal.Header icon={<Building2 />} tone="cyan" title="Entreprises" subtitle={`${visibleBusinesses.length} résultat${visibleBusinesses.length !== 1 ? 's' : ''}`} />
 
-        {/* Sidebar layout — matches StableModal pattern */}
-        <div className="grid h-[530px]" style={{ gridTemplateColumns: '190px 1fr', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-
-          {/* ── Left sidebar ── */}
-          <div className="flex flex-col overflow-hidden" style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-            {/* Search */}
+        <div className="grid h-[530px] border-t" style={{ gridTemplateColumns: '200px 1fr' }}>
+          <div className="flex flex-col overflow-hidden border-r">
             <div className="shrink-0 p-2">
-              <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <Search className="h-3 w-3 shrink-0 text-muted-foreground/50" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher…"
-                  className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground/40 outline-none"
-                />
+              <InputGroup>
+                <InputGroupAddon>
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher…" />
                 {search && (
-                  <button type="button" onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground">
-                    <X className="h-2.5 w-2.5" />
-                  </button>
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton size="icon-xs" aria-label="Effacer" onClick={() => setSearch('')}>
+                      <X />
+                    </InputGroupButton>
+                  </InputGroupAddon>
                 )}
-              </div>
+              </InputGroup>
             </div>
 
-            {/* Category buttons */}
-            <div className="flex-1 space-y-px overflow-y-auto p-2 pt-0">
-              {/* All */}
-              <button
-                type="button"
-                onClick={() => setSidebarType(null)}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors',
-                  sidebarType === null
-                    ? 'text-white'
-                    : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
-                )}
-                style={sidebarType === null ? { background: 'rgba(34,211,238,0.55)' } : undefined}
-              >
-                <Building2 className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">Toutes</span>
-                <span className="text-xs tabular-nums opacity-60">{businesses.length}</span>
-              </button>
-
-              {sidebarCategories.map((cat) => (
-                <button
-                  key={cat.key}
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="flex flex-col gap-0.5 p-2 pt-0">
+                <Button
                   type="button"
-                  onClick={() => setSidebarType(sidebarType === cat.key ? null : cat.key)}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors',
-                    sidebarType === cat.key
-                      ? 'text-white'
-                      : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
-                  )}
-                  style={sidebarType === cat.key ? { background: cat.color } : undefined}
+                  variant={sidebarType === null ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => setSidebarType(null)}
                 >
-                  <cat.Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="flex-1 truncate">{cat.label}</span>
-                  <span className="text-xs tabular-nums opacity-60">{cat.count}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Sort pills */}
-            <div className="shrink-0 space-y-1.5 p-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-xs font-semibold text-muted-foreground/50">Tri</p>
-              <div className="flex flex-wrap gap-1">
-                {SORT_OPTIONS.map(({ key, label, Icon }) => (
-                  <button
-                    key={key}
+                  <Building2 />
+                  <span className="flex-1 truncate text-left">Toutes</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">{businesses.length}</span>
+                </Button>
+                {sidebarCategories.map((cat) => (
+                  <Button
+                    key={cat.key}
                     type="button"
-                    onClick={() => setSortMode(key)}
-                    className={cn(
-                      'flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-all',
-                      sortMode === key
-                        ? 'bg-muted/15 text-primary'
-                        : 'text-muted-foreground/60 hover:text-muted-foreground',
-                    )}
-                    style={sortMode === key ? { border: '1px solid rgba(34,211,238,0.25)' } : { border: '1px solid rgba(255,255,255,0.06)' }}
+                    variant={sidebarType === cat.key ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="justify-start"
+                    onClick={() => setSidebarType(sidebarType === cat.key ? null : cat.key)}
                   >
-                    <Icon className="h-2.5 w-2.5" />
-                    {label}
-                  </button>
+                    <cat.Icon />
+                    <span className="flex-1 truncate text-left">{cat.label}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{cat.count}</span>
+                  </Button>
                 ))}
               </div>
+            </ScrollArea>
+
+            <div className="flex shrink-0 flex-col gap-1.5 border-t p-2">
+              <p className="text-xs font-medium text-muted-foreground">Tri</p>
+              <Select value={sortMode} onValueChange={(value) => setSortMode(value as SortMode)}>
+                <SelectTrigger size="sm" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map(({ key, label }) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* ── Right content area ── */}
           <div className="flex flex-col overflow-hidden">
             {detailBusiness ? (
               <>
-                {/* Back bar */}
-                <div className="flex shrink-0 items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  <button type="button" onClick={() => setDetailBusinessId(null)}
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </button>
+                <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2">
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label="Retour" onClick={() => setDetailBusinessId(null)}>
+                    <ChevronLeft />
+                  </Button>
                   <p className="truncate text-xs text-muted-foreground">{getBizLabel(detailBusiness)}</p>
                 </div>
                 <ScrollArea className="min-h-0 flex-1">
@@ -1096,14 +1007,16 @@ export function BusinessBrowserModal({
               </>
             ) : (
               <ScrollArea className="min-h-0 flex-1">
-                <div className="space-y-3 p-3">
+                <div className="p-3">
                   {visibleBusinesses.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <Search className="mb-3 h-8 w-8 text-muted-foreground/20" />
-                      <p className="text-xs text-muted-foreground">Aucune entreprise ne correspond.</p>
-                    </div>
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon"><Search /></EmptyMedia>
+                        <EmptyDescription>Aucune entreprise ne correspond.</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   ) : (
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {visibleBusinesses.map((b) => (
                         <GridCard key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
                       ))}

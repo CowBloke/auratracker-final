@@ -383,7 +383,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                 )}
 
                 {surveyTargetSearch.trim() && (
-                  <Alert className="max-h-40 overflow-y-auto"><AlertDescription>
+                  <Card className="max-h-40 gap-0 overflow-y-auto py-0 shadow-none"><CardContent className="p-0">
                     {filteredSurveyUsers.length === 0 ? (
                       <p className="px-3 py-2 text-sm text-muted-foreground">Aucun utilisateur trouvé.</p>
                     ) : (
@@ -398,7 +398,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                         </button>
                       ))
                     )}
-                  </AlertDescription></Alert>
+                  </CardContent></Card>
                 )}
               </CardContent></Card>
             )}
@@ -584,13 +584,13 @@ export function CommunicationTab(props: CommunicationTabProps) {
                     </span>
                   </div>
                   {report.reason && <p className="text-sm text-foreground">{report.reason}</p>}
-                  <Alert className="max-h-64 space-y-2 overflow-y-auto"><AlertDescription>
+                  <Card className="max-h-64 gap-0 overflow-y-auto py-0 shadow-none"><CardContent className="flex flex-col gap-2 p-2">
                     {report.snapshot.map((message: any) => (
                       <div key={message.id} className="rounded-md bg-background/80 px-2 py-1.5 text-xs whitespace-pre-wrap break-words">
                         <span className="font-semibold">{message.sender?.username ?? 'Systeme'}:</span> {message.body}
                       </div>
                     ))}
-                  </AlertDescription></Alert>
+                  </CardContent></Card>
                   {report.status === 'PENDING' && (
                     <div className="flex gap-2">
                       <Button size="sm" variant="destructive" disabled={reviewingSupportReportId === report.id} onClick={() => handleReviewSupportReport(report.id, 'ACTION_TAKEN')}>
