@@ -12,7 +12,6 @@ import { gamesApi, type DailyGameRewardState } from '@/services/api';
 import { cn } from '@/lib/utils';
 
 interface GameTopBarProps {
-  title: string;
   score: number;
   highScore: number;
   scoreSuffix?: string;
@@ -29,7 +28,6 @@ interface GameTopBarProps {
 }
 
 export function GameTopBar({
-  title,
   score,
   highScore,
   scoreSuffix,
@@ -81,7 +79,6 @@ export function GameTopBar({
     <Card className={cn('py-3', className)}>
       <CardContent className="flex flex-wrap items-center justify-between gap-4 px-4">
         <div className="flex min-w-0 items-center gap-2">
-          <h1 className="truncate text-base font-semibold">{title}</h1>
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>

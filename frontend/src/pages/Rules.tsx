@@ -77,7 +77,7 @@ const sanctions = [
 export default function Rules() {
   return (
     <PageShell>
-      <PageHeader title={t('rules_principles')} description={t('rules_regulation')} />
+      <PageHeader />
 
       <Card>
         <CardContent>

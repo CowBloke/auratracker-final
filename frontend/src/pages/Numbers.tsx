@@ -148,7 +148,7 @@ export default function Numbers() {
 
   return (
     <PageShell>
-      <PageHeader title="Nombres" description="Les chiffres clés de la communauté, de l'économie et des jeux." />
+      <PageHeader />
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 8 }, (_, index) => (

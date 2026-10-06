@@ -828,7 +828,6 @@ export default function FruitNinja() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Fruit Ninja"
         score={score}
         highScore={highScore}
         isNewHighScore={isNewHighScore}

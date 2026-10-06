@@ -822,7 +822,7 @@ export default function Suggestions() {
   if (loading) {
     return (
       <PageShell>
-        <PageHeader title="Suggestions" description="Proposez des idées et votez pour celles de la communauté." />
+        <PageHeader />
         <div className="flex flex-col gap-6">
           {Array.from({ length: 3 }, (_, index) => (
             <Skeleton key={index} className="h-56 w-full" />
@@ -839,8 +839,6 @@ export default function Suggestions() {
     <>
       <PageShell>
         <PageHeader
-          title="Suggestions"
-          description="Proposez des idées et votez pour celles de la communauté."
           actions={
             <Button onClick={() => setDialogOpen(true)}>
               <Plus />

@@ -1379,7 +1379,6 @@ export default function Racer() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Racer"
         score={allTimeBestLapTimeMs ?? 0}
         highScore={allTimeBestLapTimeMs ?? 0}
         isNewHighScore={isNewAllTimeBest}

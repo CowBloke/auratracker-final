@@ -603,8 +603,6 @@ export default function Uno() {
     return (
       <PageShell>
         <PageHeader
-          title="UNO"
-          description="Le classique jeu de cartes en 2-4 joueurs."
           actions={
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -649,7 +647,6 @@ export default function Uno() {
     return (
       <PageShell>
         <PageHeader
-          title="UNO"
           description={`Groupe : ${currentParty.name || 'Sans nom'}`}
           actions={
             <Button asChild variant="outline" size="sm">
@@ -709,7 +706,6 @@ export default function Uno() {
       `}</style>
 
       <PageHeader
-        title="UNO"
         description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={
           <>

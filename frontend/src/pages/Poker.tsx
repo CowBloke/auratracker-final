@@ -626,8 +626,6 @@ export default function Poker() {
     return (
       <PageShell>
         <PageHeader
-          title="Poker"
-          description="Hold'em minimaliste en party, blindes fixes et rounds rapides."
           actions={(
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -663,9 +661,8 @@ export default function Poker() {
   const lobby = !pokerGame;
 
   return (
-    <PageShell className="space-y-6">
+    <PageShell>
       <PageHeader
-        title="Poker"
         description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>

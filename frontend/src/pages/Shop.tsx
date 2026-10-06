@@ -604,7 +604,7 @@ export default function Shop() {
 
   return (
     <PageShell>
-      <PageHeader title="Boutique" description="Cosmétiques, objets et améliorations à acheter avec votre argent." />
+      <PageHeader />
 
       <Alert>
         <ShoppingBasket />

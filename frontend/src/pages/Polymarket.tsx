@@ -9,6 +9,8 @@ import {
   uploadUserImage,
 } from '../services/api';
 import { AdCard } from '@/components/ads/AdCard';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 
 interface PolymarketOption {
@@ -733,15 +735,32 @@ export default function Polymarket() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <PageShell>
+        <PageHeader />
+        <ListSkeleton />
+      </PageShell>
     );
   }
 
   return (
     <>
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+      <PageShell>
+        <PageHeader
+          actions={
+            <>
+              {user?.isAdmin && activeTab === 'events' && (
+                <Button variant="outline" onClick={() => setCreateEventDialogOpen(true)}>
+                  <Plus />
+                  Créer un événement
+                </Button>
+              )}
+              <Button onClick={() => setSuggestionDialogOpen(true)}>
+                <Plus />
+                Suggérer
+              </Button>
+            </>
+          }
+        />
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
           <div className="flex items-center justify-between gap-3">
             <TabsList className="h-auto flex-wrap">
@@ -755,7 +774,7 @@ export default function Polymarket() {
             <div className="flex items-center gap-2">
               {activeTab === 'events' && openEvents.length > 1 && (
                 <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as typeof sortOrder)}>
-                  <SelectTrigger className="h-11 w-44">
+                  <SelectTrigger className="w-44">
                     <SelectValue placeholder="Trier" />
                   </SelectTrigger>
                   <SelectContent>
@@ -768,7 +787,7 @@ export default function Polymarket() {
               )}
               {activeTab === 'history' && betHistoryTab === 'my' && bets.length > 1 && (
                 <Select value={betHistorySortOrder} onValueChange={(v) => setBetHistorySortOrder(v as typeof betHistorySortOrder)}>
-                  <SelectTrigger className="h-11 w-44">
+                  <SelectTrigger className="w-44">
                     <SelectValue placeholder="Trier mes paris" />
                   </SelectTrigger>
                   <SelectContent>
@@ -787,16 +806,6 @@ export default function Polymarket() {
                     <LayoutGrid />
                   </ToggleGroupItem>
                 </ToggleGroup>
-              )}
-              <Button className="h-11 px-5" onClick={() => setSuggestionDialogOpen(true)}>
-                <Plus className="h-5 w-5 mr-2" />
-                Suggérer
-              </Button>
-              {user?.isAdmin && activeTab === 'events' && (
-                <Button className="h-11 px-5" variant="outline" onClick={() => setCreateEventDialogOpen(true)}>
-                  <Plus className="h-5 w-5 mr-2" />
-                  Créer un événement
-                </Button>
               )}
             </div>
           </div>
@@ -1513,7 +1522,7 @@ export default function Polymarket() {
             </TabsContent>
           )}
         </Tabs>
-      </div>
+      </PageShell>
 
       {/* ── Suggestion Dialog ── */}
       <Dialog open={suggestionDialogOpen} onOpenChange={setSuggestionDialogOpen}>

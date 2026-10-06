@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CandlestickChart, ShieldCheck, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -89,7 +90,8 @@ export default function MarketRoom() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <PageShell>
+      <PageHeader />
       <section className="grid gap-4 lg:grid-cols-3">
         {loading
           ? Array.from({ length: 3 }).map((_, index) => (
@@ -146,6 +148,6 @@ export default function MarketRoom() {
               );
             })}
       </section>
-    </div>
+    </PageShell>
   );
 }

@@ -15,7 +15,7 @@ import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Gamepad2, Coins, Users, Shield, Gavel, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2, Clock } from 'lucide-react';
 
 import { cn, humanizeUiLabel } from '@/lib/utils';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import {
   DEFAULT_LANDING_PAGE,
   DEFAULT_LANDING_PAGE_KEY,
@@ -4770,6 +4770,7 @@ export default function Admin() {
   return (
     <>
     <PageShell>
+      <PageHeader />
       <div className="space-y-6">
         {/* Tabs */}
         <Tabs

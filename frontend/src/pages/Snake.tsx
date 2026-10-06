@@ -529,7 +529,6 @@ export default function Snake() {
       isFullscreen={isFullscreen}
       topBar={
         <GameTopBar
-          title="Snake"
           score={game.score}
           highScore={highScore}
           isNewHighScore={isNewHighScore}

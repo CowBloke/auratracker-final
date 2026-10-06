@@ -361,7 +361,7 @@ export default function Party() {
     <>
       <PageShell>
         <PageHeader
-          title={currentParty ? currentParty.name || 'Votre groupe' : 'Groupes'}
+          title={currentParty ? currentParty.name || 'Ton groupe' : undefined}
           description={
             currentParty
               ? `${currentParty.isPublic ? 'Publique' : 'Privée'} · ${partyMembers.length}/${currentParty.maxSize} membres`

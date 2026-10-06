@@ -358,7 +358,6 @@ export default function BlockBlast() {
 
   return (
     <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="BlockBlast"
         score={game.score}
         highScore={highScore}
         isNewHighScore={isNewHighScore}

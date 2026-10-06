@@ -1086,7 +1086,6 @@ export default function KnifeHit() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-          title="Knife Hit"
           score={score}
           highScore={highScore}
           isNewHighScore={isNewHighScore}

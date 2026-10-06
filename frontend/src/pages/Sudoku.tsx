@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
-import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -551,10 +550,7 @@ export default function Sudoku() {
   );
 
 return (
-    <PageShell size="wide">
-
       <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-          title="Sudoku"
           score={completed ? currentScore : 0}
           highScore={highScore}
           isNewHighScore={isNewHighScore}
@@ -688,6 +684,5 @@ return (
           </div>
         )}
       </GameShell>
-    </PageShell>
   );
 }

@@ -667,7 +667,6 @@ export default function StackTower() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-            title="Stack Tower"
             score={score}
             highScore={highScore}
             isNewHighScore={isNewHighScore}

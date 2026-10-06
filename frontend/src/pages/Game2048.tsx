@@ -568,7 +568,6 @@ export default function Game2048() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} topBar={<GameTopBar
-        title="2048"
         score={score}
         highScore={highScore}
         isNewHighScore={isNewHighScore}

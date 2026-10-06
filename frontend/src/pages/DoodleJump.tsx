@@ -1633,7 +1633,6 @@ export default function DoodleJump() {
 
 return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Doodle Jump"
         score={score}
         highScore={highScore}
         isNewHighScore={isNewHighScore}

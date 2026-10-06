@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode, Ref } from 'react';
+import { PageHeader } from '@/components/layout/PageShell';
 import { cn } from '@/lib/utils';
 
 interface GameShellProps extends Omit<ComponentProps<'div'>, 'ref'> {
@@ -18,12 +19,13 @@ export function GameShell({ containerRef, isFullscreen = false, topBar, aside, c
     <div
       ref={containerRef}
       className={cn(
-        'mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 md:p-6',
+        'mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-6',
         isFullscreen && 'min-h-screen max-w-none items-center bg-background',
         className
       )}
       {...props}
     >
+      {isFullscreen ? null : <PageHeader />}
       {topBar}
       <div className={cn('grid w-full items-start gap-6', hasAside && 'lg:grid-cols-[minmax(0,1fr)_20rem]')}>
         <div className="flex min-w-0 flex-col items-center">{children}</div>

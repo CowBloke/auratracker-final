@@ -556,7 +556,6 @@ export default function GoyaveEmpire() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Goyave Empire"
         score={save.guavas}
         scoreSuffix=" 🍈"
         highScore={save.cashOutScore}

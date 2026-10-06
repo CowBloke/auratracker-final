@@ -12,7 +12,7 @@ import { useDuelSocket } from '../contexts/DuelSocketContext';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { SpectateEffectBar, type SpectateFloatingMessage } from '@/components/spectate/SpectateEffectBar';
@@ -686,13 +686,17 @@ export default function Echecs() {
   if (!currentParty && !isSpectating && !routeSpectatePartyId && !gameState) {
     return (
       <PageShell>
-        <div className="flex items-center gap-2">
+        <PageHeader
+          actions={
+            <>
           <Button asChild variant="outline" size="sm">
             <Link to="/games" className="inline-flex items-center gap-1.5">
               <ArrowLeft className="h-4 w-4" />Jeux
             </Link>
           </Button>
-        </div>
+            </>
+          }
+        />
         <Card>
           <CardContent className="space-y-4 py-10 px-6 text-center">
             <p className="text-sm text-muted-foreground">Joue aux échecs en 1v1 contre un autre joueur</p>
@@ -751,7 +755,9 @@ export default function Echecs() {
   if ((isSpectating || routeSpectatePartyId) && !gameState) {
     return (
       <PageShell>
-        <div className="flex items-center gap-2">
+        <PageHeader
+          actions={
+            <>
           <Button asChild variant="outline" size="sm">
             <Link to="/games" className="inline-flex items-center gap-1.5">
               <ArrowLeft className="h-4 w-4" />Jeux
@@ -760,7 +766,9 @@ export default function Echecs() {
           <Button variant="outline" size="sm" onClick={handleLeaveSpectate}>
             <EyeOff className="h-4 w-4 mr-1" />Quitter spectate
           </Button>
-        </div>
+            </>
+          }
+        />
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             En attente de l'état de la partie...
@@ -774,13 +782,17 @@ export default function Echecs() {
   if (!gameState) {
     return (
       <PageShell>
-        <div className="flex items-center gap-2">
+        <PageHeader
+          actions={
+            <>
           <Button asChild variant="outline" size="sm">
             <Link to="/games" className="inline-flex items-center gap-1.5">
               <ArrowLeft className="h-4 w-4" />Jeux
             </Link>
           </Button>
-        </div>
+            </>
+          }
+        />
         <DuelLobbyPanel
           members={partyMembers}
           currentUserId={user?.id}
@@ -797,34 +809,35 @@ export default function Echecs() {
 
   // ── Active game ───────────────────────────────────────────────────────────
   return (
-    <PageShell size="wide">
+    <PageShell>
+      <PageHeader
+        description={statusText || undefined}
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-1.5">
+                <ArrowLeft className="h-4 w-4" />Jeux
+              </Link>
+            </Button>
+            {gameState.phase === 'playing' && (
+              <Button variant="outline" size="sm" onClick={handleResign}>
+                <LogOut className="h-4 w-4 mr-1" />Abandonner
+              </Button>
+            )}
+            {isSpectating && (
+              <Button variant="outline" size="sm" onClick={handleLeaveSpectate}>
+                <EyeOff className="h-4 w-4 mr-1" />Quitter spectate
+              </Button>
+            )}
+            {activePartyId && (
+              <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                <Eye className="h-3.5 w-3.5" />{spectatorCount} spectateur{spectatorCount !== 1 ? 's' : ''}
+              </span>
+            )}
+          </>
+        }
+      />
       <div className="flex flex-col gap-4">
-        {/* Toolbar */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/games" className="inline-flex items-center gap-1.5">
-              <ArrowLeft className="h-4 w-4" />Jeux
-            </Link>
-          </Button>
-          {gameState.phase === 'playing' && (
-            <Button variant="outline" size="sm" onClick={handleResign}>
-              <LogOut className="h-4 w-4 mr-1" />Abandonner
-            </Button>
-          )}
-          {isSpectating && (
-            <Button variant="outline" size="sm" onClick={handleLeaveSpectate}>
-              <EyeOff className="h-4 w-4 mr-1" />Quitter spectate
-            </Button>
-          )}
-          {statusText && (
-            <span className="text-sm text-muted-foreground ml-1">{statusText}</span>
-          )}
-          {activePartyId && (
-            <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <Eye className="h-3.5 w-3.5" />{spectatorCount} spectateur{spectatorCount !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
 
         {/* Board + sidebar */}
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">

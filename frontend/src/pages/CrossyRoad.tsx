@@ -255,7 +255,6 @@ export default function CrossyRoad() {
 
   return (
     <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Crossy Road"
         score={highScore}
         highScore={highScore}
         isNewHighScore={false}

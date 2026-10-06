@@ -197,8 +197,6 @@ export default function PixelBoard() {
   return (
     <PageShell>
       <PageHeader
-        title="Pixel Board"
-        description="100x100 pixels, un placement par cooldown, score clans en fin d'event."
         actions={(
           <>
             <Button variant="outline" size="sm" onClick={() => void loadState()}>

@@ -308,7 +308,6 @@ export default function InboxPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Inbox"
         description={description}
         actions={
           !isArchiveView ? (

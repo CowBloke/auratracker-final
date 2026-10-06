@@ -28,7 +28,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AppModal } from '@/components/ui/app-modal';
 import { BusinessSelectionModal } from '@/components/business/BusinessSelectionModal';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   horseRaceApi,
@@ -3274,7 +3274,7 @@ function PodiumOverlay({
           Résultat de la course #{cycleIndex}
         </p>
         <h2 className="mt-1 text-[26px] font-extrabold leading-tight">
-          {isWin ? '🎉 Tu as gagné !' : hasBets ? 'Pas cette fois.' : 'Course terminée'}
+          {isWin ? 'Tu as gagné !' : hasBets ? 'Pas cette fois.' : 'Course terminée'}
         </h2>
 
         {/* Podium */}
@@ -3775,7 +3775,8 @@ export default function HorseRace() {
   }, [state]);
 
   return (
-    <PageShell size="full">
+    <PageShell>
+      <PageHeader />
       <style>{`
         @keyframes hr-marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
 
@@ -3879,12 +3880,11 @@ export default function HorseRace() {
             <header className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.07] bg-black/55 px-3 py-2 shadow-lg backdrop-blur-xl">
               {/* Left: identity */}
               <div className="flex items-center gap-2.5 shrink-0">
-                <span className="text-[22px] leading-none select-none">🏇</span>
                 <div>
-                  <h1 className="text-[13px] font-bold leading-tight text-white tracking-tight">
+                  <h2 className="text-[13px] font-bold leading-tight text-white tracking-tight">
                     Hippodrome de Longchamp
                     <span className="ml-1.5 font-mono text-[10.5px] font-normal text-white/35">#{cycleIndex}</span>
-                  </h1>
+                  </h2>
                   <p className={cn('text-[10px] font-medium leading-none mt-0.5', condition.color)}>
                     {condition.emoji} {condition.label} · Prix de l&apos;Arc
                   </p>

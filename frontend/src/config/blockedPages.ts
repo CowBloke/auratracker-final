@@ -62,7 +62,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-hextris', path: '/games/hextris', label: 'Hextris', category: 'Jeux', description: 'Puzzle hexagonal — faites tomber les blocs pour former des lignes.' },
   { key: 'game-dots-and-boxes', path: '/games/dotsandboxes', label: 'Dots and Boxes', category: 'Jeux', description: 'Jeu de points et boîtes — reliez les points pour compléter des carrés.' },
   { key: 'game-horse-race', path: '/games/horse-race', label: 'Course de chevaux', category: 'Jeux', description: 'Pariez sur des chevaux et regardez la course en temps réel.' },
-  { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté', description: 'Classements généraux des joueurs par aura et par jeu.' },
+  { key: 'leaderboards', path: '/leaderboards', label: 'Classement', category: 'Communauté', description: 'Classements généraux des joueurs par aura et par jeu.' },
   { key: 'leaderboards-numbers', path: '/leaderboards/nombres', label: 'Classement Nombres', category: 'Communauté', description: 'Classement spécial basé sur les scores de la section Nombres.' },
   { key: 'party', path: '/party', label: 'Groupe', category: 'Communauté', description: 'Salons de jeu en groupe — créez ou rejoignez un groupe.' },
   { key: 'clans', path: '/clans', label: 'Clans', category: 'Communauté', description: 'Système de clans — rejoignez ou créez votre clan.' },

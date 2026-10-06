@@ -129,8 +129,6 @@ export default function BombParty() {
     return (
       <PageShell>
         <PageHeader
-          title="Bombe de mots"
-          description="Trouve des mots contenant les lettres avant que la bombe explose."
           actions={(
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -162,7 +160,6 @@ export default function BombParty() {
     return (
       <PageShell>
         <PageHeader
-          title="Bombe de mots"
           description={`Groupe : ${currentParty.name || 'Sans nom'}`}
           actions={(
             <Button asChild variant="outline" size="sm">
@@ -312,7 +309,6 @@ export default function BombParty() {
   return (
     <PageShell>
       <PageHeader
-        title="Bombe de mots"
         description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>

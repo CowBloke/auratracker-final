@@ -372,8 +372,6 @@ export default function BatailleNavale() {
     return (
       <PageShell>
         <PageHeader
-          title="Bataille Navale"
-          description="Place tes bateaux et coule ceux de ton adversaire."
           actions={(
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -420,7 +418,6 @@ export default function BatailleNavale() {
     return (
       <PageShell>
         <PageHeader
-          title="Bataille Navale"
           description={`Groupe : ${currentParty.name || 'Sans nom'}`}
           actions={(
             <Button asChild variant="outline" size="sm">
@@ -449,7 +446,6 @@ export default function BatailleNavale() {
   return (
     <PageShell>
       <PageHeader
-        title="Bataille Navale"
         description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>

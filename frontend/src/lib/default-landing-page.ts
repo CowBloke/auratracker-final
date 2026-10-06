@@ -9,7 +9,7 @@ export const DEFAULT_LANDING_PAGE_OPTIONS = [
   { value: '/party', label: 'Groupe' },
   { value: '/clans', label: 'Clans' },
   { value: '/polymarket', label: 'Polymarket' },
-  { value: '/leaderboards', label: 'Classements' },
+  { value: '/leaderboards', label: 'Classement' },
   { value: '/inbox', label: 'Boîte de réception' },
   { value: '/quests', label: 'Quêtes' },
   { value: '/support', label: 'Support' },

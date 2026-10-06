@@ -764,7 +764,7 @@ export default function Settings() {
 
   return (
     <PageShell>
-      <PageHeader title="Réglages" description="Apparence, sons, notifications, compte, parrainage et raccourcis." />
+      <PageHeader />
 
       <Tabs defaultValue="apparence" className="gap-6">
         <TabsList className="h-auto flex-wrap justify-start">

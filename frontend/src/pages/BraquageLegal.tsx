@@ -229,11 +229,9 @@ export default function BraquageLegal() {
         </div>
       )}
 
-      <PageShell size="wide">
+      <PageShell>
         <div className="space-y-6">
           <PageHeader
-            title="Loto"
-            description="Achetez des tickets par tier, alimentez le pool, puis laissez le tirage décider du gagnant et du propriétaire de la session."
           />
 
           <Card className="overflow-hidden border-border/60 ">

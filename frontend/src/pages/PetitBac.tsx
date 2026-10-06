@@ -140,8 +140,6 @@ export default function PetitBac() {
     return (
       <PageShell>
         <PageHeader
-          title="Petit Bac"
-          description="Remplis les catégories avec la bonne lettre avant la fin du chrono."
           actions={(
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -172,7 +170,6 @@ export default function PetitBac() {
     return (
       <PageShell>
         <PageHeader
-          title="Petit Bac"
           description={`Groupe : ${currentParty.name || 'Sans nom'}`}
           actions={(
             <>
@@ -246,7 +243,6 @@ export default function PetitBac() {
   return (
     <PageShell>
       <PageHeader
-        title="Petit Bac"
         description={`Groupe : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>

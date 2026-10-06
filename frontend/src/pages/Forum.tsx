@@ -446,7 +446,7 @@ export default function Forum() {
   const popularSubs = [...subreddits].sort((a, b) => b.memberCount - a.memberCount).slice(0, 10);
 
   return (
-    <PageShell size="wide">
+    <PageShell>
       <PageHeader
         title={currentSub ? `#${currentSub.name}` : 'Forum'}
         description={currentSub ? currentSub.description : 'Discutez avec la communauté dans des forums thématiques.'}

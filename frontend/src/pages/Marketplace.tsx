@@ -583,7 +583,7 @@ export default function Marketplace() {
 
   return (
     <PageShell>
-      <PageHeader title="Marché" description="Achetez et vendez des objets entre joueurs." />
+      <PageHeader />
 
       <Tabs value={topTab} onValueChange={(value) => setTopTab(value as TopTab)} className="gap-6">
         <TabsList>

@@ -10,6 +10,7 @@ import {
   AuraCoinLeaderboardEntry,
 } from '../services/api';
 import { cn } from '@/lib/utils';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { Cpu, TrendingUp, TrendingDown, Zap, Award } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -245,27 +246,22 @@ export default function AuraCoin() {
   const chartColor = priceChange >= 0 ? '#22c55e' : '#ef4444';
 
   return (
-    <div className={cn('px-4 py-6 lg:px-6 lg:py-8', 'space-y-4 max-w-7xl mx-auto pb-8')}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <span className="text-warning">◈</span> AuraCoin
-          </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            AMM décentralisé · Minage GPU · Anti-whale
-          </p>
-        </div>
-        <div className="text-right">
-          <p className={cn('text-3xl font-bold tabular-nums', priceChange >= 0 ? 'text-success' : 'text-destructive')}>
-            {fmtMoneyExpanded(currentPrice)}
-          </p>
-          <p className={cn('text-sm font-medium', priceChange >= 0 ? 'text-success' : 'text-destructive')}>
-            {priceChange >= 0 ? <TrendingUp className="inline h-3 w-3 mr-0.5" /> : <TrendingDown className="inline h-3 w-3 mr-0.5" />}
-            {priceChange >= 0 ? '+' : ''}{fmt(priceChange, 2)}%
-          </p>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Aura Coin"
+        description="AMM décentralisé · Minage GPU · Anti-whale"
+        actions={
+          <div className="text-right">
+            <p className={cn('text-2xl font-semibold tabular-nums', priceChange >= 0 ? 'text-success' : 'text-destructive')}>
+              {fmtMoneyExpanded(currentPrice)}
+            </p>
+            <p className={cn('text-sm font-medium', priceChange >= 0 ? 'text-success' : 'text-destructive')}>
+              {priceChange >= 0 ? <TrendingUp className="inline h-3 w-3 mr-0.5" /> : <TrendingDown className="inline h-3 w-3 mr-0.5" />}
+              {priceChange >= 0 ? '+' : ''}{fmt(priceChange, 2)}%
+            </p>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* LEFT COLUMN: Chart + Trading */}
@@ -619,7 +615,7 @@ export default function AuraCoin() {
           </Card>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

@@ -428,7 +428,7 @@ export default function Quests() {
   if (loading) {
     return (
       <PageShell>
-        <PageHeader title="Quêtes" description="Relevez des défis quotidiens et gagnez des récompenses." />
+        <PageHeader />
         <div className={gridClassName}>
           {Array.from({ length: 6 }, (_, index) => (
             <Skeleton key={index} className="h-48" />
@@ -440,7 +440,7 @@ export default function Quests() {
 
   return (
     <PageShell>
-      <PageHeader title="Quêtes" description="Relevez des défis quotidiens et gagnez des récompenses." />
+      <PageHeader />
 
       <Card>
         <CardHeader>

@@ -1,4 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { AlertTriangle, Map, Shield, Sparkles, Sword, Target, Trash2, Trophy, SlidersHorizontal, History, RotateCcw } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { clashApi, type ClashBattleEntry, type ClashBuilding, type ClashLeaderboardEntry, type ClashStateResponse, type ClashTarget } from '@/services/api';
@@ -384,29 +386,28 @@ export default function ClashVillage() {
 
   if (!village) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 bg-muted/10">
-        <Card className="max-w-md w-full rounded-[32px] border-border/50 shadow-2xl overflow-hidden bg-background">
-          <div className="h-32 bg-gradient-to-br from-emerald-500 to-sky-600 flex items-center justify-center">
-            <Sparkles className="h-16 w-16 text-white/20 animate-pulse" />
-          </div>
-          <CardContent className="space-y-6 p-8 text-center">
-            <div className="space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight">Clash Village</h1>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Crée ton village pour commencer l&apos;aventure. Construis tes défenses et pille les ressources des autres.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <Button onClick={() => void handleCreateVillage()} disabled={createLoading} className="rounded-2xl h-12 text-base font-bold">
-                {createLoading ? 'Fondation...' : 'Fonder mon village'}
-              </Button>
-              <Button variant="outline" onClick={() => void loadPage()} disabled={createLoading} className="rounded-2xl h-12 font-bold">
-                Réessayer
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <PageShell>
+        <PageHeader />
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Sparkles />
+            </EmptyMedia>
+            <EmptyTitle>Crée ton village</EmptyTitle>
+            <EmptyDescription>
+              Commence l&apos;aventure : construis tes défenses et pille les ressources des autres.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button onClick={() => void handleCreateVillage()} disabled={createLoading}>
+              {createLoading ? 'Fondation…' : 'Fonder mon village'}
+            </Button>
+            <Button variant="outline" onClick={() => void loadPage()} disabled={createLoading}>
+              Réessayer
+            </Button>
+          </EmptyContent>
+        </Empty>
+      </PageShell>
     );
   }
 
@@ -452,7 +453,6 @@ export default function ClashVillage() {
 
   return (
     <GameShell containerRef={containerRef} topBar={<GameTopBar
-        title="Clash Village"
         score={village.moneyInStorage}
         highScore={village.trophies}
         controls={topBarControls}

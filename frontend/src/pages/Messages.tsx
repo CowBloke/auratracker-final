@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -1575,15 +1576,17 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="flex h-full min-h-0 flex-col p-4 md:p-6">
-        <Skeleton className="h-full w-full" />
-      </div>
+      <PageShell className="h-full min-h-0">
+        <PageHeader />
+        <Skeleton className="min-h-0 w-full flex-1" />
+      </PageShell>
     );
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-full min-h-0 flex-col p-4 md:p-6">
+    <PageShell className="h-full min-h-0">
+      <PageHeader />
 
       {/* ── Respect modal ── */}
       <Dialog open={respectOpen} onOpenChange={setRespectOpen}>
@@ -2237,7 +2240,7 @@ export default function MessagesPage() {
           {/* ── Sidebar ── */}
           <aside className={cn('min-h-0 flex-col border-r border-border/60', selectedIdSafe ? 'hidden lg:flex' : 'flex')}>
             <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
-              <h1 className="flex-1 text-sm font-semibold">Messages</h1>
+              <h2 className="flex-1 text-sm font-semibold">Conversations</h2>
               <Button type="button" size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setCreateOpen(true)}>
                 <Plus className="h-4 w-4" />
               </Button>
@@ -2975,7 +2978,7 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-    </div>
+    </PageShell>
   );
 }
 

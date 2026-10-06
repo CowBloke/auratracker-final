@@ -439,13 +439,13 @@ function CasinoFloor({ onChooseTable }: { onChooseTable: (game: GameTab) => void
         <div className="max-w-2xl">
           <p className="inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-100/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-100/80">
             <CircleDollarSign className="h-3.5 w-3.5" />
-            Etage casino
+            Étage casino
           </p>
-          <h1 className="mt-3 text-3xl font-black tracking-[0.04em] text-amber-50 sm:text-4xl">
+          <h2 className="mt-3 text-3xl font-black tracking-[0.04em] text-amber-50 sm:text-4xl">
             Choisis une table vue du dessus
-          </h1>
+          </h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-amber-50/72 sm:text-base">
-            Plus de boutons plats. Tu entres dans la salle, tu repères l'ambiance, puis tu t'assois a la table qui te tente.
+            Entre dans la salle, repère l'ambiance, puis assieds-toi à la table qui te tente.
           </p>
         </div>
 
@@ -1392,7 +1392,6 @@ export default function Casino() {
 
   return (
     <GameShell containerRef={containerRef} topBar={<GameTopBar
-        title={activeGame ? CASINO_GAME_LABELS[activeGame] : "Etage Casino"}
         score={user?.money ?? 0}
         highScore={user?.aura ?? 0}
         controls={topBarControls}
@@ -1406,7 +1405,7 @@ export default function Casino() {
             size="icon"
             className="h-7 w-7 rounded-full"
             onClick={() => setShowSettingsDialog(true)}
-            title="Parametres"
+            title="Paramètres"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
           </Button>

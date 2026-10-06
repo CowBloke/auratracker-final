@@ -276,7 +276,6 @@ export default function ChromeDino() {
 
   return (
     <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Chrome Dino"
         score={0} // Score is shown in iframe
         highScore={highScore}
         controls={topBarControls}

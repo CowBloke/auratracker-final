@@ -5,7 +5,7 @@ import { useTutorial } from '@/components/tutorial/TutorialContext';
 import { TUTORIAL_FLOWS, TUTORIAL_FLOW_ORDER } from '@/lib/tutorials';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { cn } from '@/lib/utils';
 import { infoApi } from '@/services/api';
 import {
@@ -59,7 +59,7 @@ function TaxBracketsSection() {
           <Landmark className="h-4 w-4 text-muted-foreground" />
           <CardDescription>Fiscalité</CardDescription>
         </div>
-        <CardTitle className="text-2xl font-semibold tracking-tight sm:text-3xl">Impôts journaliers</CardTitle>
+        <CardTitle className="text-xl font-semibold">Impôts journaliers</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <p className="text-sm">
@@ -1380,7 +1380,7 @@ function GuideDetail({ guide, subsectionId }: { guide: TutorialGuide; subsection
   return (
     <Card className="border-border/60 bg-card shadow-sm">
       <CardHeader className="border-b border-border/30 pb-4">
-        <CardTitle className="text-2xl font-semibold tracking-tight sm:text-3xl">{subsection?.title ?? guide.title}</CardTitle>
+        <CardTitle className="text-xl font-semibold">{subsection?.title ?? guide.title}</CardTitle>
       </CardHeader>
       <CardContent className="px-6 py-6">
         {subsection ? (
@@ -1418,17 +1418,17 @@ function TutorialsTab() {
   const orderedFlows = TUTORIAL_FLOW_ORDER.map((id) => TUTORIAL_FLOWS[id]).filter(Boolean);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
+    <PageHeader />
 
     {/* Interactive tutorial cards */}
-    <div>
-      <div className="mb-3 flex items-center gap-2">
-        <BookOpen className="h-4 w-4 text-muted-foreground" />
-        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Tutoriels interactifs</h2>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-semibold">Tutoriels interactifs</h2>
+        <p className="text-sm text-muted-foreground">
+          Des guides pas à pas directement dans l'interface : les explications s'affichent sur les éléments concernés.
+        </p>
       </div>
-      <p className={cn('text-sm', 'mb-4 text-muted-foreground')}>
-        Des guides pas à pas directement dans l'interface — les explications s'affichent sur les éléments concernés.
-      </p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {orderedFlows.map((flow, i) => (
           <Card key={flow.id} className={cn('border-border/60 bg-card shadow-sm', i === 0 && 'border-primary/30 bg-primary/5')}>

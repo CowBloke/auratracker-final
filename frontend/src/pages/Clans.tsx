@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Target, Trash2, UserX, UserPlus, X, LayoutGrid, Layout } from 'lucide-react';
+import { Axe, AlertTriangle, Castle, Flag, Trophy, Check, ChevronDown, ChevronUp, Crown, History, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Target, Trash2, UserX, UserPlus, X, LayoutGrid, Layout } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -141,7 +141,7 @@ const ClanEffectBadge = ({ effect }: { effect: ClanActiveEffect }) => (
   </Tooltip>
 );
 
-const UPGRADE_ICONS: Record<string, string> = { FORTRESS: '🏰', ARMORY: '⚔️', BANNER: '🚩' };
+const UPGRADE_ICONS: Record<string, typeof Castle> = { FORTRESS: Castle, ARMORY: Swords, BANNER: Flag };
 const UPGRADE_EFFECTS: Record<string, (level: number) => string> = {
   FORTRESS: (level) => level > 0 ? `Réduit les bombardements ennemis de ${level * 4} pts` : 'Non construite — à améliorer via le jeu mémoire',
   ARMORY: (level) => level > 0 ? `Augmente vos bombardements de ${level * 3} pts` : 'Non construite — à améliorer via le jeu mémoire',
@@ -150,7 +150,7 @@ const UPGRADE_EFFECTS: Record<string, (level: number) => string> = {
 
 const UpgradeRow = ({ defense }: { defense: ClanWarDefenseState }) => (
   <Item size="sm" variant="outline">
-    <ItemMedia variant="icon">{UPGRADE_ICONS[defense.type] ?? '🏛️'}</ItemMedia>
+    <ItemMedia variant="icon">{(() => { const Icon = UPGRADE_ICONS[defense.type] ?? Landmark; return <Icon />; })()}</ItemMedia>
     <ItemContent>
       <ItemTitle>{defense.label}</ItemTitle>
       <ItemDescription>{UPGRADE_EFFECTS[defense.type]?.(defense.level) ?? ''}</ItemDescription>
@@ -1191,10 +1191,8 @@ export default function Clans() {
 
   return (
     <>
-      <PageShell size="wide">
+      <PageShell>
         <PageHeader
-          title="Clans"
-          description="Rejoignez un clan, partagez une banque commune et affrontez d'autres clans."
           actions={
             canCreateClan ? (
               <Button onClick={() => setDialogOpen(true)}>
@@ -1269,7 +1267,7 @@ export default function Clans() {
                               </ItemTitle>
                               <ItemDescription>
                                 {clan.memberCount}/{clan.maxMembers} membres •{' '}
-                                {directoryViewMode === 'war' ? `🏆 ${formatMoney(clan.warTrophies)}` : `${formatAura(clan.totalAura)} aura`}
+                                {directoryViewMode === 'war' ? <span className="inline-flex items-center gap-1"><Trophy className="size-3" />{formatMoney(clan.warTrophies)}</span> : `${formatAura(clan.totalAura)} aura`}
                               </ItemDescription>
                             </ItemContent>
                             <ItemActions>
@@ -2429,7 +2427,7 @@ export default function Clans() {
                                       <Card className="gap-3 py-4">
                                         <CardHeader className="px-4">
                                           <CardTitle className="flex items-center justify-between gap-2 text-sm">
-                                            <span>🧩 Jeu Mémoire</span>
+                                            <span>Jeu Mémoire</span>
                                             {gameStatus?.memoryPlayedToday ? <Badge variant="success">✓ Joué</Badge> : null}
                                           </CardTitle>
                                           <CardDescription>Retournez les paires pour fortifier et améliorer les défenses du clan.</CardDescription>
@@ -2446,7 +2444,7 @@ export default function Clans() {
                                       <Card className="gap-3 py-4">
                                         <CardHeader className="px-4">
                                           <CardTitle className="flex items-center justify-between gap-2 text-sm">
-                                            <span>💣 Bombardement</span>
+                                            <span>Bombardement</span>
                                             {gameStatus?.bombPlayedToday ? <Badge variant="success">✓ Joué</Badge> : null}
                                           </CardTitle>
                                           <CardDescription>Pilotez un avion et larguez des bombes sur les structures adverses.</CardDescription>
@@ -2463,7 +2461,7 @@ export default function Clans() {
                                       <Card className="gap-3 py-4">
                                         <CardHeader className="px-4">
                                           <CardTitle className="flex items-center justify-between gap-2 text-sm">
-                                            <span>🎯 Guerre Navale</span>
+                                            <span>Guerre Navale</span>
                                             {gameStatus?.naval ? (
                                               <Badge variant={(gameStatus.naval.shotsRemaining ?? 0) > 0 ? 'secondary' : 'outline'}>{gameStatus.naval.shotsRemaining} tirs</Badge>
                                             ) : null}
@@ -2481,7 +2479,7 @@ export default function Clans() {
 
                                   <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="flex flex-col gap-2">
-                                      <h5 className="text-sm font-medium">🛡️ Nos défenses ({getWarOwnSide(selectedWar, selectedClan.id).name})</h5>
+                                      <h5 className="text-sm font-medium">Nos défenses ({getWarOwnSide(selectedWar, selectedClan.id).name})</h5>
                                       <ItemGroup className="gap-2">
                                         {getWarDefenseSet(selectedWar, selectedClan.id).map((defense) => (
                                           <UpgradeRow key={defense.type} defense={defense} />
@@ -3082,17 +3080,17 @@ export default function Clans() {
       {(['MEMORY', 'BOMB', 'NAVAL'] as const).map((type) => {
         const TUTORIALS = {
           MEMORY: {
-            title: '🧩 Jeu Mémoire — Comment jouer',
+            title: 'Jeu Mémoire — Comment jouer',
             desc: 'Retournez les cartes pour trouver les paires. Chaque paire de défense matched améliore la structure correspondante.',
             tips: ['16 cartes, 8 paires à trouver', '90 secondes pour tout trouver', 'Paire 🏰 = fortifie la Forteresse, ⚔️ = Armurerie, 🚩 = Bannière', 'Jouable une fois par jour (mode réel)'],
           },
           BOMB: {
-            title: '💣 Bombardement Aérien — Comment jouer',
+            title: 'Bombardement Aérien — Comment jouer',
             desc: 'Votre avion survole la base ennemie. Cliquez sur le terrain pour larguer des bombes sur les bâtiments.',
             tips: ['8 bombes par mission', '🏰 Forteresses nécessitent 2 impacts', 'Plus vous détruisez, plus vous marquez de points', 'Jouable une fois par jour (mode réel)'],
           },
           NAVAL: {
-            title: '🎯 Guerre Navale — Comment jouer',
+            title: 'Guerre Navale — Comment jouer',
             desc: 'La carte ennemie est cachée. Cliquez sur les cases pour y envoyer un missile et révéler les bâtiments.',
             tips: ['Grille 6×6 (36 cases possibles)', '5 tirs par membre, par guerre (total)', 'Vos coéquipiers partagent la même carte — coordonnez-vous !', 'Chaque touche rapporte des points de guerre'],
           },
@@ -3126,7 +3124,7 @@ export default function Clans() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              🧩 Jeu Mémoire
+              Jeu Mémoire
               {gamePractice ? <Badge variant="outline" className="ml-2">Entraînement</Badge> : null}
             </DialogTitle>
             <DialogDescription>Trouvez toutes les paires pour améliorer vos défenses.</DialogDescription>
@@ -3145,7 +3143,7 @@ export default function Clans() {
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              💣 Bombardement Aérien
+              Bombardement Aérien
               {gamePractice ? <Badge variant="outline" className="ml-2">Entraînement</Badge> : null}
             </DialogTitle>
             <DialogDescription>Cliquez sur la zone de jeu pour larguer vos bombes sur la base ennemie.</DialogDescription>
@@ -3163,7 +3161,7 @@ export default function Clans() {
       <Dialog open={activeGame === 'NAVAL'} onOpenChange={(open) => !open && closeGame()}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>🎯 Guerre Navale</DialogTitle>
+            <DialogTitle>Guerre Navale</DialogTitle>
             <DialogDescription>
               Ciblez les cases de la base ennemie.{' '}
               {gameStatus?.naval ? `${gameStatus.naval.shotsRemaining} tir(s) restant(s) pour cette guerre.` : ''}

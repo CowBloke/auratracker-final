@@ -134,7 +134,6 @@ export default function Eaglercraft() {
 
   return (
     <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Eaglercraft"
         score={0}
         highScore={0}
         controls={topBarControls}

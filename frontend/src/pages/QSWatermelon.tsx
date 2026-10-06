@@ -160,7 +160,6 @@ export default function QSWatermelon() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="QS Watermelon"
         score={0} // Score is handled inside iframe usually, but we could show highscore
         highScore={highScore}
         controls={topBarControls}

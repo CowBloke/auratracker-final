@@ -389,7 +389,7 @@ export default function Leaderboards() {
 
   return (
     <PageShell>
-      <PageHeader title="Classement" description="Comparez-vous aux autres joueurs, par catégorie et par période." />
+      <PageHeader />
 
       <div className="grid items-start gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <Card className="gap-0 overflow-hidden py-0">

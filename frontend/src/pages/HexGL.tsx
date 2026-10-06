@@ -240,7 +240,6 @@ export default function HexGL() {
 
   return (
     <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="HexGL"
         score={0}
         highScore={highScore || 0}
         controls={topBarControls}

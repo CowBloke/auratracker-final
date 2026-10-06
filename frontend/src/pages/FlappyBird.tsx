@@ -469,7 +469,6 @@ export default function FlappyBird() {
   // ============================================
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Flappy Bird"
         score={score}
         highScore={highScore}
         isNewHighScore={isNewHighScore}

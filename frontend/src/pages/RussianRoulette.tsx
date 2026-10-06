@@ -5,7 +5,7 @@ import { usePartySocket } from '@/contexts/PartySocketContext';
 import { useGameSocket } from '@/contexts/GameSocketContext';
 import { ArrowLeft, Play, Skull, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
@@ -410,10 +410,16 @@ export default function RussianRoulette() {
   if (!currentParty) {
     return (
       <PageShell>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <Button variant="ghost" size="icon" asChild><Link to="/games"><ArrowLeft size={18} /></Link></Button>
-          <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>Roulette russe</h1>
-        </div>
+        <PageHeader
+          actions={
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+          }
+        />
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '60px 0', color: 'rgba(140,140,140,0.7)' }}>
           <Users size={48} style={{ opacity: 0.4 }} />
           <p style={{ fontSize: 14, textAlign: 'center', maxWidth: 300 }}>Tu dois être dans un groupe pour jouer à la roulette russe.</p>
@@ -495,14 +501,16 @@ export default function RussianRoulette() {
       )}
 
       <PageShell>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Button variant="ghost" size="icon" asChild><Link to="/games"><ArrowLeft size={18} /></Link></Button>
-          <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: 0.5 }}>Roulette russe</h1>
-            <p style={{ fontSize: 11, color: 'rgba(140,140,140,0.6)', marginTop: 1 }}>Qui ose tirer le dernier ?</p>
-          </div>
-        </div>
+        <PageHeader
+          actions={
+            <Button asChild variant="outline" size="sm">
+              <Link to="/games" className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Jeux
+              </Link>
+            </Button>
+          }
+        />
 
         {/* ── Active game ───────────────────────────────────────────────── */}
         {rouletteGame && isInGame && (

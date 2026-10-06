@@ -573,7 +573,6 @@ export default function Solitaire() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Solitaire"
         score={score}
         highScore={highScore}
         isNewHighScore={isNewHighScore}

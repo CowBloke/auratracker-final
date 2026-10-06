@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { TradingTerminalApi, MarketCoinPosition, MarketCoinPriceHistory, MarketCoinTransaction } from '../services/api';
@@ -256,7 +257,8 @@ export function CryptoTradingTerminal({
   };
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+    <PageShell>
+      <PageHeader />
       <Card>
         <CardContent className={`p-6 space-y-6`}>
           <div className="grid grid-cols-3 gap-4">
@@ -512,6 +514,6 @@ export function CryptoTradingTerminal({
           </Tabs>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

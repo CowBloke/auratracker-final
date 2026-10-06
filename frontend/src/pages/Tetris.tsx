@@ -132,7 +132,6 @@ export default function Tetris() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Tetris"
         score={lastScore ?? 0}
         highScore={highScore}
         isNewHighScore={isNewHighScore}

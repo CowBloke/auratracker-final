@@ -14,7 +14,7 @@ const fr = {
   sidebar_nav_pass: 'Pass',
   sidebar_nav_quests: 'Quêtes',
   sidebar_nav_suggestions: 'Suggestions',
-  sidebar_nav_info: 'Infos',
+  sidebar_nav_info: 'Règlement',
   sidebar_game_russian_roulette: 'Roulette russe',
   sidebar_game_bomb_party: 'Bombe de mots',
   sidebar_game_petit_bac: 'Petit Bac',

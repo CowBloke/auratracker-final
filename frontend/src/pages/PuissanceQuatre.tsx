@@ -204,8 +204,6 @@ export default function PuissanceQuatre() {
     return (
       <PageShell>
         <PageHeader
-          title="Puissance 4"
-          description="Aligne 4 jetons avant ton adversaire."
           actions={
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -277,7 +275,6 @@ export default function PuissanceQuatre() {
     return (
       <PageShell>
         <PageHeader
-          title="Puissance 4"
           description={`Duel : ${currentParty?.name || 'Sans nom'}`}
           actions={
             <Button asChild variant="outline" size="sm">

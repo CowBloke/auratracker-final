@@ -150,8 +150,6 @@ export default function Morpion() {
     return (
       <PageShell>
         <PageHeader
-          title="Morpion"
-          description="Duel tactique rapide: aligne 3 symboles avant ton adversaire."
           actions={
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -228,7 +226,6 @@ export default function Morpion() {
     return (
       <PageShell>
         <PageHeader
-          title="Morpion"
           description={`Duel : ${currentParty?.name || 'Sans nom'}`}
           actions={
             <Button asChild variant="outline" size="sm">
@@ -258,7 +255,6 @@ export default function Morpion() {
   return (
     <PageShell>
       <PageHeader
-        title="Morpion"
         description={`Duel : ${currentParty?.name || 'Sans nom'}`}
         actions={
           <>

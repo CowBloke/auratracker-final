@@ -614,7 +614,7 @@ export default function Inventory() {
   if (loading) {
     return (
       <PageShell>
-        <PageHeader title="Inventaire" description="Vos objets, cosmétiques et achats." />
+        <PageHeader />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }, (_, index) => (
             <Skeleton key={index} className="h-40" />
@@ -626,7 +626,7 @@ export default function Inventory() {
 
   return (
     <PageShell>
-      <PageHeader title="Inventaire" description="Vos objets, cosmétiques et achats." />
+      <PageHeader />
 
       <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as 'inventory' | 'purchases')}>
         <TabsList>

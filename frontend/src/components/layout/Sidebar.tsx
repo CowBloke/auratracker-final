@@ -86,7 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Aide',
     items: [
-      { to: '/tutoriels', label: 'Tutoriel', icon: Info, tutorialId: 'nav-tutoriels' },
+      { to: '/tutoriels', label: 'Tutoriels', icon: Info, tutorialId: 'nav-tutoriels' },
       { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },
     ],
   },

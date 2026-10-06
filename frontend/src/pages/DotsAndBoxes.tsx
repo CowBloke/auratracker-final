@@ -139,8 +139,6 @@ export default function DotsAndBoxes() {
     return (
       <PageShell>
         <PageHeader
-          title="Dots and Boxes"
-          description="Relie les points pour fermer des carres. Le joueur qui ferme le plus de carres gagne !"
           actions={
             <Button asChild variant="outline" size="sm">
               <Link to="/games" className="inline-flex items-center gap-2">
@@ -190,7 +188,6 @@ export default function DotsAndBoxes() {
     return (
       <PageShell>
         <PageHeader
-          title="Dots and Boxes"
           description={`Duel : ${currentParty?.name || 'Sans nom'}`}
           actions={
             <Button asChild variant="outline" size="sm">
@@ -226,7 +223,6 @@ export default function DotsAndBoxes() {
   return (
     <PageShell>
       <PageHeader
-        title="Dots and Boxes"
         description={`Duel : ${currentParty?.name || 'Sans nom'}`}
         actions={
           <>

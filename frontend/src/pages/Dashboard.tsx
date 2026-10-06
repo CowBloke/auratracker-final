@@ -54,8 +54,7 @@ export default function Dashboard() {
   return (
     <PageShell>
       <PageHeader
-        title={WELCOME_TEMPLATES[welcomeIndex](user?.username || 'toi')}
-        description="Les dernières nouveautés de la plateforme."
+        description={WELCOME_TEMPLATES[welcomeIndex](user?.username || 'toi')}
         actions={
           user?.isAdmin ? (
             <Button onClick={() => setManagerOpen(true)}>

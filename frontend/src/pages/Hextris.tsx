@@ -122,9 +122,24 @@ export default function Hextris() {
   );
 
   return (
-    <div className={cn('grid gap-4', isFullscreen ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[minmax(0,1fr)_240px]')}>
-      <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-          title="Hextris"
+    <GameShell containerRef={containerRef} isFullscreen={isFullscreen} aside={showLeaderboard ? (
+      <GameLeaderboard
+        entries={leaderboard}
+        currentUserId={user?.id}
+        personalHighScore={highScore}
+        isAdmin={user?.isAdmin}
+        onDeleteScore={async (userId) => {
+          try {
+            await gamesApi.deleteStats('hextris', userId);
+            fetchLeaderboard();
+          } catch (error) {
+            console.error('Failed to delete score:', error);
+          }
+        }}
+        maxHeight={500}
+        hidden={false}
+      />
+      ) : undefined} topBar={<GameTopBar
           score={score}
           highScore={highScore}
           isNewHighScore={isNewHighScore}
@@ -179,27 +194,5 @@ export default function Hextris() {
           )}
         </GameFullscreenStage>
       </GameShell>
-
-      {showLeaderboard && !isFullscreen && (
-        <div className="w-[240px] shrink-0 hidden xl:block">
-          <GameLeaderboard
-            entries={leaderboard}
-            currentUserId={user?.id}
-            personalHighScore={highScore}
-            isAdmin={user?.isAdmin}
-            onDeleteScore={async (userId) => {
-              try {
-                await gamesApi.deleteStats('hextris', userId);
-                fetchLeaderboard();
-              } catch (error) {
-                console.error('Failed to delete score:', error);
-              }
-            }}
-            maxHeight={500}
-            hidden={false}
-          />
-        </div>
-      )}
-    </div>
   );
 }

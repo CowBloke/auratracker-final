@@ -156,7 +156,6 @@ export default function Polytrack() {
 
   return (
     <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="PolyTrack"
         score={personalHighScore ?? 0}
         highScore={personalHighScore ?? 0}
         isNewHighScore={false}

@@ -711,7 +711,6 @@ export default function BallArena() {
     return (
       <PageShell>
         <PageHeader
-          title="Arène des balles"
           description={selectedMode === 'multiplayer' ? "Arène libre en groupe, 2 joueurs ou plus." : "Propulse ton adversaire hors de l'arène."}
           actions={(
             <Button asChild variant="outline" size="sm">
@@ -769,7 +768,6 @@ export default function BallArena() {
     return (
       <PageShell>
         <PageHeader
-          title="Arène des balles"
           description={`${getModeLabel(selectedMode)} : ${currentParty.name || 'Sans nom'}`}
           actions={(
             <Button asChild variant="outline" size="sm">
@@ -836,7 +834,6 @@ export default function BallArena() {
   return (
     <PageShell>
       <PageHeader
-        title="Arène des balles"
         description={`${getModeLabel(currentMode)} : ${currentParty.name || 'Sans nom'}`}
         actions={(
           <>

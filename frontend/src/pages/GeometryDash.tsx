@@ -751,7 +751,6 @@ export default function GeometryDash() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Geometry Dash"
         score={score}
         highScore={highScore}
         isNewHighScore={isNewHighScore}

@@ -559,7 +559,6 @@ export default function Minesweeper() {
 
   return (
     <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
-        title="Démineur"
         score={status === 'won' || status === 'lost' ? lastScore : 0}
         highScore={highScore}
         isNewHighScore={isNewHighScore}
