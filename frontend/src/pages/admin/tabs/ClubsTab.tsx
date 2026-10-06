@@ -419,7 +419,7 @@ export function ClubsTab(props: ClubsTabProps) {
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-medium">{event.title}</h3>
+                          <h3 className="text-base font-semibold">{event.title}</h3>
                           <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">{event.status}</span>
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.quests.length} quête(s)</span>
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.miniGames.length} mini-jeu(x)</span>

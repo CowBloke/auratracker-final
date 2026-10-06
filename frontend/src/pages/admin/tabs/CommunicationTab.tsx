@@ -407,7 +407,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold tracking-tight">Sondages utilisateurs</h3>
+                <h3 className="text-base font-semibold">Sondages utilisateurs</h3>
                 <CardDescription>
                   Crée un sondage, cible une audience, puis archive-le quand tu veux arrêter sa diffusion.
                 </CardDescription>
@@ -543,7 +543,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
         <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-lg font-semibold tracking-tight">Signalements de conversations</h3>
+              <h3 className="text-base font-semibold">Signalements de conversations</h3>
               <p className={cn('text-xs', 'text-muted-foreground')}>Les derniers messages sont envoyés ici quand un joueur signale un DM ou un groupe.</p>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchSupportReports}>
@@ -596,7 +596,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
         <div className="flex gap-4 h-[600px]">
           <Card className="gap-0 py-0 shadow-none w-72 shrink-0 overflow-hidden"><CardContent className="p-0 flex flex-col">
             <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center justify-between">
-              <h3 className="text-lg font-semibold tracking-tight">Conversations</h3>
+              <h3 className="text-base font-semibold">Conversations</h3>
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="icon" className="h-7 w-7" title="Nouvelle conversation" onClick={() => setNewThreadOpen(true)}>
                   <Plus className="h-3.5 w-3.5" />
@@ -643,7 +643,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
             ) : (
               <>
                 <div className="px-4 py-3 border-b border-border bg-muted/40">
-                  <h3 className="text-lg font-semibold tracking-tight">{activeThreadUser?.username ?? activeThreadUserId}</h3>
+                  <h3 className="text-base font-semibold">{activeThreadUser?.username ?? activeThreadUserId}</h3>
                 </div>
                 <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
                   {activeThreadMessages.map((msg: any) => {

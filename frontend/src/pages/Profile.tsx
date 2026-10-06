@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatMoney } from '@/lib/format';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, Ban as BanIcon, Building2, Edit2, Heart, MessageCircle, Save, Send, X } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
@@ -974,12 +975,7 @@ export default function Profile() {
 }
 
 function formatCurrency(value: number, digits = 2) {
-  return value.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
+  return formatMoney(value, digits);
 }
 
 function formatRank(rank?: number | null) {

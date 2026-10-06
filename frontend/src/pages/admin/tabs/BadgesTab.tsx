@@ -53,7 +53,7 @@ export function BadgesTab(props: BadgesTabProps) {
       <div className="space-y-6">
 
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Gestion des Badges</h2>
+          <h2 className="text-lg font-semibold">Gestion des Badges</h2>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleCheckAutoBadges}>
               <RefreshCw className="w-4 h-4 mr-2" />

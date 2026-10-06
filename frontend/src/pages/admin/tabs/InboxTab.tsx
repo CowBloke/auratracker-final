@@ -413,7 +413,7 @@ export function InboxTab(props: InboxTabProps) {
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <h3 className="text-lg font-semibold">{event.username}</h3>
+                          <h3 className="text-base font-semibold">{event.username}</h3>
                           <p className="text-sm text-muted-foreground">
                             {event.details.durationLabel ? `Mute ${event.details.durationLabel}` : 'Mute actif'}
                             {event.mutedUntil ? ` · expire le ${new Date(event.mutedUntil).toLocaleString('fr-FR')}` : ''}
@@ -486,7 +486,7 @@ export function InboxTab(props: InboxTabProps) {
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <h3 className="text-lg font-semibold">{product.title}</h3>
+                          <h3 className="text-base font-semibold">{product.title}</h3>
                           <p className="text-sm text-muted-foreground">{product.business.name} · par {product.business.owner.username}</p>
                         </div>
                         <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">
@@ -558,7 +558,7 @@ export function InboxTab(props: InboxTabProps) {
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <h3 className="text-lg font-semibold">{u.username}</h3>
+                          <h3 className="text-base font-semibold">{u.username}</h3>
                           <p className="text-sm text-muted-foreground">{u.email}</p>
                           {u.firstName && <p className="text-sm text-muted-foreground">Prénom : {u.firstName}</p>}
                           {u.school && <p className="text-sm text-muted-foreground">École : {u.school}</p>}
@@ -712,7 +712,7 @@ export function InboxTab(props: InboxTabProps) {
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <h3 className="text-lg font-semibold">{appeal.user.username}</h3>
+                          <h3 className="text-base font-semibold">{appeal.user.username}</h3>
                           <p className="text-sm text-muted-foreground">{appeal.user.email}</p>
                         </div>
                         <Alert variant="destructive">
@@ -751,7 +751,7 @@ export function InboxTab(props: InboxTabProps) {
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <h3 className="text-lg font-semibold">{req.name}</h3>
+                          <h3 className="text-base font-semibold">{req.name}</h3>
                           <p className="text-sm text-muted-foreground">{req.user?.username ? `Demande par ${req.user.username}` : 'Auteur inconnu'}</p>
                         </div>
                         <Alert variant="warning">
@@ -824,7 +824,7 @@ export function InboxTab(props: InboxTabProps) {
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <h3 className="text-lg font-semibold">{sanction.type === 'AMENDE' ? 'Amende' : 'Paiement forcé'} pour {sanction.targetUser.username}</h3>
+                          <h3 className="text-base font-semibold">{sanction.type === 'AMENDE' ? 'Amende' : 'Paiement forcé'} pour {sanction.targetUser.username}</h3>
                           <p className="text-sm text-muted-foreground">Demandé par {sanction.requestedBy.username}</p>
                         </div>
                         <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-2">
@@ -877,7 +877,7 @@ export function InboxTab(props: InboxTabProps) {
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <h3 className="text-lg font-semibold">{req.user.username}</h3>
+                          <h3 className="text-base font-semibold">{req.user.username}</h3>
                           <p className="text-sm text-muted-foreground">{req.user.email}</p>
                         </div>
                         <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4">

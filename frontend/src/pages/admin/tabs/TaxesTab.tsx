@@ -50,7 +50,7 @@ export function TaxesTab(props: TaxesTabProps) {
                   Tous les jours à 00:00, chaque joueur ayant au moins le seuil d&apos;un palier paie le taux du palier le plus élevé qu&apos;il atteint.
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Si aucun palier n&apos;est enregistré, le système retombe sur la règle par défaut: 10 000$ → 1%.
+                  Si aucun palier n&apos;est enregistré, le système retombe sur la règle par défaut: 10 000 € → 1%.
                 </p>
               </div>
               <div className="text-right text-xs text-muted-foreground shrink-0">

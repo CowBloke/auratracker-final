@@ -187,11 +187,11 @@ function isUpgradeUnlocked(upg: UpgradeDef, buildings: Record<string, number>, u
 
 function rewardPreviewText(totalGuavas: number): string {
   if (totalGuavas < 100)       return 'Récoltez au moins 100 goyaves pour encaisser.';
-  if (totalGuavas < 1000)      return 'Récompense: $10 + 1 aura';
-  if (totalGuavas < 10000)     return 'Récompense: $25 + 3 aura';
-  if (totalGuavas < 100000)    return 'Récompense: $60 + 8 aura';
-  if (totalGuavas < 1000000)   return 'Récompense: $150 + 20 aura';
-  if (totalGuavas < 10000000)  return 'Récompense: $400 + 50 aura';
+  if (totalGuavas < 1000)      return 'Récompense: 10 € + 1 aura';
+  if (totalGuavas < 10000)     return 'Récompense: 25 € + 3 aura';
+  if (totalGuavas < 100000)    return 'Récompense: 60 € + 8 aura';
+  if (totalGuavas < 1000000)   return 'Récompense: 150 € + 20 aura';
+  if (totalGuavas < 10000000)  return 'Récompense: 400 € + 50 aura';
 
   const topTierMinScore = 10_000_000;
   const maxScoreForScaling = 100_000_000_000_000;

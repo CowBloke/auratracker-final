@@ -36,7 +36,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
           <CardHeader>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h3 className="text-lg font-semibold tracking-tight">Historique chat global</h3>
+                <h3 className="text-base font-semibold">Historique chat global</h3>
                 <p className={cn('text-xs', 'text-muted-foreground')}>
                   Tous les messages de tous les temps, classes par jour (00:00 a 00:00 heure de Paris).
                 </p>

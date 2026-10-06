@@ -112,7 +112,7 @@ export default function MarketRoom() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">{coin.symbol}</p>
-                        <h2 className="mt-2 text-2xl font-semibold">{coin.name}</h2>
+                        <h2 className="text-lg font-semibold mt-2">{coin.name}</h2>
                       </div>
                       <div className={cn('inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ', personality.chipClass)}>
                         <Icon className="h-3.5 w-3.5" />

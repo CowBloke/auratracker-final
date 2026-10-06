@@ -103,7 +103,7 @@ export function ItemDialog({
               </Select>
             </div>
             <div className="col-span-1 space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Prix ($)</label>
+              <label className="text-xs font-medium text-muted-foreground">Prix (€)</label>
               <Input
                 type="number"
                 value={itemForm.price}

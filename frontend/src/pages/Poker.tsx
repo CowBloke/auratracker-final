@@ -719,7 +719,7 @@ export default function Poker() {
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Paramètres rapides</p>
-                  <h3 className="text-xl font-semibold">Démarrer une table</h3>
+                  <h3 className="text-base font-semibold">Démarrer une table</h3>
                 </div>
                 {isLeader && (
                   <Button onClick={() => startPoker(startStack, bigBlind)} className="gap-2">

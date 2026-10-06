@@ -125,7 +125,7 @@ function TaxBracketsSection() {
               },
               {
                 step: '3',
-                text: "Le montant est arrondi à l'entier inférieur (minimum 1 $). Le joueur reçoit une notification avec le détail du prélèvement.",
+                text: "Le montant est arrondi à l'entier inférieur (minimum 1 €). Le joueur reçoit une notification avec le détail du prélèvement.",
               },
               {
                 step: '4',
@@ -271,7 +271,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           <div className="divide-y divide-border/20">
             {[
               { n: '1', t: "Va dans l'onglet Travail", d: 'Clique sur "Créer une entreprise". Le bouton indique ton ratio actuel de slots (ex. 0/1).' },
-              { n: '2', t: 'Choisis un type de niveau 1', d: "Limonade (500 $), Épicerie (1 500 $) ou Restaurant (2 000 $). Ces trois types ne nécessitent aucun capital minimum — juste les frais de création." },
+              { n: '2', t: 'Choisis un type de niveau 1', d: "Limonade (500 €), Épicerie (1 500 €) ou Restaurant (2 000 €). Ces trois types ne nécessitent aucun capital minimum — juste les frais de création." },
               { n: '3', t: 'Donne-lui un nom', d: "Le nom doit être unique sur tout le jeu. Il sera visible par tous les autres joueurs dans Explorer." },
               { n: '4', t: 'Commence à collecter', d: 'Ouvre ton entreprise depuis Travail → Ouvrir, puis clique "Collecter les recettes". Des clients NPC visitent ton shop toutes les 6 heures.' },
               { n: '5', t: "Dépose de l'argent en trésorerie", d: "La trésorerie est le compte de l'entreprise. Déposer ou retirer n'affecte que toi (propriétaire)." },
@@ -290,7 +290,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           <p className={cn('text-sm', 'leading-relaxed')}>
             Le nombre de slots dépend directement de ton niveau de compétence <strong>Affaires</strong> :
             niveau 1 = 1 slot, niveau 2 = 2 slots, etc. jusqu'au niveau 10 maximum.
-            Chaque session d'entraînement Affaires coûte <strong>2 500 $</strong> et rapporte 25 XP.
+            Chaque session d'entraînement Affaires coûte <strong>2 500 €</strong> et rapporte 25 XP.
             Il faut 100 XP pour passer un niveau. Tu gagnes aussi de l'XP Affaires automatiquement en faisant tourner tes entreprises.
           </p>
           <p className={cn('text-sm', 'text-muted-foreground')}>
@@ -361,7 +361,7 @@ const youGuideSubsections: TutorialSubsection[] = [
               <Badge variant="outline" className="text-xs border-success/40 text-success">Niveau 3</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Frais de création : <strong className="text-foreground">10 000 $</strong> · Capital minimum : <strong className="text-foreground">0 $</strong>
+              Frais de création : <strong className="text-foreground">10 000 €</strong> · Capital minimum : <strong className="text-foreground">0 €</strong>
             </p>
             <p className="text-xs text-muted-foreground">
               Revenu passif nul à l'ouverture. Les bénéfices viennent des <strong className="text-foreground">intérêts sur les prêts accordés</strong> et
@@ -388,7 +388,7 @@ const youGuideSubsections: TutorialSubsection[] = [
         <GuideSection title="Revenu mensuel → quotidien">
           <p className={cn('text-sm', 'leading-relaxed')}>
             Chaque entreprise a un revenu mensuel défini. Ce revenu est <strong>divisé par 30</strong> pour
-            calculer le revenu journalier (minimum 1 $), qui est automatiquement versé dans la trésorerie chaque jour à minuit.
+            calculer le revenu journalier (minimum 1 €), qui est automatiquement versé dans la trésorerie chaque jour à minuit.
             Il apparaît dans le journal de transactions comme <em>Revenu quotidien</em>.
           </p>
         </GuideSection>
@@ -399,10 +399,10 @@ const youGuideSubsections: TutorialSubsection[] = [
             de gestion de ton business. Le cooldown est de <strong>6 heures</strong> entre deux collectes.
           </p>
           <Card className="gap-0 py-0 shadow-none overflow-hidden mt-2"><CardContent className="p-0">
-            <Row label="Limonade"   value="150 $ / 6 h" />
-            <Row label="Épicerie"   value="300 $ / 6 h" />
-            <Row label="Restaurant" value="350 $ / 6 h" />
-            <Row label="YouTube"    value="220 $ / 6 h" />
+            <Row label="Limonade"   value="150 € / 6 h" />
+            <Row label="Épicerie"   value="300 € / 6 h" />
+            <Row label="Restaurant" value="350 € / 6 h" />
+            <Row label="YouTube"    value="220 € / 6 h" />
           </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-1">
             Si tu ne collectes pas, l'argent attend sans se perdre — mais tu perds du temps de génération.
@@ -696,7 +696,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
               <p className="text-xs font-semibold text-success">Argent $</p>
               <p className="text-xs text-muted-foreground">
                 Monnaie in-game. Sert à acheter, investir, créer des entreprises dans You, jouer au casino.
-                Tu démarres avec <strong className="text-foreground">1 000 $</strong> sur ton compte.
+                Tu démarres avec <strong className="text-foreground">1 000 €</strong> sur ton compte.
               </p>
             </div>
           </CardContent></Card>
@@ -713,16 +713,16 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
   },
   {
     id: 'nc-money',
-    title: "Gagner de l'argent ($)",
+    title: "Gagner de l'argent (€)",
     content: (
       <div className="space-y-5">
         <p className={cn('text-sm', 'leading-relaxed')}>
-          L'argent s'obtient via plusieurs sources. Certaines ont un <strong>plafond journalier de 1 000 $</strong> (jeux + quêtes combinés).
+          L'argent s'obtient via plusieurs sources. Certaines ont un <strong>plafond journalier de 1 000 €</strong> (jeux + quêtes combinés).
         </p>
         <GuideSection title="Sources de revenus">
           <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0 divide-y divide-border/20">
             {[
-              { src: 'Jeux', detail: "Doodle Jump, Flappy Bird, 2048, Solitaire et autres rapportent de l'argent à chaque partie. Plafond commun : 1 000 $ / jour (toutes activités confondues).", cap: true },
+              { src: 'Jeux', detail: "Doodle Jump, Flappy Bird, 2048, Solitaire et autres rapportent de l'argent à chaque partie. Plafond commun : 1 000 € / jour (toutes activités confondues).", cap: true },
               { src: 'Quêtes quotidiennes', detail: "3 quêtes sont assignées chaque jour. Les compléter rapporte de l'argent et de l'Aura. Leur récompense compte dans le plafond journalier.", cap: true },
               { src: 'Pass (claim journalier)', detail: "Réclamer son pass chaque jour octroie une récompense aléatoire (argent, Aura, items). Un bonus de streak s'applique si tu ne rates pas de jour.", cap: false },
               { src: 'Jeu You', detail: "Revenus d'entreprises, salaires, remboursements de prêts, investissements. Aucun plafond — mais soumis aux impôts journaliers.", cap: false },
@@ -819,7 +819,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           d'autres sont purement récréatifs. Deux plafonds journaliers s'appliquent aux gains via les jeux :
         </p>
         <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
-          <Row label="Plafond argent" value="1 000 $ / jour (jeux + quêtes)" />
+          <Row label="Plafond argent" value="1 000 € / jour (jeux + quêtes)" />
           <Row label="Plafond Aura"   value="500 Aura / jour (jeux)" />
         </CardContent></Card>
         <GuideSection title="Jeux avec récompenses">
@@ -927,7 +927,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
         <GuideSection title="Par où commencer dans You ?">
           <div className="divide-y divide-border/20">
             {[
-              { n: '1', t: 'Crée ta première entreprise', d: 'Va dans You → Travail → Créer. Tu démarres avec 1 slot. Choisis entre Limonade (500 $), Épicerie (1 500 $) ou Restaurant (2 000 $).' },
+              { n: '1', t: 'Crée ta première entreprise', d: 'Va dans You → Travail → Créer. Tu démarres avec 1 slot. Choisis entre Limonade (500 €), Épicerie (1 500 €) ou Restaurant (2 000 €).' },
               { n: '2', t: 'Collecte régulièrement', d: 'Les clients NPC paient toutes les 6 heures. Reviens régulièrement pour collecter et renflouer ta trésorerie.' },
               { n: '3', t: 'Explore les autres joueurs', d: 'Dans Explorer, tu vois tous les businesses actifs. Tu peux y investir, postuler comme employé, emprunter.' },
               { n: '4', t: 'Monte tes compétences', d: '6 compétences évolutives. La plus utile au départ : Affaires (déblocage de slots supplémentaires).' },
@@ -957,7 +957,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           <p className="text-xs font-semibold text-warning">À savoir avant de t'enrichir</p>
           <p className="text-xs text-muted-foreground">
             Chaque nuit à <strong className="text-foreground">minuit (Paris)</strong>, si ton solde dépasse un certain seuil,
-            un impôt est automatiquement prélevé. Par défaut, le seuil est à <strong className="text-foreground">10 000 $</strong> avec un taux de <strong className="text-foreground">1 % / jour</strong>.
+            un impôt est automatiquement prélevé. Par défaut, le seuil est à <strong className="text-foreground">10 000 €</strong> avec un taux de <strong className="text-foreground">1 % / jour</strong>.
             Les administrateurs peuvent ajuster ces paliers à tout moment.
           </p>
         </Alert>
@@ -1021,10 +1021,10 @@ const clanGuideSubsections: TutorialSubsection[] = [
     content: (
       <div className="space-y-5">
         <p className={cn('text-sm', 'leading-relaxed')}>
-          N'importe quel joueur approuvé, sans clan actuel, peut créer le sien. La création coûte <strong>100 $</strong>.
+          N'importe quel joueur approuvé, sans clan actuel, peut créer le sien. La création coûte <strong>100 €</strong>.
         </p>
         <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
-          <Row label="Coût de création" value="100 $" />
+          <Row label="Coût de création" value="100 €" />
           <Row label="Longueur du nom"  value="3 à 32 caractères" />
           <Row label="Description"      value="Jusqu'à 300 caractères" />
           <Row label="Membres max"      value="5 (extensible via items)" />
@@ -1117,7 +1117,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
             {[
               { t: 'Déposer',     d: "Depuis l'onglet Banque du clan, tout membre peut verser de l'argent dans la caisse. Le dépôt est irréversible — l'argent appartient au clan, pas à toi personnellement." },
               { t: 'Historique',  d: 'Chaque contribution est tracée avec le nom du membre, la date et le montant. Accessible depuis la liste des contributions.' },
-              { t: 'Utilisation', d: 'Le chef utilise la caisse pour acheter des boosts hebdomadaires Nation (150 000 $) ou des armes au marché noir.' },
+              { t: 'Utilisation', d: 'Le chef utilise la caisse pour acheter des boosts hebdomadaires Nation (150 000 €) ou des armes au marché noir.' },
             ].map(({ t, d }) => (
               <div key={t} className="py-3">
                 <p className="text-sm font-medium">{t}</p>
@@ -1230,9 +1230,9 @@ const clanGuideSubsections: TutorialSubsection[] = [
         </GuideSection>
         <GuideSection title="Marché noir (armes)">
           <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
-            <Row label="Pistolet" value="500 000 $ · −1 slot adverse · −12 pts de pénalité" />
-            <Row label="AK"       value="1 000 000 $ · −2 slots adverses · −24 pts de pénalité" />
-            <Row label="Sniper"   value="1 500 000 $ · −3 slots adverses · −36 pts de pénalité" />
+            <Row label="Pistolet" value="500 000 € · −1 slot adverse · −12 pts de pénalité" />
+            <Row label="AK"       value="1 000 000 € · −2 slots adverses · −24 pts de pénalité" />
+            <Row label="Sniper"   value="1 500 000 € · −3 slots adverses · −36 pts de pénalité" />
           </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-2">
             Achetées depuis la banque de clan. Les armes infligent des pénalités de points au score adverse et bloquent certains slots pendant la guerre en cours.
@@ -1241,7 +1241,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
         </GuideSection>
         <GuideSection title="Boost hebdomadaire">
           <p className={cn('text-sm', 'leading-relaxed')}>
-            Le chef peut activer un <strong>boost hebdomadaire</strong> depuis la Nation (coût : <strong>150 000 $</strong> depuis la banque de clan).
+            Le chef peut activer un <strong>boost hebdomadaire</strong> depuis la Nation (coût : <strong>150 000 €</strong> depuis la banque de clan).
             Ce boost ajoute des points bonus au score de la prochaine guerre de la semaine.
           </p>
         </GuideSection>
@@ -1366,7 +1366,7 @@ const tutorialGuides: TutorialGuide[] = [
     description: "Créer, rejoindre, guerres de clans, Nation, banque, événements et items.",
     subsections: clanGuideSubsections,
   },
-  { id: 'ph-economy', icon: Users,         title: 'Économie & monnaies',    description: "Comprendre l'Aura et l'argent ($), comment les gagner, les dépenser et les protéger des impôts.", tag: 'Économie',   comingSoon: true },
+  { id: 'ph-economy', icon: Users,         title: 'Économie & monnaies',    description: "Comprendre l'Aura et l'argent (€), comment les gagner, les dépenser et les protéger des impôts.", tag: 'Économie',   comingSoon: true },
   { id: 'ph-market',  icon: BookOpen,      title: 'Marché & marketplace',   description: "Acheter, vendre, négocier sur le marché. Comment fonctionne le Market Room et les enchères.",        tag: 'Économie',   comingSoon: true },
   { id: 'ph-quests',  icon: GraduationCap, title: 'Quêtes & pass',          description: "Comment progresser via les quêtes quotidiennes et le pass de saison. Récompenses et stratégie.",     tag: 'Progression', comingSoon: true },
   { id: 'ph-justice', icon: Scale,         title: 'Justice et litiges',     description: "Comment déposer une plainte, le rôle des juges, les cabinets d'avocats et la Cour Suprême.",         tag: 'Avancé',     comingSoon: true },

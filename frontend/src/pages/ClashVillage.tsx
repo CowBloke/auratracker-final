@@ -632,7 +632,7 @@ export default function ClashVillage() {
             <TabsContent value="attack" className="space-y-6 focus-visible:outline-none">
               <div className="flex items-center justify-between px-1">
                 <div className="space-y-0.5">
-                   <h3 className="text-xl font-bold tracking-tight">Matchmaking</h3>
+                   <h3 className="text-base font-semibold">Matchmaking</h3>
                    <p className="text-xs text-muted-foreground font-medium">Trouve un village à attaquer pour gagner de l&apos;or et des trophées.</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => void refreshTargets()} disabled={refreshingTargets} className="rounded-full h-10 px-5 font-bold border-border/40 shadow-sm hover:shadow-md transition-all">
@@ -697,7 +697,7 @@ export default function ClashVillage() {
             <TabsContent value="journal" className="space-y-8 focus-visible:outline-none">
                <div className="grid gap-8 md:grid-cols-2">
                   <div className="space-y-6">
-                    <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-3"><History className="h-6 w-6 text-muted-foreground" /> Combats récents</h3>
+                    <h3 className="text-base font-semibold px-1 flex items-center gap-3"><History className="h-6 w-6 text-muted-foreground" /> Combats récents</h3>
                     <div className="space-y-3">
                       {[...history.attacks, ...history.defenses]
                         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -725,7 +725,7 @@ export default function ClashVillage() {
                     </div>
                   </div>
                   <div className="space-y-6">
-                    <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-3"><Sparkles className="h-6 w-6 text-muted-foreground" /> Activités récentes</h3>
+                    <h3 className="text-base font-semibold px-1 flex items-center gap-3"><Sparkles className="h-6 w-6 text-muted-foreground" /> Activités récentes</h3>
                     <div className="space-y-3">
                        {(state?.activities ?? []).slice(0, 15).map((act, i) => (
                          <div key={i} className="text-xs p-4 rounded-2xl bg-muted/10 border border-border/20 flex gap-4 backdrop-blur-sm group hover:bg-muted/20 transition-colors">
@@ -753,7 +753,7 @@ export default function ClashVillage() {
           <div className="w-[340px] shrink-0 hidden xl:block h-full space-y-6 animate-in slide-in-from-right duration-500">
              <div className="bg-card/40 backdrop-blur-md border border-border/30 rounded-[40px] p-8 shadow-2xl space-y-8 sticky top-6">
                 <div className="space-y-6">
-                   <h3 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-muted-foreground px-1">
+                   <h3 className="text-base font-semibold flex items-center gap-3 px-1">
                      <Trophy className="h-4 w-4 text-amber-500" /> 
                      Top Trophées
                    </h3>
@@ -771,7 +771,7 @@ export default function ClashVillage() {
                 <Separator className="opacity-30" />
                 
                 <div className="space-y-6">
-                   <h3 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-muted-foreground px-1">
+                   <h3 className="text-base font-semibold flex items-center gap-3 px-1">
                      <CurrencyIcon type="money" className="h-4 w-4 text-amber-600" /> 
                      Top Pilleurs
                    </h3>

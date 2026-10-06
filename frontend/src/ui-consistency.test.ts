@@ -107,6 +107,13 @@ describe('cohérence de l’interface', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('aucun montant écrit avec « $ » dans les textes (ex. « 500 $ », « 20$ »)', () => {
+    const offenders = [...walk('pages'), ...walk('components'), ...walk('lib'), ...walk('features')]
+      .filter((file) => /\.tsx?$/.test(file) && !file.endsWith('.test.ts') && !file.startsWith('components/ui'))
+      .filter((file) => /\d[\s\u00a0]?\$(?![\w{(/])|\(\$\)/.test(read(file)));
+    expect(offenders).toEqual([]);
+  });
+
   it('aucun dialogue natif du navigateur (confirm / alert / prompt)', () => {
     const offenders = [...walk('pages'), ...walk('components')]
       .filter((file) => /\.tsx?$/.test(file) && !file.endsWith('.test.ts') && !file.startsWith('components/ui'))
@@ -130,6 +137,21 @@ describe('cohérence de l’interface', () => {
             if (text.includes(' ') && vouvoiement.test(text)) offenders.push(`${file}:${index + 1} ${text.slice(0, 60)}`);
           }
         });
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('les titres de section suivent l’échelle h2 = text-lg, h3 = text-base (hors scènes de jeu thématiques)', () => {
+    const themed = new Set(['pages/Casino.tsx', 'pages/HorseRace.tsx', 'pages/BlockBlast.tsx']);
+    const offenders: string[] = [];
+    for (const file of [...walk('pages'), ...walk('components'), ...walk('features')]) {
+      if (!file.endsWith('.tsx') || file.startsWith('components/ui') || themed.has(file)) continue;
+      for (const [, tag, classes] of read(file).matchAll(/<(h2|h3) className="([^"]*)"/g)) {
+        const tokens = classes.split(/\s+/);
+        if (tokens.some((token) => /^(text-(xl|2xl|3xl)|sm:text-2xl|font-(bold|extrabold|black))$/.test(token))) {
+          offenders.push(`${file}: <${tag} className="${classes}">`);
+        }
+      }
     }
     expect(offenders).toEqual([]);
   });

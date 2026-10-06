@@ -1375,7 +1375,7 @@ export default function Polymarket() {
               <div className="space-y-6">
                 {/* Pending suggestions */}
                 <div>
-                  <h3 className="text-lg font-semibold tracking-tight">Suggestions en attente</h3>
+                  <h3 className="text-base font-semibold">Suggestions en attente</h3>
                   {pendingSuggestions.length === 0 ? (
                     <Card>
                       <CardContent className="py-8 text-center text-muted-foreground">Aucune suggestion en attente</CardContent>
@@ -1465,7 +1465,7 @@ export default function Polymarket() {
 
                 {/* Events list */}
                 <div>
-                  <h3 className="text-lg font-semibold tracking-tight">Événements</h3>
+                  <h3 className="text-base font-semibold">Événements</h3>
                   {events.length === 0 ? (
                     <Card>
                       <CardContent className="py-8 text-center text-muted-foreground">Aucun événement disponible</CardContent>
@@ -1588,7 +1588,7 @@ export default function Polymarket() {
               <div className="space-y-5">
                 {/* Event info */}
                 <div className="space-y-1 pr-6">
-                  <h3 className="font-bold text-base leading-snug">{selectedEvent.title}</h3>
+                  <h3 className="text-base font-semibold">{selectedEvent.title}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{selectedEvent.description}</p>
                 </div>
 
@@ -1884,7 +1884,7 @@ export default function Polymarket() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
-                      <h2 className="text-lg font-bold leading-snug">{selectedEventForDetail.title}</h2>
+                      <h2 className="text-lg font-semibold">{selectedEventForDetail.title}</h2>
                       <Badge
                         variant={isClosed ? 'secondary' : 'default'}
                         className="shrink-0 text-xs"

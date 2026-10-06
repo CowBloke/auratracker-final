@@ -3355,7 +3355,7 @@ function ChevauXRankings({ horses }: { horses: TopHorseDto[] }) {
   return (
     <div className="space-y-2">
       <div className="mb-4">
-        <h2 className="text-[20px] font-extrabold tracking-tight">Classement chevaux</h2>
+        <h2 className="text-lg font-semibold">Classement chevaux</h2>
         <p className="mt-0.5 text-[12px] text-muted-foreground">{horses.length} chevaux classés par victoires</p>
       </div>
       {horses.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Aucun cheval classé pour l&apos;instant.</p>}
@@ -3412,7 +3412,7 @@ function EcuriesRankings({ stables }: { stables: PublicStableDto[] }) {
   return (
     <div className="space-y-2">
       <div className="mb-4">
-        <h2 className="text-[20px] font-extrabold tracking-tight">Classement écuries</h2>
+        <h2 className="text-lg font-semibold">Classement écuries</h2>
         <p className="mt-0.5 text-[12px] text-muted-foreground">{stables.length} écuries triées par réputation</p>
       </div>
       {stables.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Aucune écurie pour l&apos;instant.</p>}
@@ -3445,7 +3445,7 @@ function HistoriqueRankings({ races }: { races: RecentRaceDto[] }) {
   return (
     <div className="space-y-3">
       <div className="mb-4">
-        <h2 className="text-[20px] font-extrabold tracking-tight">Historique des courses</h2>
+        <h2 className="text-lg font-semibold">Historique des courses</h2>
         <p className="mt-0.5 text-[12px] text-muted-foreground">{races.length} courses enregistrées</p>
       </div>
       {races.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Aucune course résolue.</p>}
@@ -3518,7 +3518,7 @@ function RecordsHall({ horses }: { horses: TopHorseDto[] }) {
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-[20px] font-extrabold tracking-tight">Hall of Fame</h2>
+        <h2 className="text-lg font-semibold">Hall of Fame</h2>
         <p className="mt-0.5 text-[12px] text-muted-foreground">Les meilleurs de tous les temps</p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

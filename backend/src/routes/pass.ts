@@ -131,7 +131,7 @@ const isEligibleLootItem = (item: LootItem, ownedItemIds: Set<string>, now: Date
 
 const buildRewardSummary = (rewards: Array<{ type: 'money' | 'aura' | 'item'; amount?: number; item?: LootItem }>) =>
   rewards.map((reward) => {
-    if (reward.type === 'money') return `$${reward.amount}`;
+    if (reward.type === 'money') return `${reward.amount} €`;
     if (reward.type === 'aura') return `${reward.amount} aura`;
     return reward.item?.name ?? 'objet';
   }).join(', ');

@@ -37,7 +37,7 @@ const fmtMoneyExpanded = (n: number) => {
     style: 'decimal',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(n) + ' $';
+  }).format(n) + ' €';
 };
 
 const txTypeLabel = (type: string) => {
@@ -350,7 +350,7 @@ export default function AuraCoin() {
                   <div className="flex gap-2">
                     <Input
                       type="number"
-                      placeholder="Montant $"
+                      placeholder="Montant (€)"
                       value={buyAmount}
                       onChange={(e) => setBuyAmount(e.target.value)}
                       className="h-8 text-sm"

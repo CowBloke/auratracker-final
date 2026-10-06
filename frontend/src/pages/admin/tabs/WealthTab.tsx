@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { formatMoney } from '@/lib/format';
 import { TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,8 +17,7 @@ type WealthTabProps = {
 const fmt = (n: number) =>
   n.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
 
-const fmtMoney = (n: number) =>
-  '$' + n.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+const fmtMoney = (n: number) => formatMoney(n);
 
 const BRACKET_COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#c084fc', '#d946ef', '#ec4899'];
 
@@ -104,7 +104,7 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
               isMoney
             />
             <StatBlock
-              title="Argent ($)"
+              title="Argent (€)"
               icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
               metrics={wealthStats.money}
               gini={wealthStats.money.gini}

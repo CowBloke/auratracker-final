@@ -25,7 +25,7 @@ export function AdsTab(props: AdsTabProps) {
         {pendingAds.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">A valider</h2>
+              <h2 className="text-lg font-semibold">A valider</h2>
               <span className="text-xs">{pendingAds.length} en attente</span>
             </div>
             <div className="space-y-3">
@@ -91,7 +91,7 @@ export function AdsTab(props: AdsTabProps) {
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Toutes les publicités</h2>
+            <h2 className="text-lg font-semibold">Toutes les publicités</h2>
             <span className="text-xs">{allAds.length} au total</span>
           </div>
           {allAdsLoading ? (

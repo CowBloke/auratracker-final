@@ -29,7 +29,7 @@ export function TutorialWelcomeModal() {
           <BookOpen className="h-6 w-6 text-primary" />
         </div>
 
-        <h2 className="mb-1 text-lg font-semibold">Bienvenue sur AuraTracker !</h2>
+        <h2 className="text-lg font-semibold mb-1">Bienvenue sur AuraTracker !</h2>
         <p className="mb-1 text-sm text-muted-foreground">
           C'est ta première connexion. Souhaites-tu suivre un tutoriel interactif pour découvrir les bases du jeu ?
         </p>
