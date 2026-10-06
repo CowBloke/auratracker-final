@@ -67,11 +67,11 @@ export default function SanctionModal({
 
   const handleSubmit = async () => {
     setError(null);
-    if (!targetUserId) { setError('Veuillez sélectionner une cible.'); return; }
+    if (!targetUserId) { setError('Sélectionne une cible.'); return; }
     const parsedAmount = parseInt(amount, 10);
     if (!parsedAmount || parsedAmount <= 0) { setError('Montant invalide.'); return; }
-    if (type === 'PAYMENT' && !beneficiaryUserId) { setError('Veuillez sélectionner un bénéficiaire.'); return; }
-    if (!message.trim()) { setError('Veuillez saisir un message.'); return; }
+    if (type === 'PAYMENT' && !beneficiaryUserId) { setError('Sélectionne un bénéficiaire.'); return; }
+    if (!message.trim()) { setError('Saisis un message.'); return; }
 
     setSubmitting(true);
     try {
@@ -104,7 +104,7 @@ export default function SanctionModal({
         <div className="space-y-4 py-2">
           {issuerRole === 'FISCAL_INSPECTOR' && (
             <p className="text-xs text-muted-foreground border border-warning/30 bg-warning/5 rounded-md px-3 py-2">
-              En tant qu'agent du fisc, votre demande sera transmise à l'administration pour validation avant exécution.
+              En tant qu'agent du fisc, ta demande sera transmise à l'administration pour validation avant exécution.
             </p>
           )}
 

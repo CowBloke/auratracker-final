@@ -1164,13 +1164,13 @@ export default function KnifeHit() {
             {gameOver && (
               <div className="absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/50 backdrop-blur-sm">
                 <div className="w-full max-w-xs rounded-2xl border border-border/60 bg-background/95 p-6 text-center shadow-xl">
-                  <p className="text-sm text-muted-foreground">Run terminée</p>
+                  <p className="text-sm text-muted-foreground">Partie terminée</p>
                   <p className="mt-1 text-4xl font-bold">{score}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">couteaux places avant collision</p>
+                  <p className="mt-1 text-sm text-muted-foreground">couteaux placés avant collision</p>
                   {isNewHighScore && <p className="mt-3 text-sm font-medium text-amber-500">Nouveau record</p>}
                   {rewards && (
                     <p className="mt-3 text-sm text-muted-foreground">
-                      +${rewards.money} · +{rewards.aura} aura
+                      +{rewards.money} € · +{rewards.aura} aura
                     </p>
                   )}
                   <div className="relative mt-4 h-28">
@@ -1180,7 +1180,7 @@ export default function KnifeHit() {
                       onClick={startGame}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
-                      Nouvelle run
+                      Rejouer
                     </Button>
                   </div>
                 </div>

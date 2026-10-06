@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { GameOverOverlay, GameStartOverlay } from '@/components/game/GameOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { gamesApi, marketplaceApi } from '../services/api';
 import { resolveImageUrl } from '@/lib/images';
-import { Play, RotateCcw, EyeOff, Users, SlidersHorizontal } from 'lucide-react';
+import { EyeOff, Users, SlidersHorizontal } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -1708,45 +1709,9 @@ return (
               />
             )}
 
-            {!started && !spectatingHost && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-                <Button
-                  variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  <Play className="w-4 h-4" />
-                  Jouer
-                </Button>
-              </div>
-            )}
+            {!started && !spectatingHost && <GameStartOverlay onPlay={initGame} />}
 
-            {gameOver && !spectatingHost && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-                <div className="text-center space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                    <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-                  </div>
-                  {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-                  {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                    <p className="text-sm text-muted-foreground">
-                      {rewards.money > 0 && `+${rewards.money} €`}
-                      {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                      {rewards.aura > 0 && `+${rewards.aura} aura`}
-                    </p>
-                  )}
-                <Button
-                  variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Rejouer
-                </Button>
-                </div>
-              </div>
-            )}
+            {gameOver && !spectatingHost && <GameOverOverlay score={score} isNewHighScore={isNewHighScore} rewards={rewards} onReplay={initGame} />}
           </GameFullscreenStage>
         </div>
 

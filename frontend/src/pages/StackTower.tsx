@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { GameOverlay, GameOverOverlay } from '@/components/game/GameOverlay';
 import * as THREE from 'three';
 import { gsap, Power1 } from 'gsap';
 import { useAuth } from '../contexts/AuthContext';
@@ -707,30 +708,9 @@ export default function StackTower() {
 
               <button id="start-button" type="button" className="hidden" aria-hidden="true" />
 
-              {state === 'ready' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/65">
-                  <div className="text-center">
-                    <p className="text-3xl font-light">Tour empilée</p>
-                  </div>
-                </div>
-              )}
+              <GameOverlay visible={state === 'ready'} title="Prêt à jouer" />
 
-              {state === 'ended' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/72">
-                  <div className="space-y-2 text-center">
-                    <p className="text-2xl font-light">Partie terminée</p>
-                    <p className="text-4xl tabular-nums">{score}</p>
-                    {isNewHighScore && <p className="text-sm">Nouveau record personnel.</p>}
-                    {reward && (reward.money > 0 || reward.aura > 0) && (
-                      <p className="text-sm text-muted-foreground">
-                        {reward.money > 0 && `+${reward.money} €`}
-                        {reward.money > 0 && reward.aura > 0 && ' · '}
-                        {reward.aura > 0 && `+${reward.aura} aura`}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
+              <GameOverOverlay visible={state === 'ended'} score={score} isNewHighScore={isNewHighScore} rewards={reward} />
             </CardContent></Card>
           </GameFullscreenStage>
         </div>

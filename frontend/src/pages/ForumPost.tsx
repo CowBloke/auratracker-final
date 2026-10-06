@@ -333,7 +333,7 @@ export default function ForumPost() {
                 </FieldLabel>
                 <Textarea
                   id="new-comment"
-                  placeholder="Qu'avez-vous à dire ?"
+                  placeholder="Qu'as-tu à dire ?"
                   value={commentBody}
                   onChange={(event) => setCommentBody(event.target.value)}
                   rows={4}

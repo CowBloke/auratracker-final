@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TabsContent } from '@/components/ui/tabs';
@@ -54,8 +55,8 @@ export function GameLimitsTab() {
 
   if (loading) {
     return (
-      <TabsContent value="game-limits" className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+      <TabsContent value="game-limits">
+        <ListSkeleton />
       </TabsContent>
     );
   }

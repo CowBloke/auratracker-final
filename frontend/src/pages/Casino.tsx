@@ -403,7 +403,7 @@ function CasinoCelebrationLayer({
               </div>
               <div className="text-right">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-white/60">Gain net</p>
-                <p className="text-3xl font-black text-emerald-300 sm:text-5xl">+${celebration.netGain.toLocaleString()}</p>
+                <p className="text-3xl font-black text-emerald-300 sm:text-5xl">+{celebration.netGain.toLocaleString()} €</p>
               </div>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -887,7 +887,7 @@ function SoccerGame({
           <div className="grid grid-cols-3 gap-2">
             {[50, 100, 250].map((value) => (
               <Button key={value} variant={bet === value ? 'default' : 'outline'} onClick={() => setBet(value)} disabled={shooting}>
-                ${value}
+                {value} €
               </Button>
             ))}
           </div>
@@ -895,7 +895,7 @@ function SoccerGame({
             <p className="text-muted-foreground">Zone choisie</p>
             <p className="mt-1 font-semibold">{selectedZone.label}</p>
             <p className="mt-3 text-muted-foreground">Gain brut</p>
-            <p className="text-lg font-semibold">${Math.round(bet * selectedZone.multiplier)}</p>
+            <p className="text-lg font-semibold">{Math.round(bet * selectedZone.multiplier)} €</p>
           </div>
           <Button className="w-full" onClick={shoot} disabled={!user || shooting || bet > (user?.money ?? 0)}>
             {shooting ? 'Tir...' : 'Tirer'}
@@ -1110,7 +1110,7 @@ function MinesGame({
             <p className="text-muted-foreground">Multiplicateur</p>
             <p className="mt-1 text-lg font-semibold">x{currentMultiplier.toFixed(2)}</p>
             <p className="mt-3 text-muted-foreground">Cashout potentiel</p>
-            <p className="text-lg font-semibold">${potentialPayout}</p>
+            <p className="text-lg font-semibold">{potentialPayout} €</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button onClick={cashOut} disabled={status !== 'active' || safeHits === 0 || busy}>Cashout</Button>
@@ -1250,7 +1250,7 @@ function CrashGame({
           <div className="grid grid-cols-3 gap-2">
             {[50, 100, 250].map((value) => (
               <Button key={value} variant={bet === value ? 'default' : 'outline'} onClick={() => setBet(value)} disabled={status === 'running'}>
-                ${value}
+                {value} €
               </Button>
             ))}
           </div>
@@ -1258,7 +1258,7 @@ function CrashGame({
             <p className="text-muted-foreground">Multiplicateur live</p>
             <p className="mt-1 text-2xl font-semibold">x{currentMultiplier.toFixed(2)}</p>
             <p className="mt-3 text-muted-foreground">Cashout potentiel</p>
-            <p className="text-lg font-semibold">${Math.floor(bet * currentMultiplier)}</p>
+            <p className="text-lg font-semibold">{Math.floor(bet * currentMultiplier)} €</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button onClick={startRound} disabled={!user || status === 'running'}>Lancer</Button>
@@ -1577,7 +1577,7 @@ function RouletteGame({
         return;
       }
     } catch {
-      setError('Erreur de vérification du solde. Veuillez réessayer.');
+      setError('Erreur de vérification du solde. Réessaie.');
       return;
     }
 
@@ -1648,7 +1648,7 @@ function RouletteGame({
         await refreshUser();
       } catch (err) {
         console.error('Failed to submit spin result:', err);
-        setError('Erreur lors du crédit des gains. Votre solde a été resynchronisé.');
+        setError('Erreur lors du crédit des gains. Ton solde a été resynchronisé.');
         try { await refreshUser(); } catch {}
       } finally {
         setSpinning(false);
@@ -1685,7 +1685,7 @@ function RouletteGame({
       <Card>
         <CardHeader className="pb-3 pt-4 px-4">
           <CardTitle className="text-sm font-medium">Valeur du jeton</CardTitle>
-          <p className="text-xs text-muted-foreground">Sélectionné: <span className="font-semibold text-foreground">${chipValue}</span></p>
+          <p className="text-xs text-muted-foreground">Sélectionné: <span className="font-semibold text-foreground">{chipValue} €</span></p>
         </CardHeader>
         <CardContent className="px-4 pb-4 space-y-4">
           <div className="grid grid-cols-2 gap-1.5">
@@ -1698,7 +1698,7 @@ function RouletteGame({
                 disabled={spinning}
                 className="text-xs"
               >
-                ${value}
+                {value} €
               </Button>
             ))}
           </div>
@@ -1756,13 +1756,13 @@ function RouletteGame({
           <Card className="flex-1 max-w-[160px]">
             <CardContent className="px-4 py-2.5">
               <p className="text-xs text-muted-foreground">Solde</p>
-              <p className="text-base font-semibold tabular-nums">${user?.money.toLocaleString() || 0}</p>
+              <p className="text-base font-semibold tabular-nums">{user?.money.toLocaleString() || 0} €</p>
             </CardContent>
           </Card>
           <Card className="flex-1 max-w-[160px]">
             <CardContent className="px-4 py-2.5">
               <p className="text-xs text-muted-foreground">Mises en cours</p>
-              <p className="text-base font-semibold tabular-nums">${totalBet.toLocaleString()}</p>
+              <p className="text-base font-semibold tabular-nums">{totalBet.toLocaleString()} €</p>
             </CardContent>
           </Card>
         </div>
@@ -1917,7 +1917,7 @@ function RouletteGame({
               </div>
               <div className="text-right">
                 <p className={cn('text-sm font-semibold', lastResult.net >= 0 ? 'text-green-500' : 'text-red-400')}>
-                  {lastResult.net >= 0 ? '+' : ''}${lastResult.net.toLocaleString()}
+                  {lastResult.net >= 0 ? '+' : ''}{lastResult.net.toLocaleString()} €
                 </p>
                 {rewards && rewards.aura > 0 && (
                   <p className="text-[10px] text-muted-foreground">+{rewards.aura} aura</p>
@@ -1943,7 +1943,7 @@ function RouletteGame({
               {bets.map((bet, i) => (
                 <div key={i} className="flex justify-between text-xs">
                   <span className="text-muted-foreground">{getBetLabel(bet)}</span>
-                  <span className="font-medium">${bet.amount.toLocaleString()}</span>
+                  <span className="font-medium">{bet.amount.toLocaleString()} €</span>
                 </div>
               ))}
             </CardContent>
@@ -1968,7 +1968,7 @@ function RouletteGame({
               Rouge
               {getBetFor('color', 'red') && (
                 <Badge className="absolute -top-1.5 -right-1.5 text-[9px] h-4 px-1 bg-yellow-500 text-black">
-                  ${getBetFor('color', 'red')!.amount}
+                  {getBetFor('color', 'red')!.amount} €
                 </Badge>
               )}
             </Button>
@@ -1981,7 +1981,7 @@ function RouletteGame({
               Noir
               {getBetFor('color', 'black') && (
                 <Badge className="absolute -top-1.5 -right-1.5 text-[9px] h-4 px-1 bg-yellow-500 text-black">
-                  ${getBetFor('color', 'black')!.amount}
+                  {getBetFor('color', 'black')!.amount} €
                 </Badge>
               )}
             </Button>
@@ -2008,7 +2008,7 @@ function RouletteGame({
                 {label}
                 {getBetFor(type, value) && (
                   <Badge className="absolute -top-1.5 -right-1.5 text-[9px] h-4 px-1 bg-yellow-500 text-black">
-                    ${getBetFor(type, value)!.amount}
+                    {getBetFor(type, value)!.amount} €
                   </Badge>
                 )}
               </Button>
@@ -2029,7 +2029,7 @@ function RouletteGame({
                 {d === 1 ? '1-12' : d === 2 ? '13-24' : '25-36'}
                 {getBetFor('dozen', d) && (
                   <Badge className="absolute -top-1.5 -right-1.5 text-[9px] h-4 px-1 bg-yellow-500 text-black">
-                    ${getBetFor('dozen', d)!.amount}
+                    {getBetFor('dozen', d)!.amount} €
                   </Badge>
                 )}
               </Button>
@@ -2046,7 +2046,7 @@ function RouletteGame({
                 Col {c}
                 {getBetFor('column', c) && (
                   <Badge className="absolute -top-1.5 -right-1.5 text-[9px] h-4 px-1 bg-yellow-500 text-black">
-                    ${getBetFor('column', c)!.amount}
+                    {getBetFor('column', c)!.amount} €
                   </Badge>
                 )}
               </Button>
@@ -2073,7 +2073,7 @@ function RouletteGame({
                 0
                 {getBetFor('straight', 0) && (
                   <Badge className="absolute -top-1.5 -right-1.5 text-[9px] h-4 px-1 bg-yellow-500 text-black">
-                    ${getBetFor('straight', 0)!.amount}
+                    {getBetFor('straight', 0)!.amount} €
                   </Badge>
                 )}
               </Button>
@@ -2627,7 +2627,7 @@ function BlackjackGame({
                   (user && user.money < step) && "opacity-30 cursor-not-allowed"
                 )}
               >
-                ${step}
+                {step} €
               </Button>
             ))}
             <div className="flex items-center gap-2">
@@ -2666,7 +2666,7 @@ function BlackjackGame({
           <p className="text-xs   text-muted-foreground">
             Total
           </p>
-          <p className="text-2xl font-semibold">${totalBet.toLocaleString()}</p>
+          <p className="text-2xl font-semibold">{totalBet.toLocaleString()} €</p>
         </div>
       </div>
 
@@ -2726,7 +2726,7 @@ function BlackjackGame({
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs   text-muted-foreground">
                         <span>Main {index + 1}</span>
                         <span>
-                          ${hand.bet.toLocaleString()}
+                          {hand.bet.toLocaleString()} €
                           {hand.doubled ? ' (Double)' : ''}
                         </span>
                       </div>
@@ -2820,7 +2820,7 @@ function BlackjackGame({
               {hands.length === 1 ? getOutcomeLabel(hands[0].outcome) : 'Mains terminées'}
             </div>
             <div className={netGain >= 0 ? 'text-foreground' : 'text-muted-foreground'}>
-              {netGain >= 0 ? '+' : '-'}${Math.abs(netGain).toLocaleString()}
+              {netGain >= 0 ? '+' : '-'}{Math.abs(netGain).toLocaleString()} €
             </div>
           </div>
         )}
@@ -2843,7 +2843,7 @@ function BlackjackGame({
         {rewards && (
           <div className="mt-3 text-xs text-muted-foreground flex items-center gap-3">
             {rewards.aura > 0 && <span>+{rewards.aura} aura</span>}
-            {rewards.money !== 0 && <span>{rewards.money > 0 ? '+' : ''}${rewards.money}</span>}
+            {rewards.money !== 0 && <span>{rewards.money > 0 ? '+' : ''}{rewards.money} €</span>}
           </div>
         )}
       </div>
@@ -2973,7 +2973,7 @@ function SlotMachineGame({
         await refreshUser();
       } catch (error) {
         console.error('Failed to submit spin result:', error);
-        setSpinError('Erreur lors du crédit des gains. Votre solde a été resynchronisé.');
+        setSpinError('Erreur lors du crédit des gains. Ton solde a été resynchronisé.');
         try { await refreshUser(); } catch {}
       }
 
@@ -2999,7 +2999,7 @@ function SlotMachineGame({
               (user && user.money < step) && "opacity-30 cursor-not-allowed"
             )}
           >
-            ${step}
+            {step} €
           </Button>
         ))}
       </div>

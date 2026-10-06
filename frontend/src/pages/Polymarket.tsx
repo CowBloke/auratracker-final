@@ -434,7 +434,7 @@ export default function Polymarket() {
     if (suggestionMode === 'custom') {
       const opts = buildOptionsFromDrafts(suggestionCustomDrafts);
       if (!opts) {
-        toast.error('Erreur', { description: 'Veuillez renseigner un libellé et une cote valide (> 1) pour chaque option.' });
+        toast.error('Erreur', { description: 'Renseigne un libellé et une cote valide (> 1) pour chaque option.' });
         return;
       }
       optionsPayload = opts;
@@ -443,7 +443,7 @@ export default function Polymarket() {
       const hasYes = suggestionBinaryYes.trim() !== '';
       const hasNo = suggestionBinaryNo.trim() !== '';
       if (hasYes !== hasNo) {
-        toast.error('Erreur', { description: 'Veuillez renseigner les deux cotes ou laisser les deux vides.' });
+        toast.error('Erreur', { description: 'Renseigne les deux cotes ou laisser les deux vides.' });
         return;
       }
       if (hasYes && hasNo) {
@@ -478,7 +478,7 @@ export default function Polymarket() {
       }
 
       await polymarketApi.createSuggestion(payload);
-      toast('Suggestion créée', { description: 'Votre suggestion a été soumise avec succès' });
+      toast('Suggestion créée', { description: 'Ta suggestion a été soumise avec succès' });
 
       setTitle(''); setDescription(''); setImageUrl(''); setEventDate('');
       setSuggestionMode('binary');
@@ -531,7 +531,7 @@ export default function Polymarket() {
     }
 
     if (!optionsPayload) {
-      toast.error('Erreur', { description: 'Veuillez renseigner des cotes valides (> 1) pour toutes les options.' });
+      toast.error('Erreur', { description: 'Renseigne des cotes valides (> 1) pour toutes les options.' });
       return;
     }
 
@@ -616,7 +616,7 @@ export default function Polymarket() {
     }
 
     if (!optionsPayload) {
-      toast.error('Erreur', { description: 'Veuillez renseigner des cotes valides (> 1) pour toutes les options.' });
+      toast.error('Erreur', { description: 'Renseigne des cotes valides (> 1) pour toutes les options.' });
       return;
     }
 
@@ -1280,7 +1280,7 @@ export default function Polymarket() {
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base">Répartition</CardTitle>
-                        <CardDescription>Vue rapide de vos résultats Polymarket</CardDescription>
+                        <CardDescription>Vue rapide de tes résultats Polymarket</CardDescription>
                       </CardHeader>
                       <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
                         <div className="rounded-lg bg-muted/40 p-3">
@@ -2120,7 +2120,7 @@ export default function Polymarket() {
               }
 
               if (!optionsPayload) {
-                toast.error('Erreur', { description: 'Veuillez renseigner des cotes valides pour toutes les options.' });
+                toast.error('Erreur', { description: 'Renseigne des cotes valides pour toutes les options.' });
                 return;
               }
 

@@ -45,7 +45,7 @@ export const SHOP_ITEM_DEFS: ShopItemDef[] = [
     id: 'badge_perso',
     name: 'Badge personnalisé',
     description:
-      "Vous permet de proposer un badge personnalisé. Le badge doit être accepté par l'admin d'abord ; en cas de refus, vous serez remboursé.",
+      "Te permet de proposer un badge personnalisé. Le badge doit être accepté par l'admin d'abord ; en cas de refus, vous serez remboursé.",
     type: 'COSMETIC',
     price: 150000,
     imageUrl: '/api/uploads/items/1774423042264-0ea333be-a908-4e31-85ec-baa0d6378f3b.png',

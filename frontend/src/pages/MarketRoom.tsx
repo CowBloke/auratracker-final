@@ -126,7 +126,7 @@ export default function MarketRoom() {
                       <div className="flex items-end justify-between gap-3">
                         <div>
                           <p className="text-xs text-muted-foreground">Prix</p>
-                          <p className="mt-1 text-3xl font-semibold tabular-nums">${coin.price.toFixed(2)}</p>
+                          <p className="mt-1 text-3xl font-semibold tabular-nums">{coin.price.toFixed(2)} €</p>
                         </div>
                         <div className={cn('rounded-full px-3 py-1 text-sm font-semibold', coin.change >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>
                           {coin.change >= 0 ? '+' : ''}{coin.change.toFixed(2)}%

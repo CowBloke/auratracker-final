@@ -647,7 +647,7 @@ export default function Profile() {
                       id="profile-bio"
                       value={bioText}
                       onChange={(event) => setBioText(event.target.value)}
-                      placeholder="Écrivez quelque chose sur vous…"
+                      placeholder="Écris quelque chose sur toi…"
                       rows={5}
                       maxLength={500}
                     />
@@ -655,7 +655,7 @@ export default function Profile() {
                   </Field>
                 ) : (
                   <p className={profileUser.bio ? 'whitespace-pre-wrap text-sm' : 'text-sm text-muted-foreground'}>
-                    {profileUser.bio || (isOwnProfile ? 'Ajoutez une description pour vous présenter aux autres joueurs.' : 'Aucune description.')}
+                    {profileUser.bio || (isOwnProfile ? 'Ajoute une description pour te présenter aux autres joueurs.' : 'Aucune description.')}
                   </p>
                 )}
               </CardContent>

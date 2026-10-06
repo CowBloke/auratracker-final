@@ -732,14 +732,14 @@ export default function Inventory() {
                   <Package />
                 </EmptyMedia>
                 <EmptyTitle>Inventaire vide</EmptyTitle>
-                <EmptyDescription>Achetez des objets en boutique pour les retrouver ici.</EmptyDescription>
+                <EmptyDescription>Achète des objets en boutique pour les retrouver ici.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : displayedItems.length === 0 ? (
             <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>Aucun résultat</EmptyTitle>
-                <EmptyDescription>Aucun objet ne correspond à votre recherche.</EmptyDescription>
+                <EmptyDescription>Aucun objet ne correspond à ta recherche.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : filterType === 'ALL' ? (
@@ -772,7 +772,7 @@ export default function Inventory() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Choisir une couleur</DialogTitle>
-            <DialogDescription>Sélectionnez la couleur de votre pseudo dans le chat.</DialogDescription>
+            <DialogDescription>Sélectionne la couleur de ton pseudo dans le chat.</DialogDescription>
           </DialogHeader>
           <FieldGroup>
             <Item variant="outline" className="justify-center">
@@ -836,8 +836,8 @@ export default function Inventory() {
             <DialogTitle>{imageEffectType === 'PROFILE_BANNER' ? 'Bannière de profil' : 'Photo de profil'}</DialogTitle>
             <DialogDescription>
               {imageEffectType === 'PROFILE_BANNER'
-                ? 'Importez la bannière qui sera affichée en haut de votre profil joueur.'
-                : 'Importez votre photo de profil qui sera affichée dans le chat.'}
+                ? 'Importe la bannière qui sera affichée en haut de ton profil joueur.'
+                : 'Importe ta photo de profil qui sera affichée dans le chat.'}
             </DialogDescription>
           </DialogHeader>
           {imageUrl ? (
@@ -923,7 +923,7 @@ export default function Inventory() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Créer un badge personnalisé</DialogTitle>
-            <DialogDescription>Concevez votre badge. Un admin le validera avant qu&apos;il soit ajouté à votre profil.</DialogDescription>
+            <DialogDescription>Conçois ton badge. Un admin le validera avant qu&apos;il soit ajouté à ton profil.</DialogDescription>
           </DialogHeader>
           <FieldGroup>
             <div className="flex justify-center py-2">

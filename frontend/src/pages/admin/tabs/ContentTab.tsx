@@ -254,7 +254,7 @@ export function ContentTab(props: ContentTabProps) {
                                 </div>
                               </div>
                               <div className="flex items-center gap-4 shrink-0">
-                                <span className="text-sm text-muted-foreground tabular-nums">${item.price}</span>
+                                <span className="text-sm text-muted-foreground tabular-nums">{item.price} €</span>
                                 <div className="flex items-center gap-2">
                                   <Button size="sm" variant="outline" onClick={() => openEditItemDialog(item)} className="h-8 border-border/50">
                                     <Edit2 className="h-4 w-4" />

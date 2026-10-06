@@ -514,7 +514,7 @@ export default function Snake() {
             </Button>
           </ButtonGroup>
         </div>
-        <FieldDescription>Utilisez les flèches ou ZQSD.</FieldDescription>
+        <FieldDescription>Utilise les flèches ou ZQSD.</FieldDescription>
       </Field>
       <Button variant="outline" onClick={() => restartGame()}>
         <RotateCcw />
@@ -609,7 +609,7 @@ export default function Snake() {
               visible={game.status === 'paused'}
               onResume={handlePauseToggle}
               title="Pause"
-              description="Le serpent garde sa trajectoire jusqu'à votre reprise."
+              description="Le serpent garde sa trajectoire jusqu'à ta reprise."
             />
 
             <GameOverlay
@@ -619,7 +619,7 @@ export default function Snake() {
               description={
                 game.status === 'game-over'
                   ? game.reason ?? 'Le serpent a fini sa course.'
-                  : 'Prenez une direction pour lancer la partie ou cliquez sur Jouer.'
+                  : 'Prends une direction pour lancer la partie ou clique sur Jouer.'
               }
             >
               <Button onClick={() => (game.status === 'game-over' ? startFreshRun() : setGame((current) => ({ ...current, status: 'running' })))}>

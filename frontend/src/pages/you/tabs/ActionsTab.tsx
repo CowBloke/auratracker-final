@@ -983,7 +983,7 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
     } catch (error: any) {
       const errCode = error?.response?.data?.error;
       if (errCode === 'USER_MONEY_TOO_LOW') {
-        toast.error("Votre solde personnel est insuffisant pour payer cette action.");
+        toast.error("Ton solde personnel est insuffisant pour payer cette action.");
       } else if (errCode === 'BUSINESS_TREASURY_TOO_LOW') {
         toast.error("La trésorerie du business est insuffisante pour payer cette action.");
       } else {

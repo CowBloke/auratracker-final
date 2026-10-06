@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { GameOverOverlay, GameOverlay, GameStartOverlay } from '@/components/game/GameOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameShell } from '@/components/game/GameShell';
@@ -522,46 +523,11 @@ export default function Game2048() {
             );
           })}
         </div>
-        {!started && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-            <Button variant="ghost" onClick={initGame} className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors">
-              <Play className="w-4 h-4" />
-              Jouer
-            </Button>
-          </div>
-        )}
-        {showWinMessage && !gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-            <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
-              <h2 className="text-2xl font-light">Tu as atteint 2048 !</h2>
-              <Button variant="ghost" onClick={() => setShowWinMessage(false)} className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors">
-                Continuer
-              </Button>
-            </div>
-          </div>
-        )}
-        {gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-            <div className="text-center space-y-6">
-              <div>
-                <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-              </div>
-              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                <p className="text-sm text-muted-foreground">
-                  {rewards.money > 0 && `+${rewards.money} €`}
-                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                  {rewards.aura > 0 && `+${rewards.aura} aura`}
-                </p>
-              )}
-              <Button variant="ghost" onClick={initGame} className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto">
-                <RotateCcw className="w-4 h-4" />
-                Rejouer
-              </Button>
-            </div>
-          </div>
-        )}
+        {!started && <GameStartOverlay onPlay={initGame} />}
+        <GameOverlay visible={showWinMessage && !gameOver} icon={Trophy} title="Tu as atteint 2048 !">
+          <Button onClick={() => setShowWinMessage(false)}>Continuer</Button>
+        </GameOverlay>
+        {gameOver && <GameOverOverlay score={score} isNewHighScore={isNewHighScore} rewards={rewards} onReplay={initGame} />}
       </div>
     </GameFullscreenStage>
   );

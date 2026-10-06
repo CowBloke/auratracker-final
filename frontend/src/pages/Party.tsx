@@ -365,7 +365,7 @@ export default function Party() {
           description={
             currentParty
               ? `${currentParty.isPublic ? 'Publique' : 'Privée'} · ${partyMembers.length}/${currentParty.maxSize} membres`
-              : 'Rejoignez un groupe ouvert ou créez le vôtre pour jouer à plusieurs.'
+              : 'Rejoins un groupe ouvert ou crée le tien pour jouer à plusieurs.'
           }
           actions={
             currentParty ? (
@@ -632,7 +632,7 @@ export default function Party() {
                       <Users />
                     </EmptyMedia>
                     <EmptyTitle>Aucun groupe disponible</EmptyTitle>
-                    <EmptyDescription>Créez un groupe pour inviter vos amis.</EmptyDescription>
+                    <EmptyDescription>Crée un groupe pour inviter tes amis.</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
               ) : (
@@ -747,7 +747,7 @@ export default function Party() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Inviter</DialogTitle>
-            <DialogDescription>Recherchez un joueur pour l&apos;inviter dans votre groupe.</DialogDescription>
+            <DialogDescription>Recherche un joueur pour l&apos;inviter dans ton groupe.</DialogDescription>
           </DialogHeader>
           <InputGroup>
             <InputGroupInput

@@ -247,7 +247,7 @@ export function CryptoTradingTerminal({
       const data = payload[0].payload;
       return (
         <div className="bg-background border border-border/30 p-3">
-          <p className="text-sm font-medium">${data.price.toFixed(2)}</p>
+          <p className="text-sm font-medium">{data.price.toFixed(2)} €</p>
           <p className="text-xs text-muted-foreground">
             {new Date(data.timestamp).toLocaleString('fr-FR')}
           </p>
@@ -266,7 +266,7 @@ export function CryptoTradingTerminal({
             <Card>
               <CardContent className="p-4">
                 <p className={cn('text-xs', "text-muted-foreground")}>Solde Money</p>
-                <p className={cn('text-2xl font-semibold tracking-tight sm:text-3xl', "tabular-nums")}>${moneyBalance.toLocaleString()}</p>
+                <p className={cn('text-2xl font-semibold tracking-tight sm:text-3xl', "tabular-nums")}>{moneyBalance.toLocaleString()} €</p>
               </CardContent>
             </Card>
             <Card>
@@ -274,7 +274,7 @@ export function CryptoTradingTerminal({
                 <p className={cn('text-xs', "text-muted-foreground")}>Solde {coinLabel}</p>
                 <p className={cn('text-2xl font-semibold tracking-tight sm:text-3xl', "tabular-nums")}>{coinBalance.toFixed(4)} {coinUnit}</p>
                 <p className={cn('text-xs', "text-muted-foreground tabular-nums")}>
-                  ≈ ${(coinBalance * currentPrice).toFixed(2)}
+                  ≈ {(coinBalance * currentPrice).toFixed(2)} €
                 </p>
               </CardContent>
             </Card>
@@ -282,7 +282,7 @@ export function CryptoTradingTerminal({
               <CardContent className="p-4">
                 <p className={cn('text-xs', "text-muted-foreground")}>Prix Actuel</p>
                 <div className="flex items-center gap-2">
-                  <span className={cn('text-2xl font-semibold tracking-tight sm:text-3xl', "tabular-nums")}>${currentPrice.toFixed(2)}</span>
+                  <span className={cn('text-2xl font-semibold tracking-tight sm:text-3xl', "tabular-nums")}>{currentPrice.toFixed(2)} €</span>
                   <span className={cn(
                     "flex items-center",
                     'text-xs',
@@ -352,7 +352,7 @@ export function CryptoTradingTerminal({
                     </div>
                     {buyMoneyAmount > 0 && (
                       <div className={cn('text-xs', "text-muted-foreground space-y-1 pt-1")}>
-                        <div className="flex justify-between"><span>Frais ({(feePercentage * 100).toFixed(0)}%)</span><span className="tabular-nums">-${buyFee}</span></div>
+                        <div className="flex justify-between"><span>Frais ({(feePercentage * 100).toFixed(0)}%)</span><span className="tabular-nums">-{buyFee} €</span></div>
                         <div className="flex justify-between"><span>Vous recevrez</span><span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} {coinUnit}</span></div>
                       </div>
                     )}
@@ -375,9 +375,9 @@ export function CryptoTradingTerminal({
                     </div>
                     {sellCoinAmount > 0 && (
                       <div className={cn('text-xs', "text-muted-foreground space-y-1 pt-1")}>
-                        <div className="flex justify-between"><span>Valeur brute</span><span className="tabular-nums">${sellGrossAmount}</span></div>
-                        <div className="flex justify-between"><span>Frais ({(feePercentage * 100).toFixed(0)}%)</span><span className="tabular-nums">-${sellFee}</span></div>
-                        <div className="flex justify-between"><span>Vous recevrez</span><span className="tabular-nums text-foreground">${sellNetAmount}</span></div>
+                        <div className="flex justify-between"><span>Valeur brute</span><span className="tabular-nums">{sellGrossAmount} €</span></div>
+                        <div className="flex justify-between"><span>Frais ({(feePercentage * 100).toFixed(0)}%)</span><span className="tabular-nums">-{sellFee} €</span></div>
+                        <div className="flex justify-between"><span>Vous recevrez</span><span className="tabular-nums text-foreground">{sellNetAmount} €</span></div>
                       </div>
                     )}
                   </CardContent>
@@ -415,9 +415,9 @@ export function CryptoTradingTerminal({
                       </div>
                       {marginAmountNum > 0 && (
                         <div className={cn('text-xs', "text-muted-foreground space-y-1 pt-1")}>
-                          <div className="flex justify-between"><span>Valeur notionnelle</span><span className="tabular-nums text-foreground">${notionalValue.toFixed(2)}</span></div>
+                          <div className="flex justify-between"><span>Valeur notionnelle</span><span className="tabular-nums text-foreground">{notionalValue.toFixed(2)} €</span></div>
                           <div className="flex justify-between"><span>Quantité ({coinUnit})</span><span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} {coinUnit}</span></div>
-                          <div className="flex justify-between"><span>Prix d'entrée</span><span className="tabular-nums">${currentPrice.toFixed(2)}</span></div>
+                          <div className="flex justify-between"><span>Prix d'entrée</span><span className="tabular-nums">{currentPrice.toFixed(2)} €</span></div>
                         </div>
                       )}
                       <Button onClick={handleOpenPosition} disabled={loading || !marginAmount || marginAmountNum <= 0 || marginAmountNum > moneyBalance} variant="outline" className={cn("w-full", !loading && marginAmountNum > 0 && marginAmountNum <= moneyBalance ? positionType === 'LONG' ? "border-success text-success hover:bg-success hover:text-background" : "border-destructive text-destructive hover:bg-destructive hover:text-background" : "")}>
@@ -441,9 +441,9 @@ export function CryptoTradingTerminal({
                                   <Button onClick={() => handleClosePosition(pos.id)} disabled={loading} variant="ghost" size="icon" className="h-6 w-6"><X className="w-3 h-3" /></Button>
                                 </div>
                                 <div className={cn('text-xs', "space-y-1")}>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Prix d'entrée</span><span className="tabular-nums">${pos.entryPrice.toFixed(2)}</span></div>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Prix actuel</span><span className="tabular-nums">${pos.currentPrice?.toFixed(2) || currentPrice.toFixed(2)}</span></div>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">Marge</span><span className="tabular-nums">${pos.marginAmount}</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Prix d'entrée</span><span className="tabular-nums">{pos.entryPrice.toFixed(2)} €</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Prix actuel</span><span className="tabular-nums">{pos.currentPrice?.toFixed(2) || currentPrice.toFixed(2)} €</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Marge</span><span className="tabular-nums">{pos.marginAmount} €</span></div>
                                   <div className="flex justify-between">
                                     <span className="text-muted-foreground">P&L</span>
                                     <span className={cn("tabular-nums font-medium", (pos.pnl || 0) >= 0 ? "text-success" : "text-destructive")}>
@@ -505,7 +505,7 @@ export function CryptoTradingTerminal({
                       </div>
                       <div className="text-right">
                         <p className={cn('text-xs', "tabular-nums")}>{tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coinUnit}</p>
-                        <p className="text-xs text-muted-foreground tabular-nums">@ ${tx.price.toFixed(2)} • Frais: ${tx.fee}</p>
+                        <p className="text-xs text-muted-foreground tabular-nums">@ {tx.price.toFixed(2)} € • Frais: {tx.fee} €</p>
                       </div>
                     </div>
                   ))

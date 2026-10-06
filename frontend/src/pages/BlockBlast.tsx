@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { GameOverOverlay } from '@/components/game/GameOverlay';
 import { MousePointer2, RotateCcw, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
@@ -488,20 +489,7 @@ export default function BlockBlast() {
                   )}
                 </div>
 
-                {gameOver && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[20px] bg-black/78 backdrop-blur-sm">
-                    <div className="space-y-4 px-6 text-center text-white">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.32em] text-white/50">run terminée</p>
-                        <p className="mt-2 text-4xl font-black">{game.score}</p>
-                        <p className="mt-2 text-sm text-white/70">Plus aucun placement possible avec la main actuelle.</p>
-                      </div>
-                      <Button type="button" onClick={() => resetRun()} className="bg-white text-black hover:bg-white/90">
-                        Relancer une partie
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                {gameOver && <GameOverOverlay score={game.score} detail="Plus aucun placement possible avec la main actuelle." onReplay={() => resetRun()} />}
               </div>
 
               <div className="relative z-10 flex w-full max-w-[760px] flex-wrap items-end justify-center gap-4 rounded-[24px] border border-white/10 bg-white/[0.03] px-4 py-4">

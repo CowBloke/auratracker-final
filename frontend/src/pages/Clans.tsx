@@ -950,7 +950,7 @@ export default function Clans() {
 
   const handleLeave = async () => {
     if (!selectedClan) return;
-    if (!(await confirm('Voulez-vous vraiment quitter ce clan ?'))) return;
+    if (!(await confirm('Veux-tu vraiment quitter ce clan ?'))) return;
 
     setActionLoading(true);
     try {
@@ -1573,7 +1573,7 @@ export default function Clans() {
           <DialogHeader>
             <DialogTitle>{activeEventMiniGame?.title ?? 'Mini-jeu événement'}</DialogTitle>
             <DialogDescription>
-              {activeEventMiniGame?.instructions || activeEventMiniGame?.description || 'Faites le meilleur score possible pour votre clan.'}
+              {activeEventMiniGame?.instructions || activeEventMiniGame?.description || 'Fais le meilleur score possible pour ton clan.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1696,7 +1696,7 @@ export default function Clans() {
             <>
               <DialogHeader className="border-b p-6">
                 <DialogTitle>Paramètres du clan — {selectedClan.name}</DialogTitle>
-                <DialogDescription>Gérez l&apos;emblème, la description, le tag, les rôles et les annonces de votre clan.</DialogDescription>
+                <DialogDescription>Gère l&apos;emblème, la description, le tag, les rôles et les annonces de ton clan.</DialogDescription>
               </DialogHeader>
 
               <Tabs
@@ -1904,7 +1904,7 @@ export default function Clans() {
                       <div className="flex flex-col gap-4">
                         <SectionTitle
                           title="Rôles du clan"
-                          description="Gérez les grades personnalisés de vos membres et leurs permissions associées."
+                          description="Gère les grades personnalisés de tes membres et leurs permissions associées."
                           action={
                             <Button variant="outline" size="sm" onClick={openRoleCreate}>
                               <Plus />
@@ -2066,7 +2066,7 @@ export default function Clans() {
             <>
               <DialogHeader className="border-b p-6">
                 <DialogTitle>Tableau de bord — {selectedClan.name}</DialogTitle>
-                <DialogDescription>Accédez au chat, à la banque, aux guerres, à l&apos;inventaire et à la gestion opérationnelle de votre clan.</DialogDescription>
+                <DialogDescription>Accède au chat, à la banque, aux guerres, à l&apos;inventaire et à la gestion opérationnelle de ton clan.</DialogDescription>
               </DialogHeader>
 
               <Tabs
@@ -2202,7 +2202,7 @@ export default function Clans() {
                               value={chatDraft}
                               onChange={(event) => setChatDraft(event.target.value.slice(0, 400))}
                               rows={3}
-                              placeholder="Écrivez un message à vos camarades de clan…"
+                              placeholder="Écris un message à tes camarades de clan…"
                               disabled={chatSending}
                             />
                             <div className="flex items-center justify-between gap-3">
@@ -2971,13 +2971,13 @@ export default function Clans() {
             {!selectedWar || !isOwnClan || !selectedClan.viewer.isMember ? (
               <Empty className="border">
                 <EmptyHeader>
-                  <EmptyDescription>Aucune guerre active pour vous dans ce clan.</EmptyDescription>
+                  <EmptyDescription>Aucune guerre active pour toi dans ce clan.</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : pendingWarGames.length === 0 ? (
               <Empty className="border">
                 <EmptyHeader>
-                  <EmptyDescription>Vous avez déjà joué toutes vos parties disponibles pour le moment.</EmptyDescription>
+                  <EmptyDescription>Tu as déjà joué toutes tes parties disponibles pour le moment.</EmptyDescription>
                 </EmptyHeader>
               </Empty>
             ) : (
@@ -3086,13 +3086,13 @@ export default function Clans() {
           },
           BOMB: {
             title: 'Bombardement Aérien — Comment jouer',
-            desc: 'Votre avion survole la base ennemie. Cliquez sur le terrain pour larguer des bombes sur les bâtiments.',
-            tips: ['8 bombes par mission', '🏰 Forteresses nécessitent 2 impacts', 'Plus vous détruisez, plus vous marquez de points', 'Jouable une fois par jour (mode réel)'],
+            desc: 'Ton avion survole la base ennemie. Clique sur le terrain pour larguer des bombes sur les bâtiments.',
+            tips: ['8 bombes par mission', '🏰 Forteresses nécessitent 2 impacts', 'Plus tu détruis, plus tu marques de points', 'Jouable une fois par jour (mode réel)'],
           },
           NAVAL: {
             title: 'Guerre Navale — Comment jouer',
             desc: 'La carte ennemie est cachée. Cliquez sur les cases pour y envoyer un missile et révéler les bâtiments.',
-            tips: ['Grille 6×6 (36 cases possibles)', '5 tirs par membre, par guerre (total)', 'Vos coéquipiers partagent la même carte — coordonnez-vous !', 'Chaque touche rapporte des points de guerre'],
+            tips: ['Grille 6×6 (36 cases possibles)', '5 tirs par membre, par guerre (total)', 'Tes coéquipiers partagent la même carte : coordonne-toi avec eux !', 'Chaque touche rapporte des points de guerre'],
           },
         };
         const t = TUTORIALS[type];
@@ -3127,7 +3127,7 @@ export default function Clans() {
               Jeu Mémoire
               {gamePractice ? <Badge variant="outline" className="ml-2">Entraînement</Badge> : null}
             </DialogTitle>
-            <DialogDescription>Trouvez toutes les paires pour améliorer vos défenses.</DialogDescription>
+            <DialogDescription>Trouve toutes les paires pour améliorer tes défenses.</DialogDescription>
           </DialogHeader>
           {activeGame === 'MEMORY' && (
             <MemoryGame
@@ -3146,7 +3146,7 @@ export default function Clans() {
               Bombardement Aérien
               {gamePractice ? <Badge variant="outline" className="ml-2">Entraînement</Badge> : null}
             </DialogTitle>
-            <DialogDescription>Cliquez sur la zone de jeu pour larguer vos bombes sur la base ennemie.</DialogDescription>
+            <DialogDescription>Clique sur la zone de jeu pour larguer tes bombes sur la base ennemie.</DialogDescription>
           </DialogHeader>
           {activeGame === 'BOMB' && (
             <BombDropGame
@@ -3294,7 +3294,7 @@ export default function Clans() {
               {roleEditId ? 'Modifier le rôle' : 'Nouveau rôle'}
             </DialogTitle>
             <DialogDescription>
-              {roleEditId ? 'Modifiez le nom, la couleur et les permissions de ce rôle.' : 'Créez un rôle personnalisé pour les membres de votre clan.'}
+              {roleEditId ? 'Modifiez le nom, la couleur et les permissions de ce rôle.' : 'Crée un rôle personnalisé pour les membres de ton clan.'}
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>

@@ -91,9 +91,19 @@ describe('cohérence de l’interface', () => {
   });
 
   it('la monnaie s’affiche en euro, jamais en dollar', () => {
-    const offenders = [...walk('pages'), ...walk('components')]
-      .filter((file) => /\.tsx?$/.test(file) && !file.endsWith('.test.ts'))
-      .filter((file) => /\$\$\{|`[+-]?\$\$\{/.test(read(file)));
+    const offenders: string[] = [];
+    for (const file of [...walk('pages'), ...walk('components')]) {
+      if (!/\.tsx$/.test(file) || file.startsWith('components/ui')) continue;
+      read(file)
+        .split('\n')
+        .forEach((line, index) => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('${')) return;
+          // `$` littéral dans le JSX (aucun gabarit de chaîne avant) ou gabarit `$${...}`
+          const jsxDollar = /\$\{/.test(line) && !line.slice(0, line.search(/\$\{/)).includes('`');
+          if (jsxDollar || /\$\$\{/.test(line)) offenders.push(`${file}:${index + 1}`);
+        });
+    }
     expect(offenders).toEqual([]);
   });
 
@@ -101,6 +111,26 @@ describe('cohérence de l’interface', () => {
     const offenders = [...walk('pages'), ...walk('components')]
       .filter((file) => /\.tsx?$/.test(file) && !file.endsWith('.test.ts') && !file.startsWith('components/ui'))
       .filter((file) => /(^|[^.\w])(confirm|alert|prompt)\(/.test(read(file)) && !/useAppDialog|\bconfirm[,:]/.test(read(file)));
+    expect(offenders).toEqual([]);
+  });
+
+  it('les textes visibles tutoient le joueur (pas de « votre », « vos », « veuillez »)', () => {
+    const literal = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\\n$]|\\.)*)`|>([^<>{}\n]+)</g;
+    const vouvoiement = /(?<!\p{L})(votre|vos|vôtre|veuillez|voulez-vous|[a-zé]+ez-vous)(?!\p{L})/iu;
+    const offenders: string[] = [];
+    for (const file of [...walk('pages'), ...walk('components'), ...walk('lib'), ...walk('config')]) {
+      if (!/\.tsx?$/.test(file) || file.endsWith('.test.ts') || file.startsWith('components/ui') || file.startsWith('lib/tutorials')) continue;
+      if (file === 'pages/Games.tsx') continue;
+      read(file)
+        .split('\n')
+        .forEach((line, index) => {
+          if (/^\s*(import |\/\/|\*)/.test(line)) return;
+          for (const match of line.matchAll(literal)) {
+            const text = match[1] ?? match[2] ?? match[3] ?? match[4] ?? '';
+            if (text.includes(' ') && vouvoiement.test(text)) offenders.push(`${file}:${index + 1} ${text.slice(0, 60)}`);
+          }
+        });
+    }
     expect(offenders).toEqual([]);
   });
 });

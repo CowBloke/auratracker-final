@@ -75,7 +75,7 @@ interface SaveState {
 // ---- Data ----
 const BUILDINGS: BuildingDef[] = [
   { id: 'tree',       name: 'Goyavier',     emoji: '🌳', baseCost: 10,           baseGps: 0.1,    description: 'Un goyavier solitaire. Lent mais bon marché.' },
-  { id: 'picker',     name: 'Cueilleur',    emoji: '👷', baseCost: 100,          baseGps: 1,      description: 'Un cueilleur embauché qui récolte pour vous.' },
+  { id: 'picker',     name: 'Cueilleur',    emoji: '👷', baseCost: 100,          baseGps: 1,      description: 'Un cueilleur embauché qui récolte pour toi.' },
   { id: 'garden',     name: 'Jardin',       emoji: '🌿', baseCost: 1100,         baseGps: 8,      description: 'Un jardin de goyaves soigneusement entretenu.' },
   { id: 'orchard',    name: 'Verger',       emoji: '🏡', baseCost: 12000,        baseGps: 47,     description: 'Un verger entier de goyaviers matures.' },
   { id: 'factory',    name: 'Usine',        emoji: '🏭', baseCost: 130000,       baseGps: 260,    description: 'Traitement industriel de goyaves à grande échelle.' },

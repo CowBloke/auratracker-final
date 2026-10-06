@@ -219,7 +219,7 @@ function MathGame({ onResult }: { onResult: (success: boolean) => void }) {
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
         disabled={done}
-        placeholder="Votre réponse..."
+        placeholder="Ta réponse..."
       />
       <Button className="w-full" onClick={submit} disabled={done} size="lg">Valider</Button>
     </div>

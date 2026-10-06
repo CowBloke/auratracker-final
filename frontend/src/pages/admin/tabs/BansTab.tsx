@@ -575,7 +575,7 @@ export function BansTab(props: BansTabProps) {
                 value={warningMessage}
                 onChange={(event) => setWarningMessage(event.target.value)}
                 placeholder={warningType === 'AMENDE' 
-                  ? 'Entrez la raison de l\'amende...'
+                  ? 'Entre la raison de l\'amende...'
                   : 'Entrez le message de l\'avertissement...'}
                 rows={4}
               />

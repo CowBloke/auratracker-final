@@ -290,7 +290,7 @@ function ItemDetailModal({
               <StatTile label="Total" value={formatMoney(listing.totalPrice)} />
             </div>
             {isOwner ? (
-              <p className="text-center text-sm text-muted-foreground">C&apos;est votre annonce.</p>
+              <p className="text-center text-sm text-muted-foreground">C&apos;est ton annonce.</p>
             ) : (
               <Button onClick={() => onBuy(listing)} disabled={!!buyingListingId}>
                 {buyingListingId === listing.id ? <Spinner /> : null}
@@ -790,7 +790,7 @@ export default function Marketplace() {
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
               <Card>
                 <CardHeader>
-                  <CardTitle>Votre inventaire</CardTitle>
+                  <CardTitle>Ton inventaire</CardTitle>
                   <CardDescription>Sélectionnez l&apos;objet à vendre.</CardDescription>
                   <Badge variant="secondary" className="w-fit">
                     {inventory.length} objet{inventory.length > 1 ? 's' : ''}
@@ -798,7 +798,7 @@ export default function Marketplace() {
                 </CardHeader>
                 <CardContent>
                   {inventory.length === 0 ? (
-                    <EmptyBlock title="Inventaire vide" description="Aucun objet vendable dans votre inventaire." />
+                    <EmptyBlock title="Inventaire vide" description="Aucun objet vendable dans ton inventaire." />
                   ) : (
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       {inventory.map((item) => (
@@ -856,8 +856,8 @@ export default function Marketplace() {
                       </FieldGroup>
                       <p className="text-sm text-muted-foreground">
                         {selectedInventoryItem.quantity > 1
-                          ? 'Vous pouvez vendre une partie de votre pile ou la totalité.'
-                          : "Cet objet sera retiré de votre inventaire dès la mise en vente."}
+                          ? 'Tu peux vendre une partie de ta pile ou la totalité.'
+                          : "Cet objet sera retiré de ton inventaire dès la mise en vente."}
                       </p>
                     </CardContent>
                     <CardFooter>
@@ -869,7 +869,7 @@ export default function Marketplace() {
                   </>
                 ) : (
                   <CardContent>
-                    <EmptyBlock title="Aucun objet sélectionné" description="Sélectionnez un objet dans votre inventaire pour préparer une annonce." />
+                    <EmptyBlock title="Aucun objet sélectionné" description="Sélectionne un objet dans ton inventaire pour préparer une annonce." />
                   </CardContent>
                 )}
               </Card>
@@ -886,7 +886,7 @@ export default function Marketplace() {
               <Card>
                 <CardHeader>
                   <CardTitle>Annonces actives</CardTitle>
-                  <CardDescription>Annulez ou gardez vos objets en vente.</CardDescription>
+                  <CardDescription>Annule ou garde tes objets en vente.</CardDescription>
                   <Badge variant="secondary" className="w-fit">
                     {myActiveListings.length}
                   </Badge>
@@ -936,7 +936,7 @@ export default function Marketplace() {
                 </CardHeader>
                 <CardContent>
                   {myHistoryListings.length === 0 ? (
-                    <EmptyBlock title="Aucun historique" description="Vos annonces soldées ou annulées apparaîtront ici." />
+                    <EmptyBlock title="Aucun historique" description="Tes annonces soldées ou annulées apparaîtront ici." />
                   ) : (
                     <ItemGroup>
                       {myHistoryListings.map((listing, index) => (

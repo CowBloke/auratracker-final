@@ -4573,7 +4573,7 @@ export default function Admin() {
 
   const addInventoryItem = async () => {
     if (!inventoryUser || !inventoryAddItemId) {
-      showMessage('error', 'Sélectionnez un objet');
+      showMessage('error', 'Sélectionne un objet');
       return;
     }
     if (inventoryAddQuantity <= 0) {

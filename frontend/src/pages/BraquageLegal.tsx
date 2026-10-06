@@ -292,8 +292,8 @@ export default function BraquageLegal() {
               <div className="space-y-1 text-sm text-muted-foreground">
                 <p>Coût: <span className="font-medium text-foreground">{TIER_CONFIG[participatingTier].cost.toLocaleString('fr-FR')} €</span></p>
                 <p>Tickets obtenus: <span className="font-medium text-foreground">{TIER_CONFIG[participatingTier].tickets}</span></p>
-                <p>Vos participations restantes: <span className="font-medium text-foreground">{remainingSlots}</span></p>
-                <p>Votre solde: <span className="font-medium text-foreground">{user?.money.toLocaleString('fr-FR') ?? '0'} €</span></p>
+                <p>Tes participations restantes: <span className="font-medium text-foreground">{remainingSlots}</span></p>
+                <p>Ton solde: <span className="font-medium text-foreground">{user?.money.toLocaleString('fr-FR') ?? '0'} €</span></p>
               </div>
               <Button
                 onClick={handleParticipate}
@@ -309,7 +309,7 @@ export default function BraquageLegal() {
           <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <Card>
               <CardHeader>
-                <CardDescription>Vos participations cette session</CardDescription>
+                <CardDescription>Tes participations cette session</CardDescription>
                 <CardTitle>Récapitulatif personnel</CardTitle>
               </CardHeader>
               <CardContent>

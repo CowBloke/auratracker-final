@@ -271,7 +271,7 @@ function CreateSubredditDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Créer un forum</DialogTitle>
-          <DialogDescription>Créez un espace de discussion thématique.</DialogDescription>
+          <DialogDescription>Crée un espace de discussion thématique.</DialogDescription>
         </DialogHeader>
         <FieldGroup>
           <Field>

@@ -511,7 +511,7 @@ export default function AuraCoin() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Aucun GPU. Achetez-en un pour commencer à miner.</p>
+                  <p className="text-xs text-muted-foreground">Aucun GPU. Achètes-en un pour commencer à miner.</p>
                 )}
 
                 {miner && miner.gpuCount < gpuMax && (

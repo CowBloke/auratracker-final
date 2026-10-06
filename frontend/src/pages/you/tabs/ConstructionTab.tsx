@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { Building2, Hammer, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -119,10 +120,7 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Spinner />
-        Chargement de la construction...
-      </div>
+      <ListSkeleton />
     );
   }
 

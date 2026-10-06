@@ -668,7 +668,7 @@ export default function Minesweeper() {
                   </p>
                   {rewards && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      +${rewards.money} · +{rewards.aura} aura {isNewHighScore && '· Nouveau record !'}
+                      +{rewards.money} € · +{rewards.aura} aura {isNewHighScore && '· Nouveau record !'}
                     </p>
                   )}
                   <Button variant="outline" size="sm" className="mt-3" onClick={() => resetBoard()}>

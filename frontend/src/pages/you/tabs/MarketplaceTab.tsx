@@ -163,7 +163,7 @@ function CreateListingModal({
           tone="money"
           icon={<Tag />}
           title="Nouvelle Annonce"
-          subtitle="Mettez en vente vos stocks excédentaires sur le marché."
+          subtitle="Mets en vente tes stocks excédentaires sur le marché."
         />
         <AppModal.Body className="py-4 space-y-6">
           

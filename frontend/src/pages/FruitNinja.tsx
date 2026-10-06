@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { GameOverOverlay, GameStartOverlay } from '@/components/game/GameOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -887,48 +887,9 @@ export default function FruitNinja() {
           style={{ cursor: isPlaying ? 'none' : 'default' }}
         />
 
-        {!started && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 rounded-lg bg-background/90">
-            <div className="text-5xl tracking-widest select-none">🍉🍊🍋🍇🍓</div>
-            <h2 className="text-2xl font-light">Fruit Ninja</h2>
-            <Button
-              variant="ghost"
-              onClick={initGame}
-              className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-            >
-              <Play className="w-4 h-4" />
-              Jouer
-            </Button>
-          </div>
-        )}
+        {!started && <GameStartOverlay onPlay={initGame} title="Fruit Ninja" description="Tranche les fruits avec ta souris et évite les bombes." />}
 
-        {gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-            <div className="text-center space-y-6">
-              <div>
-                <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground mt-1">🍉 {fruitsSliced} fruits tranchés</p>
-              </div>
-              {isNewHighScore && <p className="text-sm text-foreground">✨ Nouveau record !</p>}
-              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                <p className="text-sm text-muted-foreground">
-                  {rewards.money > 0 && `+${rewards.money} €`}
-                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                  {rewards.aura > 0 && `+${rewards.aura} aura`}
-                </p>
-              )}
-              <Button
-                variant="ghost"
-                onClick={initGame}
-                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Rejouer
-              </Button>
-            </div>
-          </div>
-        )}
+        {gameOver && <GameOverOverlay score={score} detail={`${fruitsSliced} fruits tranchés`} isNewHighScore={isNewHighScore} rewards={rewards} onReplay={initGame} />}
       </GameFullscreenStage>
 
       {showLeaderboard && !isFullscreen && (

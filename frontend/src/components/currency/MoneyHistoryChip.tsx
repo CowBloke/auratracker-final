@@ -71,7 +71,7 @@ export function MoneyHistoryChip({ amount }: MoneyHistoryChipProps) {
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Historique du money</DialogTitle>
-            <DialogDescription>Vos derniers mouvements d'argent.</DialogDescription>
+            <DialogDescription>Tes derniers mouvements d'argent.</DialogDescription>
           </DialogHeader>
 
           {isLoading ? (
@@ -88,7 +88,7 @@ export function MoneyHistoryChip({ amount }: MoneyHistoryChipProps) {
                   <ReceiptText />
                 </EmptyMedia>
                 <EmptyTitle>Aucun mouvement</EmptyTitle>
-                <EmptyDescription>Vos transactions apparaîtront ici.</EmptyDescription>
+                <EmptyDescription>Tes transactions apparaîtront ici.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (

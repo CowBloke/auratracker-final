@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { GameOverOverlay, GameStartOverlay } from '@/components/game/GameOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
-import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
@@ -507,36 +507,8 @@ export default function FlappyBird() {
           style={{ imageRendering: 'auto' }}
         />
         <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
-        {!started && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
-            <div className="text-center space-y-4">
-              <Button onClick={initGame} variant="outline" className="border-foreground">
-                <Play className="h-4 w-4 mr-2" />
-                Commencer
-              </Button>
-            </div>
-          </div>
-        )}
-        {gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-            <div className="text-center space-y-4 p-6">
-              <p className="text-2xl font-light">Partie terminée</p>
-              <p className="text-3xl tabular-nums">{score}</p>
-              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-              {rewards && (
-                <p className="text-sm text-muted-foreground">
-                  {rewards.aura > 0 && `+${rewards.aura} aura`}
-                  {rewards.aura > 0 && rewards.money > 0 && ' · '}
-                  {rewards.money > 0 && `+${rewards.money}$`}
-                </p>
-              )}
-              <Button onClick={initGame} variant="outline" className="border-foreground">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Rejouer
-              </Button>
-            </div>
-          </div>
-        )}
+        {!started && <GameStartOverlay onPlay={initGame} />}
+        {gameOver && <GameOverOverlay score={score} isNewHighScore={isNewHighScore} rewards={rewards} onReplay={initGame} />}
       </GameFullscreenStage>
 
       {showLeaderboard && !isFullscreen && (

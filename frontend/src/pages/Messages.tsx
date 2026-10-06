@@ -1730,7 +1730,7 @@ export default function MessagesPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Infos du groupe</DialogTitle>
-            <DialogDescription className="text-xs">Gérez le nom, la description, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
+            <DialogDescription className="text-xs">Gère le nom, la description, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
             {!canManageCourtGroup && (
               <p className="mt-1 text-xs text-muted-foreground">Sur un dossier judiciaire, seuls les admins ou le juge du dossier peuvent renommer le groupe et ajouter des membres.</p>
             )}
@@ -2046,7 +2046,7 @@ export default function MessagesPage() {
               amount: data.amount,
               message: data.message,
             });
-            toast('Sanction proposée', { description: 'Votre proposition a été transmise aux administrateurs.' });
+            toast('Sanction proposée', { description: 'Ta proposition a été transmise aux administrateurs.' });
           }}
         />
       )}
@@ -2062,7 +2062,7 @@ export default function MessagesPage() {
             <div>
               <p className="text-xs font-medium mb-1">Verdict <span className="text-destructive">*</span></p>
               <Textarea value={verdictDraft} onChange={(e) => setVerdictDraft(e.target.value)} rows={4} maxLength={1000}
-                placeholder="Résumez votre décision judiciaire..." />
+                placeholder="Résume ta décision judiciaire..." />
             </div>
             <div>
               <p className="text-xs font-medium mb-1">Sanction / Peine (optionnel)</p>

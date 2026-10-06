@@ -983,7 +983,7 @@ export default function Suggestions() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Nouvelle suggestion</DialogTitle>
-            <DialogDescription>Décrivez votre idée pour que la communauté puisse voter.</DialogDescription>
+            <DialogDescription>Décris ton idée pour que la communauté puisse voter.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <FieldGroup>

@@ -1497,7 +1497,7 @@ function CreateStableModal({
   };
   return (
     <AppModal open={open} onClose={onClose} tone="money" size="sm">
-      <AppModal.Header icon={<Building2 />} tone="money" title="Créer une écurie" subtitle="Votre clan aura accès à l'ensemble de l'écurie." />
+      <AppModal.Header icon={<Building2 />} tone="money" title="Créer une écurie" subtitle="Ton clan aura accès à l'ensemble de l'écurie." />
       <AppModal.Body>
         <div className="space-y-3.5">
           <div
@@ -1511,7 +1511,7 @@ function CreateStableModal({
               ) : (
                 <p className="text-[13px] italic text-muted-foreground/40">Nom de l&apos;écurie…</p>
               )}
-              <p className="text-[11px] text-muted-foreground">Écurie de votre clan</p>
+              <p className="text-[11px] text-muted-foreground">Écurie de ton clan</p>
             </div>
           </div>
           <AppModal.Field
@@ -2218,7 +2218,7 @@ function StableModal({
                                       Vendre
                                     </AppModal.Button>
                                   </div>
-                                  <p className="text-[8.5px] text-muted-foreground/60">Le cheval restera dans votre écurie jusqu&apos;à son achat.</p>
+                                  <p className="text-[8.5px] text-muted-foreground/60">Le cheval restera dans ton écurie jusqu&apos;à son achat.</p>
                                 </div>
                               )}
                             </div>
@@ -2275,7 +2275,7 @@ function StableModal({
                     </button>
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    Votre solde: <span className="font-bold text-emerald-300">{formatMoney(userMoney)}</span>
+                    Ton solde: <span className="font-bold text-emerald-300">{formatMoney(userMoney)}</span>
                   </div>
                 </div>
 
@@ -2313,7 +2313,7 @@ function StableModal({
                               <div className="flex-1 min-w-0">
                                 <p className="text-[12px] font-bold text-white truncate">{listing.businessName}</p>
                                 <p className="text-[9.5px] text-cyan-300 truncate">
-                                  Vendeur: {listing.sellerName} {listing.sellerId === user?.id && <span className="text-amber-300 font-semibold">(Votre offre)</span>}
+                                  Vendeur: {listing.sellerName} {listing.sellerId === user?.id && <span className="text-amber-300 font-semibold">(Ton offre)</span>}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   <span className="text-[9.5px] text-amber-200 font-semibold">{listing.quantity} dispo</span>
@@ -2407,7 +2407,7 @@ function StableModal({
                                 <h3 className="text-[14px] font-bold text-white">{listing.businessName}</h3>
                                 <p className="text-[11px] text-muted-foreground">
                                   Vendeur: <span className="text-cyan-300 font-semibold">{listing.sellerName}</span>
-                                  {listing.sellerId === user?.id && <span className="text-amber-300 font-semibold text-[10px] ml-1.5">(Votre offre)</span>}
+                                  {listing.sellerId === user?.id && <span className="text-amber-300 font-semibold text-[10px] ml-1.5">(Ton offre)</span>}
                                 </p>
                                 <p className="text-[10px] text-muted-foreground mt-0.5">{listing.quantity} cheval(aux) disponible(s) · Gènes aléatoires à l&apos;achat</p>
                               </div>
@@ -2431,7 +2431,7 @@ function StableModal({
                             {/* Purchase Name Input & Action */}
                             <div className="space-y-3 p-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5">
                               <AppModal.Field
-                                label="Donner un nom à votre cheval"
+                                label="Donner un nom à ton cheval"
                                 value={newHorseName}
                                 onChange={setNewHorseName}
                                 placeholder="Ex: Éclair du Nord"
@@ -2928,7 +2928,7 @@ function ConfiscationModal({
             <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">{message}</p>
           </div>
           <p className="rounded-lg px-3 py-2 text-[11.5px] text-rose-200/70" style={{ background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.18)' }}>
-            Les commissaires ont saisi votre cheval. Il n&apos;est plus disponible dans votre écurie.
+            Les commissaires ont saisi votre cheval. Il n&apos;est plus disponible dans ton écurie.
           </p>
         </div>
       </AppModal.Body>

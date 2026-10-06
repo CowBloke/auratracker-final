@@ -793,7 +793,7 @@ export default function Poker() {
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-end justify-between gap-4">
                   <div className="space-y-1">
-                    <div className="text-xs text-muted-foreground">Vos cartes</div>
+                    <div className="text-xs text-muted-foreground">Tes cartes</div>
                     <div className="flex gap-2">
                       {(myHand ?? []).map((card, i) => (
                         <PlayingCard key={i} card={card} size="lg" muted={me.hasFolded} />

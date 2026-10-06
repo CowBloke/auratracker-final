@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { GameOverOverlay } from '@/components/game/GameOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameTopBar } from '@/components/game/GameTopBar';
@@ -164,34 +164,7 @@ export default function Hextris() {
             sandbox="allow-same-origin allow-scripts allow-forms"
           />
 
-          {gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-lg bg-background/90">
-              <div className="text-center">
-                <h2 className="mb-2 text-xl font-bold">Game Over!</h2>
-                <p className="mb-4 text-sm">Score: {score}</p>
-                {highScore > 0 && <p className="mb-2 text-xs text-muted-foreground">Meilleur score: {highScore}</p>}
-                {isNewHighScore && (
-                  <p className="mb-2 text-lg font-semibold text-yellow-500">
-                    🎉 Nouveau meilleur score !
-                  </p>
-                )}
-                {rewards && (
-                  <div className="space-y-1 text-sm">
-                    <p className="text-green-500">+{rewards.money} Pièces</p>
-                    <p className="text-blue-500">+{rewards.aura} Aura</p>
-                  </div>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                onClick={handleRestart}
-                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Rejouer
-              </Button>
-            </div>
-          )}
+          {gameOver && <GameOverOverlay score={score} isNewHighScore={isNewHighScore} rewards={rewards} onReplay={handleRestart} />}
         </GameFullscreenStage>
       </GameShell>
   );

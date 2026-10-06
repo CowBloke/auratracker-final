@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GameOverOverlay, GameStartOverlay } from '@/components/game/GameOverlay';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
@@ -13,7 +14,7 @@ import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Play, RotateCcw, SlidersHorizontal, Users } from 'lucide-react';
+import { SlidersHorizontal, Users } from 'lucide-react';
 import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
 
 const CANVAS_WIDTH = 960;
@@ -796,45 +797,9 @@ export default function GeometryDash() {
             
             <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
 
-            {!started && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-                <Button
-                  variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  <Play className="w-4 h-4" />
-                  Jouer
-                </Button>
-              </div>
-            )}
+            {!started && <GameStartOverlay onPlay={initGame} />}
 
-            {gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-                <div className="text-center space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                    <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-                  </div>
-                  {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-                  {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                    <p className="text-sm text-muted-foreground">
-                      {rewards.money > 0 && `+${rewards.money} €`}
-                      {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                      {rewards.aura > 0 && `+${rewards.aura} aura`}
-                    </p>
-                  )}
-                <Button
-                  variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Rejouer
-                </Button>
-                </div>
-              </div>
-            )}
+            {gameOver && <GameOverOverlay score={score} isNewHighScore={isNewHighScore} rewards={rewards} onReplay={initGame} />}
           </GameFullscreenStage>
         </div>
 

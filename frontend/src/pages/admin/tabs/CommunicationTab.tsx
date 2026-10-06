@@ -129,7 +129,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
               <Textarea
                 value={newThreadBody}
                 onChange={(e) => setNewThreadBody(e.target.value)}
-                placeholder="Votre message..."
+                placeholder="Ton message..."
                 rows={3}
                 maxLength={1000}
                 className="resize-none"

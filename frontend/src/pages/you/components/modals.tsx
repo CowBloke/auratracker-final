@@ -258,7 +258,7 @@ export function CreateBusinessModal({
   const submit = async () => {
     if (!selectedType) return;
     if (isJuterie && !juiceSpecialization) {
-      toast.error('Choisissez une spécialisation pour la juicerie.');
+      toast.error('Choisis une spécialisation pour la juicerie.');
       return;
     }
     setSubmitting(true);
@@ -346,7 +346,7 @@ export function CreateBusinessModal({
         {isJuterie && (
           <FieldRow label="Spécialisation">
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Chaque juicerie ne produit qu'un seul type de jus. Choisissez votre spécialité :</p>
+              <p className="text-xs text-muted-foreground">Chaque juicerie ne produit qu'un seul type de jus. Choisis ta spécialité :</p>
               <div className="grid grid-cols-1 gap-1.5">
                 {JUICE_OPTIONS.map((opt) => (
                   <Item asChild key={opt.value} variant="outline" size="sm" className={juiceSpecialization === opt.value ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setJuiceSpecialization(opt.value)} className="text-left">
@@ -752,7 +752,7 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
         </div>
       </CardContent></Card>
       <FieldRow label="Message (optionnel)">
-        <Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : je veux financer votre croissance." />
+        <Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : je veux financer ta croissance." />
       </FieldRow>
       </AppModal.Body>
       <AppModal.Footer>
@@ -1269,7 +1269,7 @@ export function ManageBusinessModal({
     if (!business || !buybackTarget) return;
     const amount = Number(buybackAmountInput);
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error('Montant invalide', { description: 'Veuillez entrer un montant valide supérieur a 0.' });
+      toast.error('Montant invalide', { description: 'Entre un montant valide supérieur à 0.' });
       return;
     }
 

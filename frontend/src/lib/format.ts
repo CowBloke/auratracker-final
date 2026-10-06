@@ -17,3 +17,11 @@ export const formatCompactMoney = (value: number, digits = 1) => {
   if (abs >= 1e3) return `${formatNumber(value / 1e3, digits)} k €`;
   return formatMoney(value);
 };
+
+/** Récompenses de fin de partie : « +120 € · +5 aura » (chaîne vide s'il n'y a rien à afficher). */
+export const formatRewards = (rewards: { money: number; aura: number } | null | undefined) => {
+  if (!rewards) return '';
+  return [rewards.money > 0 ? `+${formatMoney(rewards.money)}` : '', rewards.aura > 0 ? `+${formatNumber(rewards.aura)} aura` : '']
+    .filter(Boolean)
+    .join(' · ');
+};
