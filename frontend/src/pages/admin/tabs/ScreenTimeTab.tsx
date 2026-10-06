@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -196,21 +197,21 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
           ) : filteredEntries.length > 0 ? (
             <div className="space-y-2">
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border/40">
-                      <th className="text-left py-2 px-3 font-medium text-muted-foreground w-12">Rang</th>
-                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Joueur</th>
-                      <th className="text-left py-2 px-3 font-medium text-muted-foreground w-[34%]">Temps d'écran</th>
-                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Parties</th>
-                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Dernière connexion</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table className="text-xs">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-left w-12">Rang</TableHead>
+                      <TableHead className="text-left">Joueur</TableHead>
+                      <TableHead className="text-left w-[34%]">Temps d'écran</TableHead>
+                      <TableHead className="text-right">Parties</TableHead>
+                      <TableHead className="text-right">Dernière connexion</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {filteredEntries.map((entry) => (
-                      <tr key={entry.userId} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
-                        <td className="py-2 px-3 font-semibold text-foreground tabular-nums">{entry.rank}</td>
-                        <td className="py-2 px-3">
+                      <TableRow key={entry.userId}>
+                        <TableCell className="font-semibold text-foreground tabular-nums">{entry.rank}</TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2">
                             {entry.profilePicture ? (
                               <img src={entry.profilePicture} alt="" className="h-5 w-5 rounded" />
@@ -221,8 +222,8 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
                               {entry.username}
                             </span>
                           </div>
-                        </td>
-                        <td className="py-2 px-3">
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2">
                             <div className="h-2 flex-1 min-w-[40px] rounded-full bg-muted/50 overflow-hidden">
                               <div
@@ -232,17 +233,17 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
                             </div>
                             <span className="tabular-nums whitespace-nowrap font-semibold">{formatScreenTime(entry.totalSeconds)}</span>
                           </div>
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">{entry.gamesPlayed}</td>
-                        <td className="py-2 px-3 text-right tabular-nums text-muted-foreground whitespace-nowrap">
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{entry.gamesPlayed}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground whitespace-nowrap">
                           {entry.lastSeen
                             ? new Date(entry.lastSeen).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                             : '—'}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
               {screenTimeSearch.trim() && (
                 <p className={cn('text-xs', 'text-muted-foreground/60 text-center mt-2')}>

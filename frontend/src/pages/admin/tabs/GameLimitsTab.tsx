@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -151,19 +152,19 @@ export function GameLimitsTab() {
 
           <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-muted/30 border-b border-border/30">
-                    <th className="px-4 py-3 text-xs font-bold text-muted-foreground">Jeu</th>
-                    <th className="px-4 py-3 text-xs font-bold text-muted-foreground w-[180px]">Limite Aura</th>
-                    <th className="px-4 py-3 text-xs font-bold text-muted-foreground w-[180px]">Limite Argent</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/30">
+              <Table className="text-left">
+                <TableHeader>
+                  <TableRow className="border-border/30">
+                    <TableHead className="font-bold">Jeu</TableHead>
+                    <TableHead className="font-bold w-[180px]">Limite Aura</TableHead>
+                    <TableHead className="font-bold w-[180px]">Limite Argent</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-border/30">
                   {filteredGames.length > 0 ? (
                     filteredGames.map((game) => (
-                      <tr key={game.value} className="hover:bg-muted/10 transition-colors group">
-                        <td className="px-4 py-3">
+                      <TableRow key={game.value} className="group">
+                        <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                               <Gamepad2 className="h-4 w-4" />
@@ -173,8 +174,8 @@ export function GameLimitsTab() {
                               <div className="text-xs text-muted-foreground mt-1 font-mono opacity-50">{game.value}</div>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell>
                           <div className="relative">
                             <Input
                               type="number"
@@ -186,8 +187,8 @@ export function GameLimitsTab() {
                             />
                             <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-primary/40" />
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell>
                           <div className="relative">
                             <Input
                               type="number"
@@ -199,21 +200,21 @@ export function GameLimitsTab() {
                             />
                             <Coins className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-warning/40" />
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))
                   ) : (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-12 text-center">
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center">
                         <div className="flex flex-col items-center gap-2 opacity-30">
                           <FilterX className="h-8 w-8" />
                           <p className="text-xs font-medium">Aucun jeu trouvé</p>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </CardContent></Card>
           

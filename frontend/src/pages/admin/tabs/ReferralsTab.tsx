@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -146,35 +147,35 @@ export function ReferralsTab({
             <p className="text-sm text-muted-foreground">Aucun parrainage enregistré pour le moment.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-muted-foreground border-b border-border/40">
-                    <th className="py-2 pr-2">Parrain</th>
-                    <th className="py-2 pr-2">Code</th>
-                    <th className="py-2 pr-2 text-right">Total</th>
-                    <th className="py-2 pr-2 text-right">Validés</th>
-                    <th className="py-2 pr-2 text-right">En attente</th>
-                    <th className="py-2 pr-2 text-right">Récompensés</th>
-                    <th className="py-2 text-right">Montant total</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow className="text-left text-xs text-muted-foreground">
+                    <TableHead>Parrain</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Validés</TableHead>
+                    <TableHead className="text-right">En attente</TableHead>
+                    <TableHead className="text-right">Récompensés</TableHead>
+                    <TableHead className="text-right">Montant total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {referralStats.topReferrers.map((entry) => (
-                    <tr key={entry.userId} className="border-b border-border/20">
-                      <td className="py-2 pr-2">
+                    <TableRow key={entry.userId} className="border-border/20">
+                      <TableCell>
                         <span className="font-medium">{entry.username}</span>
                         {!entry.isApproved && <span className="ml-2 text-xs text-warning">(non validé)</span>}
-                      </td>
-                      <td className="py-2 pr-2 font-mono text-xs">{entry.referralCode ?? '—'}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{entry.totalReferrals.toLocaleString('fr-FR')}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{entry.approvedReferrals.toLocaleString('fr-FR')}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{entry.pendingReferrals.toLocaleString('fr-FR')}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{entry.rewardedReferrals.toLocaleString('fr-FR')}</td>
-                      <td className="py-2 text-right tabular-nums">{entry.totalRewardsGiven.toLocaleString('fr-FR')}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{entry.referralCode ?? '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums">{entry.totalReferrals.toLocaleString('fr-FR')}</TableCell>
+                      <TableCell className="text-right tabular-nums">{entry.approvedReferrals.toLocaleString('fr-FR')}</TableCell>
+                      <TableCell className="text-right tabular-nums">{entry.pendingReferrals.toLocaleString('fr-FR')}</TableCell>
+                      <TableCell className="text-right tabular-nums">{entry.rewardedReferrals.toLocaleString('fr-FR')}</TableCell>
+                      <TableCell className="text-right tabular-nums">{entry.totalRewardsGiven.toLocaleString('fr-FR')}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>

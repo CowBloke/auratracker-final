@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, Cell, Legend } from 'recharts';
@@ -247,25 +248,25 @@ export function DemographicsTab({
                     <p className={cn('text-xs', 'text-muted-foreground')}>{entry.users.length} utilisateur{entry.users.length > 1 ? 's' : ''}</p>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
-                    <table className="w-full text-xs">
-                      <thead className="sticky top-0 bg-muted/30">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">Utilisateur</th>
-                          <th className="px-3 py-2 text-right font-medium text-muted-foreground">Aura</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table className="text-xs">
+                      <TableHeader className="sticky top-0">
+                        <TableRow>
+                          <TableHead className="text-left">Utilisateur</TableHead>
+                          <TableHead className="text-right">Aura</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {entry.users.map((member) => (
-                          <tr key={member.id} className="border-t border-border/30">
-                            <td className="px-3 py-2">
+                          <TableRow key={member.id} className="border-t border-border/30">
+                            <TableCell>
                               <span className="font-medium">{member.username}</span>
                               {member.firstName ? <span className="text-muted-foreground"> ({member.firstName})</span> : null}
-                            </td>
-                            <td className="px-3 py-2 text-right tabular-nums font-medium">{member.aura.toLocaleString('fr-FR')}</td>
-                          </tr>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums font-medium">{member.aura.toLocaleString('fr-FR')}</TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 </CardContent></Card>
               ))}

@@ -155,4 +155,11 @@ describe('cohérence de l’interface', () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  it('les tableaux utilisent le composant Table (pas de <table> brut)', () => {
+    const offenders = [...walk('pages'), ...walk('components')]
+      .filter((file) => file.endsWith('.tsx') && !file.startsWith('components/ui'))
+      .filter((file) => /<table[\s>]/.test(read(file)));
+    expect(offenders).toEqual([]);
+  });
 });

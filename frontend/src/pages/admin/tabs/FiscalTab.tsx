@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { TabsContent } from '@/components/ui/tabs';
 import SanctionModal from '@/components/sanctions/SanctionModal';
 import { Loader2, Gavel } from 'lucide-react';
@@ -94,30 +95,30 @@ export function FiscalTab(props: FiscalTabProps) {
           <p className="text-sm text-muted-foreground">Aucun joueur trouve.</p>
         ) : (
           <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 border-b border-border/60">
-                <tr>
-                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Joueur</th>
-                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Compte (EUR)</th>
-                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Compte partage (EUR)</th>
-                  <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Aura</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-left">Joueur</TableHead>
+                  <TableHead className="text-right">Compte (€)</TableHead>
+                  <TableHead className="text-right">Compte partagé (€)</TableHead>
+                  <TableHead className="text-right">Aura</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {fiscalUsers.map((u: any) => (
-                  <tr key={u.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-3 py-2 font-medium">{u.username}{u.firstName ? ` (${u.firstName})` : ''}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{u.money.toLocaleString('fr-FR')}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.username}{u.firstName ? ` (${u.firstName})` : ''}</TableCell>
+                    <TableCell className="text-right tabular-nums">{u.money.toLocaleString('fr-FR')}</TableCell>
+                    <TableCell className="text-right tabular-nums">
                       {u.sharedMoney
-                        ? <span title={`Compte partage avec ${u.sharedMoney.partner.username}`}>{u.sharedMoney.coupleBalance.toLocaleString('fr-FR')}</span>
+                        ? <span title={`Compte partagé avec ${u.sharedMoney.partner.username}`}>{u.sharedMoney.coupleBalance.toLocaleString('fr-FR')}</span>
                         : <span className="text-muted-foreground/50">-</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-warning">{u.aura.toLocaleString('fr-FR')}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-warning">{u.aura.toLocaleString('fr-FR')}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </CardContent></Card>
         )}
       </div>

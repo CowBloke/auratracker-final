@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -585,30 +586,30 @@ export function ActivityTab(props: ActivityTabProps) {
                   </div>
                 ) : gamesLeaderboard.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border/40">
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground w-10">#</th>
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Joueur</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Parties</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table className="text-xs">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-left w-10">#</TableHead>
+                          <TableHead className="text-left">Joueur</TableHead>
+                          <TableHead className="text-right">Parties</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {gamesLeaderboard.map((entry: any, i: number) => (
-                          <tr key={entry.userId} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
-                            <td className="py-2 px-3 font-semibold text-foreground">{entry.rank ?? i + 1}</td>
-                            <td className="py-2 px-3">
+                          <TableRow key={entry.userId}>
+                            <TableCell className="font-semibold text-foreground">{entry.rank ?? i + 1}</TableCell>
+                            <TableCell>
                               <span style={{ color: entry.usernameColor || 'inherit' }} className="font-medium">
                                 {entry.username}
                               </span>
-                            </td>
-                            <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums font-semibold">
                               {(entry.value ?? 0).toLocaleString('fr-FR')}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 ) : (
                   <p className="py-12 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
@@ -1681,17 +1682,17 @@ export function ActivityTab(props: ActivityTabProps) {
               ) : playtimeLeaderboard && playtimeLeaderboard.leaderboard.length > 0 ? (
                 <div className="space-y-2">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border/40">
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Rang</th>
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Joueur</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Temps total</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Parties</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Moyenne/partie</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table className="text-xs">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-left">Rang</TableHead>
+                          <TableHead className="text-left">Joueur</TableHead>
+                          <TableHead className="text-right">Temps total</TableHead>
+                          <TableHead className="text-right">Parties</TableHead>
+                          <TableHead className="text-right">Moyenne/partie</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {playtimeLeaderboard.leaderboard.map((entry: { userId: string; totalSeconds: number; averageGameDuration: number; gamesPlayed: number; rank: number; profilePicture?: string | null; usernameColor?: string | null; username: string }) => {
                           const totalHours = Math.floor(entry.totalSeconds / 3600);
                           const totalMinutes = Math.floor((entry.totalSeconds % 3600) / 60);
@@ -1699,9 +1700,9 @@ export function ActivityTab(props: ActivityTabProps) {
                           const avgMinutes = Math.floor(avgSeconds / 60);
                           const avgSecs = avgSeconds % 60;
                           return (
-                            <tr key={entry.userId} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
-                              <td className="py-2 px-3 font-semibold text-foreground">{entry.rank}</td>
-                              <td className="py-2 px-3">
+                            <TableRow key={entry.userId}>
+                              <TableCell className="font-semibold text-foreground">{entry.rank}</TableCell>
+                              <TableCell>
                                 <div className="flex items-center gap-2">
                                   {entry.profilePicture ? (
                                     <img src={entry.profilePicture} alt="" className="h-5 w-5 rounded" />
@@ -1712,21 +1713,21 @@ export function ActivityTab(props: ActivityTabProps) {
                                     {entry.username}
                                   </span>
                                 </div>
-                              </td>
-                              <td className="py-2 px-3 text-right tabular-nums">
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
                                 {totalHours > 0 ? `${totalHours}h ${totalMinutes}min` : `${totalMinutes}min`}
-                              </td>
-                              <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">
                                 {entry.gamesPlayed}
-                              </td>
-                              <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">
                                 {avgMinutes}m {String(avgSecs).padStart(2, '0')}s
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           );
                         })}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                   {playtimeLeaderboard.totalEntries > playtimeLeaderboard.limit && (
                     <p className={cn('text-xs', 'text-muted-foreground/60 text-center mt-3')}>
