@@ -1,79 +1,80 @@
-import { useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Games from './pages/Games';
-import DoodleJump from './pages/DoodleJump';
-import Game2048 from './pages/Game2048';
-import FlappyBird from './pages/FlappyBird';
-import Casino from './pages/Casino';
-import AuraCoin from './pages/AuraCoin';
-import StableCoin from './pages/StableCoin';
-import ChaosCoin from './pages/ChaosCoin';
-import MarketRoom from './pages/MarketRoom';
-import Leaderboards from './pages/Leaderboards';
-import Numbers from './pages/Numbers';
-import Profile from './pages/Profile';
-import Inventory from './pages/Inventory';
-import Shop from './pages/Shop';
-import Marketplace from './pages/Marketplace';
-import Party from './pages/Party';
-import Clans from './pages/Clans';
-import BombParty from './pages/BombParty';
-import Poker from './pages/Poker';
-import PetitBac from './pages/PetitBac';
-import BatailleNavale from './pages/BatailleNavale';
-import Polymarket from './pages/Polymarket';
-import PixelBoard from './pages/PixelBoard';
-import Admin from './pages/Admin';
-import Rules from './pages/Rules';
-import Tutoriels from './pages/Tutoriels';
-import Suggestions from './pages/Suggestions';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Games = lazy(() => import('./pages/Games'));
+const DoodleJump = lazy(() => import('./pages/DoodleJump'));
+const Game2048 = lazy(() => import('./pages/Game2048'));
+const FlappyBird = lazy(() => import('./pages/FlappyBird'));
+const Casino = lazy(() => import('./pages/Casino'));
+const AuraCoin = lazy(() => import('./pages/AuraCoin'));
+const StableCoin = lazy(() => import('./pages/StableCoin'));
+const ChaosCoin = lazy(() => import('./pages/ChaosCoin'));
+const MarketRoom = lazy(() => import('./pages/MarketRoom'));
+const Leaderboards = lazy(() => import('./pages/Leaderboards'));
+const Numbers = lazy(() => import('./pages/Numbers'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Shop = lazy(() => import('./pages/Shop'));
+const Marketplace = lazy(() => import('./pages/Marketplace'));
+const Party = lazy(() => import('./pages/Party'));
+const Clans = lazy(() => import('./pages/Clans'));
+const BombParty = lazy(() => import('./pages/BombParty'));
+const Poker = lazy(() => import('./pages/Poker'));
+const PetitBac = lazy(() => import('./pages/PetitBac'));
+const BatailleNavale = lazy(() => import('./pages/BatailleNavale'));
+const Polymarket = lazy(() => import('./pages/Polymarket'));
+const PixelBoard = lazy(() => import('./pages/PixelBoard'));
+const Admin = lazy(() => import('./pages/Admin'));
+const Rules = lazy(() => import('./pages/Rules'));
+const Tutoriels = lazy(() => import('./pages/Tutoriels'));
+const Suggestions = lazy(() => import('./pages/Suggestions'));
 import Maintenance from './pages/Maintenance';
-import Settings from './pages/Settings';
+const Settings = lazy(() => import('./pages/Settings'));
 import Banned from './pages/Banned';
-import Quests from './pages/Quests';
-import Solitaire from './pages/Solitaire';
-import Racer from './pages/Racer';
-import Tetris from './pages/Tetris';
-import KnifeHit from './pages/KnifeHit';
-import GoyaveEmpire from './pages/GoyaveEmpire';
-import ClashVillage from './pages/ClashVillage';
-import PuissanceQuatre from './pages/PuissanceQuatre';
-import Echecs from './pages/Echecs';
-import BallArena from './pages/BallArena';
-import Sudoku from './pages/Sudoku';
-import Inbox from './pages/Inbox';
-import Messages from './pages/Messages';
+import NotFound from './pages/NotFound';
+const Quests = lazy(() => import('./pages/Quests'));
+const Solitaire = lazy(() => import('./pages/Solitaire'));
+const Racer = lazy(() => import('./pages/Racer'));
+const Tetris = lazy(() => import('./pages/Tetris'));
+const KnifeHit = lazy(() => import('./pages/KnifeHit'));
+const GoyaveEmpire = lazy(() => import('./pages/GoyaveEmpire'));
+const ClashVillage = lazy(() => import('./pages/ClashVillage'));
+const PuissanceQuatre = lazy(() => import('./pages/PuissanceQuatre'));
+const Echecs = lazy(() => import('./pages/Echecs'));
+const BallArena = lazy(() => import('./pages/BallArena'));
+const Sudoku = lazy(() => import('./pages/Sudoku'));
+const Inbox = lazy(() => import('./pages/Inbox'));
+const Messages = lazy(() => import('./pages/Messages'));
 import Blocked from './pages/Blocked';
-import Minesweeper from './pages/Minesweeper';
-import GeometryDash from './pages/GeometryDash';
-import RussianRoulette from './pages/RussianRoulette';
-import Uno from './pages/Uno';
-import Morpion from './pages/Morpion';
-import ChromeDino from './pages/ChromeDino';
-import FruitNinja from './pages/FruitNinja';
-import StackTower from './pages/StackTower';
-import Snake from './pages/Snake';
-import Support from './pages/Support';
-import BraquageLegal from './pages/BraquageLegal';
-import QSWatermelon from './pages/QSWatermelon';
-import Polytrack from './pages/Polytrack';
-import Eaglercraft from './pages/Eaglercraft';
-import HexGL from './pages/HexGL';
-import CrossyRoad from './pages/CrossyRoad';
-import BlockBlast from './pages/BlockBlast';
-import Hextris from './pages/Hextris';
-import PaperIo from './pages/PaperIo';
-import DotsAndBoxes from './pages/DotsAndBoxes';
-import HorseRace from './pages/HorseRace';
-import You from './pages/You';
-import IntroVideo from './components/IntroVideo';
-import Forum from './pages/Forum';
-import ForumPost from './pages/ForumPost';
+const Minesweeper = lazy(() => import('./pages/Minesweeper'));
+const GeometryDash = lazy(() => import('./pages/GeometryDash'));
+const RussianRoulette = lazy(() => import('./pages/RussianRoulette'));
+const Uno = lazy(() => import('./pages/Uno'));
+const Morpion = lazy(() => import('./pages/Morpion'));
+const ChromeDino = lazy(() => import('./pages/ChromeDino'));
+const FruitNinja = lazy(() => import('./pages/FruitNinja'));
+const StackTower = lazy(() => import('./pages/StackTower'));
+const Snake = lazy(() => import('./pages/Snake'));
+const Support = lazy(() => import('./pages/Support'));
+const BraquageLegal = lazy(() => import('./pages/BraquageLegal'));
+const QSWatermelon = lazy(() => import('./pages/QSWatermelon'));
+const Polytrack = lazy(() => import('./pages/Polytrack'));
+const Eaglercraft = lazy(() => import('./pages/Eaglercraft'));
+const HexGL = lazy(() => import('./pages/HexGL'));
+const CrossyRoad = lazy(() => import('./pages/CrossyRoad'));
+const BlockBlast = lazy(() => import('./pages/BlockBlast'));
+const Hextris = lazy(() => import('./pages/Hextris'));
+const PaperIo = lazy(() => import('./pages/PaperIo'));
+const DotsAndBoxes = lazy(() => import('./pages/DotsAndBoxes'));
+const HorseRace = lazy(() => import('./pages/HorseRace'));
+const You = lazy(() => import('./pages/You'));
+const IntroVideo = lazy(() => import('./components/IntroVideo'));
+const Forum = lazy(() => import('./pages/Forum'));
+const ForumPost = lazy(() => import('./pages/ForumPost'));
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
@@ -227,7 +228,11 @@ function App() {
 
   return (
     <>
-    {user && !user.hasSeenIntroVideo && <IntroVideo />}
+    {user && !user.hasSeenIntroVideo && (
+      <Suspense fallback={null}>
+        <IntroVideo />
+      </Suspense>
+    )}
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/banned" element={<Banned />} />
@@ -317,6 +322,7 @@ function App() {
         <Route path="forum/c/:subredditName" element={<Forum />} />
         <Route path="forum/c/:subredditName/post/:postId" element={<ForumPost />} />
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
     </>
   );
