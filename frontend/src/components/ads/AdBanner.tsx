@@ -45,7 +45,7 @@ export function AdBanner({ ad, onDismiss }: { ad: Ad; onDismiss: () => void }) {
             {ad.ctaText}
           </a>
         </Button>
-        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={onDismiss} aria-label="Fermer la publicite">
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={onDismiss} aria-label="Fermer la publicité">
           <X className="h-4 w-4" />
         </Button>
       </div>

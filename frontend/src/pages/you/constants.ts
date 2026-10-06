@@ -90,8 +90,8 @@ export const BUSINESS_MONO_MAP: Record<string, string> = {
 
 export const ACTION_META: Record<BusinessAction, { label: string; help: string; icon: typeof UserPlus; tone: string }> = {
   invite: { label: 'Inviter des joueurs', help: 'Envoyer des invitations de recrutement.', icon: UserPlus, tone: 'bg-muted/15 text-primary' },
-  loan: { label: 'Demander un pret', help: 'Envoyer une demande de pret au proprietaire du business.', icon: CreditCard, tone: 'bg-warning/15 text-warning' },
-  invest: { label: 'Investir', help: 'Transferer du money vers la tresorerie d un autre joueur.', icon: TrendingUp, tone: 'bg-muted/15 text-primary' },
-  deposit: { label: 'Deposer', help: 'Envoyer ton argent personnel dans la tresorerie du business.', icon: ArrowDownCircle, tone: 'bg-success/15 text-success' },
-  withdraw: { label: 'Retirer', help: 'Sortir du money de la tresorerie vers ton argent personnel.', icon: ArrowUpCircle, tone: 'bg-destructive/15 text-destructive' },
+  loan: { label: 'Demander un prêt', help: 'Envoyer une demande de prêt au propriétaire du business.', icon: CreditCard, tone: 'bg-warning/15 text-warning' },
+  invest: { label: 'Investir', help: 'Transférer du money vers la trésorerie d’un autre joueur.', icon: TrendingUp, tone: 'bg-muted/15 text-primary' },
+  deposit: { label: 'Déposer', help: 'Envoyer ton argent personnel dans la trésorerie du business.', icon: ArrowDownCircle, tone: 'bg-success/15 text-success' },
+  withdraw: { label: 'Retirer', help: 'Sortir du money de la trésorerie vers ton argent personnel.', icon: ArrowUpCircle, tone: 'bg-destructive/15 text-destructive' },
 };

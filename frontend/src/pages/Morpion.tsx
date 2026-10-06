@@ -192,7 +192,7 @@ export default function Morpion() {
                 Jouer contre l'IA — Morpion
               </DialogTitle>
             </DialogHeader>
-            <p className="text-sm text-muted-foreground">Choisis la difficulte :</p>
+            <p className="text-sm text-muted-foreground">Choisis la difficulté :</p>
             <div className="flex flex-col gap-2">
               {(['easy', 'medium', 'hard'] as const).map((diff) => (
                 <Button
@@ -210,7 +210,7 @@ export default function Morpion() {
         <DuelPlayerSelectionModal
           open={showChallengePicker}
           onOpenChange={setShowChallengePicker}
-          title="Defier en Morpion"
+          title="Défier en Morpion"
           gameType="morpion"
           onlineUsers={onlineUsers}
           currentUserId={user?.id}
@@ -309,7 +309,7 @@ export default function Morpion() {
               ? gameState.winnerId === user?.id
                 ? 'Tu as gagne !'
                 : `${opponent?.username} a gagne.`
-              : 'Egalite !'
+              : 'Égalité !'
             : isMyTurn
               ? 'C\'est ton tour - choisis une case'
               : `Au tour de ${opponent?.username ?? '...'}`}
@@ -373,7 +373,7 @@ function PostGameModals({
         <div className="space-y-6 py-4">
           {gameOver?.isDraw ? (
             <div className="text-center">
-              <p className="text-2xl font-light">Egalite !</p>
+              <p className="text-2xl font-light">Égalité !</p>
               {gameOver.rewards.draw && (
                 <p className="text-sm text-muted-foreground mt-2">
                   +{gameOver.rewards.draw.aura} aura - +{gameOver.rewards.draw.money}$

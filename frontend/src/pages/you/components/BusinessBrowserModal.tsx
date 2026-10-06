@@ -39,7 +39,7 @@ const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: nu
   lemonade: [
     { key: 'citronnade', label: 'Citronnade', price: 10, emoji: '🍋' },
     { key: 'limonade_fraise', label: 'Limonade fraise', price: 15, emoji: '🍓' },
-    { key: 'eau_petillante', label: 'Eau petillante', price: 8, emoji: '💧' },
+    { key: 'eau_petillante', label: 'Eau pétillante', price: 8, emoji: '💧' },
   ],
   epicerie: [
     { key: 'baguette', label: 'Baguette', price: 5, emoji: '🥖' },
@@ -60,10 +60,10 @@ const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: nu
     { key: 'villa', label: 'Villa de luxe', price: 25000, emoji: '🏰', xpHint: '+50 XP Social' },
   ],
   illegal_market: [
-    { key: 'puff', label: 'Puff', price: 45, emoji: '🚬', xpHint: '+XP Illegalite' },
-    { key: 'weed_pack', label: 'Pack de weed', price: 110, emoji: '🌿', xpHint: '+XP Illegalite' },
-    { key: 'resine', label: 'Resine', price: 160, emoji: '🧪', xpHint: '+XP Illegalite' },
-    { key: 'pilules', label: 'Pilules', price: 220, emoji: '💊', xpHint: '+XP Illegalite' },
+    { key: 'puff', label: 'Puff', price: 45, emoji: '🚬', xpHint: '+XP Illégalité' },
+    { key: 'weed_pack', label: 'Pack de weed', price: 110, emoji: '🌿', xpHint: '+XP Illégalité' },
+    { key: 'resine', label: 'Resine', price: 160, emoji: '🧪', xpHint: '+XP Illégalité' },
+    { key: 'pilules', label: 'Pilules', price: 220, emoji: '💊', xpHint: '+XP Illégalité' },
   ],
 };
 
@@ -132,7 +132,7 @@ function ApplyBusinessModal({ open, onClose, business, onSubmitted }: { open: bo
     setSubmitting(true);
     try {
       await withRouteError(() => youApi.applyToBusiness(business.id, { role, salary: Number(salary), message: message.trim() }), 'Impossible d envoyer cette candidature.');
-      toast.success('Candidature envoyee');
+      toast.success('Candidature envoyée');
       await onSubmitted();
       onClose();
     } finally {
@@ -141,8 +141,8 @@ function ApplyBusinessModal({ open, onClose, business, onSubmitted }: { open: bo
   };
 
   return (
-    <AppModal open={open} onClose={onClose} tone="cyan" size="md" description="Le proprietaire doit valider le contrat pour l activer.">
-      <AppModal.Header tone="cyan" title={business ? `Postuler · ${business.name}` : 'Postuler'} subtitle="Le proprietaire doit valider le contrat pour l activer." />
+    <AppModal open={open} onClose={onClose} tone="cyan" size="md" description="Le propriétaire doit valider le contrat pour l activer.">
+      <AppModal.Header tone="cyan" title={business ? `Postuler · ${business.name}` : 'Postuler'} subtitle="Le propriétaire doit valider le contrat pour l activer." />
       <AppModal.Body scrollable>
       <FieldRow label="Role vise"><Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="employee" /></FieldRow>
       <FieldRow label="Salaire demande / jour"><Input type="number" min={0} value={salary} onChange={(e) => setSalary(e.target.value)} /></FieldRow>

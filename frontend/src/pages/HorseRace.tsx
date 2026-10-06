@@ -2625,10 +2625,10 @@ function StableModal({
         onClose={() => setBusinessPicker(null)}
         title={businessPicker?.action === 'buy' ? 'Choisir le haras vendeur' : 'Choisir le haras entraineur'}
         subtitle={businessPicker?.action === 'buy'
-          ? 'Le cheval sera retire du stock du haras selectionne.'
+          ? 'Le cheval sera retiré du stock du haras selectionne.'
           : `Le haras encaisse ${formatMoney(config.HORSE_TRAIN_COST)} et paie ${formatMoney(config.HORSE_TRAIN_BASELINE_COST)} de cout technique.`}
         businesses={businessPicker?.action === 'buy' ? horseSellers : horseBusinesses}
-        confirmLabel={businessPicker?.action === 'buy' ? 'Acheter via ce haras' : 'Confier l entrainement'}
+        confirmLabel={businessPicker?.action === 'buy' ? 'Acheter via ce haras' : 'Confier l entraînement'}
         emptyLabel={businessPicker?.action === 'buy' ? 'Aucun haras avec cheval disponible.' : 'Aucun haras disponible.'}
         renderMeta={(business) => (
           <div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">

@@ -299,7 +299,7 @@ export default function Polytrack() {
             <GamePauseOverlay
               visible={isPaused}
               onResume={() => setIsPaused(false)}
-              description="Le time trial reste affiche mais l'ecran est mis en pause cote interface."
+              description="Le time trial reste affiche mais l'écran est mis en pause cote interface."
             />
           </GameFullscreenStage>
         </div>

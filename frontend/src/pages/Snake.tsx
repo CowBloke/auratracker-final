@@ -190,9 +190,9 @@ function getGameOverReason(head: Point, snake: Point[], willGrow: boolean): stri
     return 'Tu as percute un mur.';
   }
   if (getSnakeCollision(snake, head, willGrow)) {
-    return 'Tu t es mordu la queue.';
+    return 'Tu t’es mordu la queue.';
   }
-  return 'La run est terminee.';
+  return 'La run est terminée.';
 }
 
 export default function Snake() {

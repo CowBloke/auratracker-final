@@ -350,7 +350,7 @@ export function InboxTab(props: InboxTabProps) {
                       } else if (item.type === 'moderation') {
                         const event = item.data as AdminChatModerationEvent;
                         title = event.type === 'appeal' ? `Appel mute : ${event.username}` : `Mute auto : ${event.username}`;
-                        subtitle = event.type === 'appeal' ? (event.details.message || 'Contestation utilisateur') : (event.details.discussion || 'Chat general');
+                        subtitle = event.type === 'appeal' ? (event.details.message || 'Contestation utilisateur') : (event.details.discussion || 'Chat général');
                         badgeLabel = event.type === 'appeal' ? 'Appel mute' : 'Mute';
                         badgeColor = 'bg-destructive/20 text-destructive';
                         borderAccent = 'border-l-destructive';
@@ -408,7 +408,7 @@ export function InboxTab(props: InboxTabProps) {
                         <div>
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <span className="text-xs px-2 py-0.5 rounded bg-destructive/20 text-destructive">{isAppeal ? 'Appel de mute' : 'Mute automatique'}</span>
-                            <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{event.details.discussion || 'Chat general'}</span>
+                            <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{event.details.discussion || 'Chat général'}</span>
                             <span className="text-xs text-muted-foreground/60">
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>

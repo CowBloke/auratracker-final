@@ -57,7 +57,7 @@ const getEffectLabel = (effect: string | null) => {
     if (typeof p.bonusMoney === 'number') return `+$${p.bonusMoney}`;
     if (p.type === 'USERNAME_COLOR') return 'Couleur de pseudo';
     if (p.type === 'PROFILE_PICTURE') return 'Photo de profil';
-    if (p.type === 'PROFILE_BANNER') return 'Banniere de profil';
+    if (p.type === 'PROFILE_BANNER') return 'Bannière de profil';
     if (p.type === 'DOODLE_JUMP_SKIN') return 'Apparence Doodle Jump';
     if (p.type === 'CLAN_GAME_MONEY_BOOST') return `Boost clan +${p.percentage ?? 0}%`;
     if (p.type === 'CLAN_PROFILE_PICTURE') return 'Photo de profil de clan';
@@ -495,7 +495,7 @@ export default function Shop() {
   const handlePurchase = async (item: ShopItem) => {
     if (!user || buyingItemId) return;
     if (isDoodleJumpSkin(item) && ownedSkinItemIds.has(item.id)) {
-      toast.error('Tu possedes deja ce skin.');
+      toast.error('Tu possedes déjà ce skin.');
       return;
     }
     setBuyingItemId(item.id);

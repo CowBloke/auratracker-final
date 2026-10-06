@@ -85,7 +85,7 @@ export default function Quests() {
       setPassStatus(response.data);
     } catch (error) {
       console.error('Error fetching pass status:', error);
-      toast.error('Impossible de charger la boite quotidienne.');
+      toast.error('Impossible de charger la boîte quotidienne.');
     } finally {
       setPassLoading(false);
     }
@@ -170,11 +170,11 @@ export default function Quests() {
         enqueue(rewardItems);
       }
 
-      toast.success('Boite quotidienne ouverte.');
+      toast.success('Boîte quotidienne ouverte.');
       await fetchPassStatus();
     } catch (error) {
       console.error('Error claiming daily box:', error);
-      toast.error("Impossible d'ouvrir la boite quotidienne.");
+      toast.error("Impossible d'ouvrir la boîte quotidienne.");
     } finally {
       setPassClaiming(false);
     }

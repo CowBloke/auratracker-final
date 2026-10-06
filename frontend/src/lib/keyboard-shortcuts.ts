@@ -47,8 +47,8 @@ export const DEFAULT_KEYBOARD_SHORTCUTS: KeyboardShortcutDefinition[] = [
   },
   {
     id: 'open_inbox',
-    label: 'Ouvrir la boite de reception',
-    description: 'Affiche les notifications et messages systeme.',
+    label: 'Ouvrir la boîte de réception',
+    description: 'Affiche les notifications et messages système.',
     combo: 'Alt+Shift+I',
     enabled: true,
   },
@@ -61,7 +61,7 @@ export const DEFAULT_KEYBOARD_SHORTCUTS: KeyboardShortcutDefinition[] = [
   },
   {
     id: 'open_settings',
-    label: 'Ouvrir les reglages',
+    label: 'Ouvrir les réglages',
     description: 'Va directement dans les parametres utilisateur.',
     combo: 'Alt+Shift+S',
     enabled: true,
@@ -322,7 +322,7 @@ export function matchesShortcut(event: KeyboardEvent, combo: string) {
 export function formatShortcutCombo(combo: string) {
   const normalized = normalizeShortcutCombo(combo);
   if (!normalized) {
-    return 'Non defini';
+    return 'Non défini';
   }
 
   return normalized

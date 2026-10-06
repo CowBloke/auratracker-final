@@ -269,7 +269,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     const ios = isIosDevice();
     if (ios && !isRunningStandalone()) {
-      toast.error('Sur iOS, ajoute Aura Tracker a l\'ecran d\'accueil pour activer les notifications.');
+      toast.error('Sur iOS, ajoute Aura Tracker a l\'écran d\'accueil pour activer les notifications.');
       setBrowserNotificationSupported(true);
       setBrowserNotificationPermission(Notification.permission);
       return Notification.permission;
@@ -326,12 +326,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setSeedPromptVersion(res.data.currentVersion);
       if (res.data.needsUpdate) {
         setShowSeedPromptModal(true);
-        toast.error("Seed relancé, mais la version locale n'a pas pu etre synchronisée.");
+        toast.error("Seed relancé, mais la version locale n'a pas pu être synchronisée.");
         return;
       }
 
       setShowSeedPromptModal(false);
-      toast.success('Seed relancé avec succes.');
+      toast.success('Seed relancé avec succès.');
     } catch {
       toast.error('Impossible de relancer le seed.');
     } finally {
@@ -800,7 +800,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             <DialogDescription>
               {seedPromptVersion != null
                 ? `La version ${seedPromptVersion} du seed n'a pas encore ete lancee sur cette base locale.`
-                : 'Une version plus recente du seed est disponible pour cette base locale.'}
+                : 'Une version plus récente du seed est disponible pour cette base locale.'}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

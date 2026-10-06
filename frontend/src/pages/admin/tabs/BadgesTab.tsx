@@ -76,7 +76,7 @@ export function BadgesTab(props: BadgesTabProps) {
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : badges.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun badge. Clique sur "Nouveau badge" pour en creer un.</p>
+              <p className="text-sm text-muted-foreground">Aucun badge. Clique sur "Nouveau badge" pour en créer un.</p>
             ) : (
               <div className="space-y-2">
                 {badges.map((badge: any) => (
@@ -220,7 +220,7 @@ export function BadgesTab(props: BadgesTabProps) {
                       <Input value={badgeForm.name ?? ''} onChange={(e) => setBadgeForm((f: any) => ({ ...f, name: e.target.value }))} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs">Icone</label>
+                      <label className="text-xs">Icône</label>
                       <Input value={badgeForm.icon ?? '*'} onChange={(e) => setBadgeForm((f: any) => ({ ...f, icon: e.target.value }))} maxLength={4} className="w-16 text-center text-lg" />
                     </div>
                   </div>
@@ -230,7 +230,7 @@ export function BadgesTab(props: BadgesTabProps) {
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs">Comment l&apos;obtenir</label>
-                    <Input value={badgeForm.howToObtain ?? ''} onChange={(e) => setBadgeForm((f: any) => ({ ...f, howToObtain: e.target.value }))} placeholder="Ex: Etre dans le top 5 de l'aura" />
+                    <Input value={badgeForm.howToObtain ?? ''} onChange={(e) => setBadgeForm((f: any) => ({ ...f, howToObtain: e.target.value }))} placeholder="Ex: Être dans le top 5 de l'aura" />
                   </div>
                 </div>
               </CardContent></Card>
@@ -327,7 +327,7 @@ export function BadgesTab(props: BadgesTabProps) {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs">Couleur de l&apos;icone</label>
+                    <label className="text-xs">Couleur de l&apos;icône</label>
                     <div className="flex items-center gap-2">
                       <label className="cursor-pointer shrink-0">
                         <div className="h-9 w-9 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: badgeForm.iconColor ?? '#ffffff' }} />
@@ -354,27 +354,27 @@ export function BadgesTab(props: BadgesTabProps) {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs">Categorie</label>
+                    <label className="text-xs">Catégorie</label>
                     <Select value={badgeForm.category ?? 'special'} onValueChange={(v) => setBadgeForm((f: any) => ({ ...f, category: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="leaderboard">Classement</SelectItem>
-                        <SelectItem value="achievement">Succes</SelectItem>
+                        <SelectItem value="achievement">Succès</SelectItem>
                         <SelectItem value="special">Special</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs">Rarete</label>
+                    <label className="text-xs">Rareté</label>
                     <Select value={badgeForm.rarity ?? 'common'} onValueChange={(v) => setBadgeForm((f: any) => ({ ...f, rarity: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="common">Commun</SelectItem>
                         <SelectItem value="uncommon">Peu commun</SelectItem>
                         <SelectItem value="rare">Rare</SelectItem>
-                        <SelectItem value="epic">Epique</SelectItem>
-                        <SelectItem value="legendary">Legendaire</SelectItem>
+                        <SelectItem value="epic">Épique</SelectItem>
+                        <SelectItem value="legendary">Légendaire</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -419,7 +419,7 @@ export function BadgesTab(props: BadgesTabProps) {
                             <SelectItem value="GAME_HIGHSCORE_knife_hit">Champion Knife Hit</SelectItem>
                             <SelectItem value="GAME_HIGHSCORE_goyave_empire">Champion Goyave Empire</SelectItem>
                             <SelectItem value="GAME_HIGHSCORE_logic_lab">Champion Logic Lab</SelectItem>
-                            <SelectItem value="GAME_HIGHSCORE_minesweeper">Champion Demineur</SelectItem>
+                            <SelectItem value="GAME_HIGHSCORE_minesweeper">Champion Démineur</SelectItem>
                             <SelectItem value="GAME_HIGHSCORE_casino">Champion Casino</SelectItem>
                             <SelectItem value="BOMBPARTY_TOP_WINS">Champion Bombe de mots (victoires)</SelectItem>
                           </SelectContent>
@@ -442,7 +442,7 @@ export function BadgesTab(props: BadgesTabProps) {
                     checked={badgeForm.isHidden ?? false}
                     onCheckedChange={(v) => setBadgeForm((f: any) => ({ ...f, isHidden: v }))}
                   />
-                  <label className="text-xs">Achievement cache - s'affiche comme ??? sur les profils avant d'etre obtenu</label>
+                  <label className="text-xs">Achievement cache - s'affiche comme ??? sur les profils avant d'être obtenu</label>
                 </div>
               </div>
             </div>

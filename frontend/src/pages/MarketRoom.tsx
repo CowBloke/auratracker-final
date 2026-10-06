@@ -22,7 +22,7 @@ type CoinCardData = {
 const personalities: Record<CoinCardData['personality'], { label: string; icon: typeof CandlestickChart; chipClass: string }> = {
   BALANCED: { label: 'Equilibre', icon: CandlestickChart, chipClass: 'border-warning/30 bg-warning/10 text-warning' },
   STABLE: { label: 'Stable', icon: ShieldCheck, chipClass: 'border-success/30 bg-success/10 text-success' },
-  VOLATILE: { label: 'Tres instable', icon: Zap, chipClass: 'border-destructive/30 bg-destructive/10 text-destructive' },
+  VOLATILE: { label: 'Très instable', icon: Zap, chipClass: 'border-destructive/30 bg-destructive/10 text-destructive' },
 };
 
 export default function MarketRoom() {

@@ -116,9 +116,9 @@ const CATEGORIES = [
   { id: 'aura', label: 'Aura', Icon: ({ className }: { className?: string }) => <CurrencyIcon type="aura" className={className} />, types: ['AURA_RECEIVED'] },
   { id: 'clans', label: 'Clans', Icon: Users, types: CLAN_TYPES },
   { id: 'social', label: 'Social', Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION', 'DIRECT_MESSAGE'] },
-  { id: 'quetes', label: 'Quetes', Icon: Zap, types: ['QUEST_COMPLETED'] },
+  { id: 'quetes', label: 'Quêtes', Icon: Zap, types: ['QUEST_COMPLETED'] },
   { id: 'polymarket', label: 'Polymarket', Icon: TrendingUp, types: POLY_TYPES },
-  { id: 'systeme', label: 'Systeme', Icon: Info, types: SYS_TYPES },
+  { id: 'systeme', label: 'Système', Icon: Info, types: SYS_TYPES },
   { id: 'archived', label: 'Archive', Icon: Archive, types: null },
 ] as const;
 

@@ -103,7 +103,7 @@ const convertImageDataUrlToSupportedFormat = async (dataUrl: string) => {
 
 export const prepareImageUploadPayload = async (file: File) => {
   if (!file.type.startsWith('image/')) {
-    throw new Error('Seules les images sont acceptees.');
+    throw new Error('Seules les images sont acceptées.');
   }
 
   const dataUrl = await readFileAsDataUrl(file);
@@ -120,6 +120,6 @@ export const prepareImageUploadPayload = async (file: File) => {
   try {
     return await convertImageDataUrlToSupportedFormat(dataUrl);
   } catch {
-    throw new Error('Ce format image ne peut pas etre converti automatiquement sur cet appareil.');
+    throw new Error('Ce format image ne peut pas être converti automatiquement sur cet appareil.');
   }
 };

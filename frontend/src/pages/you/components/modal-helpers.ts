@@ -60,7 +60,7 @@ export function getLoanStatusLabel(status: string) {
     case 'REPAID':
       return 'Rembourse';
     case 'DEFAULTED':
-      return 'En defaut';
+      return 'En défaut';
     case 'REJECTED':
       return 'Refuse';
     default:

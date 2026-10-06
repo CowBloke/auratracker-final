@@ -267,7 +267,7 @@ export function CreateBusinessModal({
         name, description, typeKey: selectedType.key,
         capital: isBank ? 0 : Number(capital),
         juiceSpecialization: isJuterie ? juiceSpecialization : undefined,
-      }), 'Impossible de creer le business.');
+      }), 'Impossible de créer le business.');
       toast.success('Business cree');
       await onCreated();
       onClose();
@@ -288,12 +288,12 @@ export function CreateBusinessModal({
         onClose={onClose}
         tone="cyan"
         size="md"
-        description="Creer une entreprise"
+        description="Créer une entreprise"
       >
-        <AppModal.Header tone="cyan" title="Creer une entreprise" subtitle={isBank ? 'La creation de la banque coute 10 000 money et la tresorerie demarre a 0.' : 'Le capital de depart est pris sur ton argent global.'} />
+        <AppModal.Header tone="cyan" title="Créer une entreprise" subtitle={isBank ? 'La création de la banque coute 10 000 money et la trésorerie demarre a 0.' : 'Le capital de départ est pris sur ton argent global.'} />
         <AppModal.Body scrollable>
         <div data-tutorial-id="create-business-modal" className="space-y-3">
-        <FieldRow label="Type d activite">
+        <FieldRow label="Type d’activité">
           <Item asChild variant="outline" size="sm"><button type="button" onClick={() => setPickerOpen(true)} data-tutorial-id="create-business-type" className="w-full text-left">
             {selectedType ? (
               <div className="flex items-center gap-4">
@@ -314,7 +314,7 @@ export function CreateBusinessModal({
             )}
           </button></Item>
         </FieldRow>
-        {selectedType ? <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></CardContent></Card> : null}
+        {selectedType ? <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4"><p className="text-xs text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · trésorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></CardContent></Card> : null}
         <FieldRow label="Nom">
           <Input
             value={name}
@@ -328,12 +328,12 @@ export function CreateBusinessModal({
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             rows={3}
-            placeholder="Decris ton business..."
+            placeholder="Décris ton business..."
             data-tutorial-id="create-business-description"
           />
         </FieldRow>
         {!isBank ? (
-          <FieldRow label="Capital de depart">
+          <FieldRow label="Capital de départ">
             <Input
               type="number"
               value={capital}
@@ -366,7 +366,7 @@ export function CreateBusinessModal({
         </AppModal.Body>
         <AppModal.Footer>
           <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
-          <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !selectedType || !name.trim() || !description.trim() || (!isBank && Number(capital) < selectedType.minCapital) || (isJuterie && !juiceSpecialization)} data-tutorial-id="create-business-submit">Creer</AppModal.Button>
+          <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !selectedType || !name.trim() || !description.trim() || (!isBank && Number(capital) < selectedType.minCapital) || (isJuterie && !juiceSpecialization)} data-tutorial-id="create-business-submit">Créer</AppModal.Button>
         </AppModal.Footer>
       </AppModal>
       <BusinessTypePickerModal
@@ -426,7 +426,7 @@ export function InvitePlayersModal({
     setSubmitting(true);
     try {
       await withRouteError(() => youApi.runBusinessAction(business.id, 'invite', { inviteeIds: selectedIds, role, salary: Number(salary), message: message.trim() }), 'Impossible d envoyer les invitations.');
-      toast.success('Invitations envoyees');
+      toast.success('Invitations envoyées');
       await onSubmitted();
       onClose();
     } finally {
@@ -439,8 +439,8 @@ export function InvitePlayersModal({
       <AppModal.Header tone="cyan" title={business ? `Inviter des joueurs · ${business.name}` : 'Inviter des joueurs'} subtitle="Toutes les invitations ciblent de vrais joueurs." />
       <AppModal.Body scrollable>
         <div className="grid gap-3 sm:grid-cols-[1fr_180px_140px]">
-          <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
-          <FieldRow label="Role propose"><SelectBox value={role} onChange={setRole}><option value="employee">Employe</option><option value="partner">Associe</option><option value="advisor">Conseiller</option></SelectBox></FieldRow>
+          <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prénom..." /></FieldRow>
+          <FieldRow label="Role propose"><SelectBox value={role} onChange={setRole}><option value="employee">Employé</option><option value="partner">Associe</option><option value="advisor">Conseiller</option></SelectBox></FieldRow>
           <FieldRow label="Salaire / jour"><Input type="number" min={0} value={salary} onChange={(event) => setSalary(event.target.value)} /></FieldRow>
         </div>
         <FieldRow label="Message facultatif">
@@ -497,7 +497,7 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
         }),
         'Impossible d emprunter.'
       );
-      toast.success('Demande de pret envoyee');
+      toast.success('Demande de prêt envoyée');
       setCollateralAura('0');
       setMotivationMessage('');
       await onSubmitted();
@@ -508,19 +508,19 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
   };
 
   return (
-    <AppModal open={open} onClose={onClose} tone="orange" size="md" description="Demander un pret">
-      <AppModal.Header tone="orange" title={business ? `Demander un pret · ${business.name}` : 'Demander un pret'} subtitle="Le proprietaire devra accepter la demande avant que le money soit debloque." />
+    <AppModal open={open} onClose={onClose} tone="orange" size="md" description="Demander un prêt">
+      <AppModal.Header tone="orange" title={business ? `Demander un pret · ${business.name}` : 'Demander un prêt'} subtitle="Le propriétaire devra accepter la demande avant que le money soit débloqué." />
       <AppModal.Body>
         <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={500} /></FieldRow>
-        <FieldRow label="Duree (jours)"><Input type="number" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} min={1} placeholder="ex : 7" /></FieldRow>
-        <FieldRow label="Hypotheque (aura)"><Input type="number" value={collateralAura} onChange={(event) => setCollateralAura(event.target.value)} min={0} placeholder="0 si aucun gage" /></FieldRow>
+        <FieldRow label="Durée (jours)"><Input type="number" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} min={1} placeholder="ex : 7" /></FieldRow>
+        <FieldRow label="Hypothèque (aura)"><Input type="number" value={collateralAura} onChange={(event) => setCollateralAura(event.target.value)} min={0} placeholder="0 si aucun gage" /></FieldRow>
         <FieldRow label="Lettre de motivation">
           <Textarea
             value={motivationMessage}
             onChange={(event) => setMotivationMessage(event.target.value)}
             rows={4}
             maxLength={400}
-            placeholder="Explique ce que tu comptes faire de l argent, comment tu vas rembourser et pourquoi ce pret a du sens."
+            placeholder="Explique ce que tu comptes faire de l’argent, comment tu vas rembourser et pourquoi ce prêt a du sens."
           />
         </FieldRow>
         <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 grid grid-cols-3 gap-3">
@@ -531,7 +531,7 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
         <Alert><AlertDescription>
           {Number(collateralAura || 0) > 0
             ? `${Number(collateralAura).toLocaleString('fr-FR')} aura seront bloquees a l acceptation puis rendues au remboursement. Si l echeance est depassee et que le joueur ne peut pas payer, elles seront saisies.`
-            : 'Sans hypothèque, le pret repose uniquement sur la capacite du joueur a rembourser.'}
+            : 'Sans hypothèque, le prêt repose uniquement sur la capacité du joueur a rembourser.'}
         </AlertDescription></Alert>
       </AppModal.Body>
       <AppModal.Footer>
@@ -564,7 +564,7 @@ export function InvestModal({ open, onClose, business, onSubmitted }: { open: bo
 
   return (
     <AppModal open={open} onClose={onClose} tone="green" size="md" description="Investir">
-      <AppModal.Header tone="green" title={business ? `Investir · ${business.name}` : 'Investir'} subtitle="Le money est retire de ton argent personnel puis credite a la tresorerie du business." />
+      <AppModal.Header tone="green" title={business ? `Investir · ${business.name}` : 'Investir'} subtitle="Le money est retiré de ton argent personnel puis credite a la trésorerie du business." />
       <AppModal.Body>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={100} /></FieldRow>
       <FieldRow label="Risque"><SelectBox value={riskLevel} onChange={(value) => setRiskLevel(value as 'low' | 'medium' | 'high')}><option value="low">Faible risque</option><option value="medium">Risque modere</option><option value="high">Risque eleve</option></SelectBox></FieldRow>
@@ -618,7 +618,7 @@ export function TransferBusinessModal({
     setSubmitting(true);
     try {
       await withRouteError(() => youApi.transferWithBusiness(business.id, { recipientId, amount: Number(amount) }), 'Impossible d effectuer ce transfert.');
-      toast.success('Transfert envoye');
+      toast.success('Transfert envoyé');
       await onSubmitted();
       onClose();
     } finally {
@@ -628,9 +628,9 @@ export function TransferBusinessModal({
 
   return (
     <AppModal open={open} onClose={onClose} tone="cyan" size="lg" description="Service de transfert">
-      <AppModal.Header tone="cyan" title={business ? `Transfert via ${business.name}` : 'Service de transfert'} subtitle="Le montant est envoye au joueur choisi et les frais sont credites a la tresorerie du service." />
+      <AppModal.Header tone="cyan" title={business ? `Transfert via ${business.name}` : 'Service de transfert'} subtitle="Le montant est envoyé au joueur choisi et les frais sont credites a la trésorerie du service." />
       <AppModal.Body scrollable>
-      <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
+      <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prénom..." /></FieldRow>
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {availablePlayers.map((player) => {
           const selected = player.id === recipientId;
@@ -644,7 +644,7 @@ export function TransferBusinessModal({
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
-        <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !business || !recipientId || Number(amount) <= 0}>Transferer</AppModal.Button>
+        <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !business || !recipientId || Number(amount) <= 0}>Transférer</AppModal.Button>
       </AppModal.Footer>
     </AppModal>
   );
@@ -666,8 +666,8 @@ export function BuyoutOfferModal({ open, onClose, business, onSubmitted }: { ope
     if (!business) return;
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.createBuyoutOffer(business.id, { amount: Number(amount), message: message.trim() || undefined }), 'Impossible d envoyer l offre.');
-      toast.success('Offre de rachat envoyee');
+      await withRouteError(() => youApi.createBuyoutOffer(business.id, { amount: Number(amount), message: message.trim() || undefined }), 'Impossible d envoyer l’offre.');
+      toast.success('Offre de rachat envoyée');
       await onSubmitted();
       onClose();
     } finally {
@@ -677,14 +677,14 @@ export function BuyoutOfferModal({ open, onClose, business, onSubmitted }: { ope
 
   return (
     <AppModal open={open} onClose={onClose} tone="money" size="md" description="Faire une offre de rachat">
-      <AppModal.Header tone="money" title={business ? `Faire une offre · ${business.name}` : 'Faire une offre'} subtitle="Le montant est debite tout de suite et garde en escrow jusqu a la decision du proprietaire." />
+      <AppModal.Header tone="money" title={business ? `Faire une offre · ${business.name}` : 'Faire une offre'} subtitle="Le montant est debite tout de suite et garde en escrow jusqu’a la décision du propriétaire." />
       <AppModal.Body>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} placeholder="Montant propose" /></FieldRow>
-      <FieldRow label="Message (optionnel)"><Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : reprise complete, maintien de l equipe..." /></FieldRow>
+      <FieldRow label="Message (optionnel)"><Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : reprise complete, maintien de l’équipe..." /></FieldRow>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
-        <AppModal.Button tone="money" variant="soft" onClick={submit} disabled={submitting || !business || Number(amount) <= 0}>Envoyer l offre</AppModal.Button>
+        <AppModal.Button tone="money" variant="soft" onClick={submit} disabled={submitting || !business || Number(amount) <= 0}>Envoyer l’offre</AppModal.Button>
       </AppModal.Footer>
     </AppModal>
   );
@@ -720,7 +720,7 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
         () => youApi.createShareholderProposal(business.id, { sharePercent: numericSharePercent, amount: Number(amount), message: message.trim() || undefined }),
         'Impossible d envoyer la proposition d actionnariat.',
       );
-      toast.success('Proposition d actionnariat envoyee');
+      toast.success('Proposition d actionnariat envoyée');
       await onSubmitted();
       onClose();
     } finally {
@@ -730,12 +730,12 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
 
   return (
     <AppModal open={open} onClose={onClose} tone="money" size="md" description="Devenir actionnaire">
-      <AppModal.Header tone="money" title={business ? `Devenir actionnaire · ${business.name}` : 'Devenir actionnaire'} subtitle="Propose un pourcentage et une somme. Le proprietaire devra accepter pour partager l entreprise." />
+      <AppModal.Header tone="money" title={business ? `Devenir actionnaire · ${business.name}` : 'Devenir actionnaire'} subtitle="Propose un pourcentage et une somme. Le propriétaire devra accepter pour partager l’entreprise." />
       <AppModal.Body>
       <FieldRow label="Part souhaitee (%)">
         <Input type="number" min={1} max={99} step={0.5} value={sharePercent} onChange={(event) => setSharePercent(event.target.value)} />
       </FieldRow>
-      <FieldRow label="Somme proposee">
+      <FieldRow label="Somme proposée">
         <Input type="number" min={1} value={amount} onChange={(event) => setAmount(event.target.value)} />
       </FieldRow>
       <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-2">
@@ -786,8 +786,8 @@ export function MeetModal({ open, onClose, players, onSubmitted }: { open: boole
     if (!selectedUserId) return;
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.createRelationship(selectedUserId), 'Impossible de creer la relation.');
-      toast.success('Relation creee');
+      await withRouteError(() => youApi.createRelationship(selectedUserId), 'Impossible de créer la relation.');
+      toast.success('Relation créée');
       await onSubmitted();
       onClose();
     } finally {
@@ -799,18 +799,18 @@ export function MeetModal({ open, onClose, players, onSubmitted }: { open: boole
     <AppModal open={open} onClose={onClose} tone="pink" size="md" description="Nouvelle relation">
       <AppModal.Header tone="pink" title="Nouvelle relation" subtitle="Choisis un vrai joueur avec qui ouvrir une relation sociale." />
       <AppModal.Body scrollable>
-      <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
+      <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prénom..." /></FieldRow>
       <div className="max-h-80 space-y-2 overflow-y-auto">
         {candidates.map((player) => {
           const selected = player.id === selectedUserId;
-          return <Item asChild key={player.id} variant="outline" size="sm" className={selected ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-2 text-xs text-muted-foreground">{player.bio?.trim() || 'Pret a ouvrir une nouvelle relation.'}</p></div>{selected ? <Pill label="Selection" color="bg-foreground text-background" /> : null}</button></Item>;
+          return <Item asChild key={player.id} variant="outline" size="sm" className={selected ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-2 text-xs text-muted-foreground">{player.bio?.trim() || 'Prêt a ouvrir une nouvelle relation.'}</p></div>{selected ? <Pill label="Sélection" color="bg-foreground text-background" /> : null}</button></Item>;
         })}
         {candidates.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p> : null}
       </div>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
-        <AppModal.Button tone="pink" variant="soft" onClick={submit} disabled={submitting || !selectedUserId}>Creer la relation</AppModal.Button>
+        <AppModal.Button tone="pink" variant="soft" onClick={submit} disabled={submitting || !selectedUserId}>Créer la relation</AppModal.Button>
       </AppModal.Footer>
     </AppModal>
   );
@@ -836,8 +836,8 @@ export function NewRelationModal({ open, onClose, players, onSubmitted }: { open
     if (!selectedUserId) return;
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.createRelationship(selectedUserId, type), 'Impossible de creer la relation.');
-      toast.success('Relation creee');
+      await withRouteError(() => youApi.createRelationship(selectedUserId, type), 'Impossible de créer la relation.');
+      toast.success('Relation créée');
       await onSubmitted();
       onClose();
     } finally { setSubmitting(false); }
@@ -856,11 +856,11 @@ export function NewRelationModal({ open, onClose, players, onSubmitted }: { open
           ))}
         </div>
       </FieldRow>
-      <FieldRow label="Recherche"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
+      <FieldRow label="Recherche"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pseudo, prénom..." /></FieldRow>
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {candidates.map((player) => {
           const sel = player.id === selectedUserId;
-          return <Item asChild key={player.id} variant="outline" size="sm" className={sel ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Aucune bio.'}</p></div>{sel && <Pill label="Selection" color="bg-foreground text-background" />}</button></Item>;
+          return <Item asChild key={player.id} variant="outline" size="sm" className={sel ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Aucune bio.'}</p></div>{sel && <Pill label="Sélection" color="bg-foreground text-background" />}</button></Item>;
         })}
         {candidates.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p>}
       </div>
@@ -890,7 +890,7 @@ export function MarriageModal({ open, onClose, relationships, onSubmitted }: { o
     setSubmitting(true);
     try {
       await withRouteError(() => youApi.proposeMarriage(relationshipId, message.trim() || undefined), 'Impossible d envoyer la demande.');
-      toast.success('Demande en mariage envoyee');
+      toast.success('Demande en mariage envoyée');
       await onSubmitted();
       onClose();
     } finally {
@@ -900,9 +900,9 @@ export function MarriageModal({ open, onClose, relationships, onSubmitted }: { o
 
   return (
     <AppModal open={open} onClose={onClose} tone="pink" size="md" description="Demander en mariage">
-      <AppModal.Header tone="pink" title="Demander en mariage" subtitle="La demande reste en attente tant que l autre joueur ne repond pas." />
+      <AppModal.Header tone="pink" title="Demander en mariage" subtitle="La demande reste en attente tant que l’autre joueur ne repond pas." />
       <AppModal.Body>
-      <FieldRow label="Relation eligible"><SelectBox value={relationshipId} onChange={setRelationshipId}>{relationships.map((relationship) => <option key={relationship.id} value={relationship.id}>{relationship.otherUser.username} · {relationship.connectionLevel}%</option>)}</SelectBox></FieldRow>
+      <FieldRow label="Relation éligible"><SelectBox value={relationshipId} onChange={setRelationshipId}>{relationships.map((relationship) => <option key={relationship.id} value={relationship.id}>{relationship.otherUser.username} · {relationship.connectionLevel}%</option>)}</SelectBox></FieldRow>
       <FieldRow label="Message (optionnel)"><Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Un petit mot..." /></FieldRow>
       </AppModal.Body>
       <AppModal.Footer>
@@ -1082,9 +1082,9 @@ export function ManageBusinessModal({
     try {
       await withRouteError(
         () => youApi.runBusinessAction(business.id, action, { amount: Number(amount) }),
-        action === 'deposit' ? 'Impossible de deposer dans la tresorerie.' : 'Impossible de retirer de la tresorerie.'
+        action === 'deposit' ? 'Impossible de déposer dans la trésorerie.' : 'Impossible de retirer de la trésorerie.'
       );
-      toast.success(action === 'deposit' ? 'Depot enregistre' : 'Retrait enregistre');
+      toast.success(action === 'deposit' ? 'Dépôt enregistre' : 'Retrait enregistre');
       await onSubmitted(true);
     } finally {
       setActiveTreasuryAction(null);
@@ -1094,8 +1094,8 @@ export function ManageBusinessModal({
   const reviewLoan = async (loanId: string, decision: 'accept' | 'reject') => {
     setReviewingLoanId(loanId);
     try {
-      await withRouteError(() => youApi.respondToBusinessLoan(loanId, decision), 'Impossible de traiter la demande de pret.');
-      toast.success(decision === 'accept' ? 'Pret accepte' : 'Pret refuse');
+      await withRouteError(() => youApi.respondToBusinessLoan(loanId, decision), 'Impossible de traiter la demande de prêt.');
+      toast.success(decision === 'accept' ? 'Prêt accepte' : 'Prêt refuse');
       await onSubmitted(true);
     } finally {
       setReviewingLoanId(null);
@@ -1106,7 +1106,7 @@ export function ManageBusinessModal({
     setReviewingBuyoutId(offerId);
     try {
       await withRouteError(() => youApi.respondToBuyoutOffer(offerId, decision), 'Impossible de traiter cette offre de rachat.');
-      toast.success(decision === 'accept' ? 'Offre de rachat acceptee' : 'Offre de rachat refusee');
+      toast.success(decision === 'accept' ? 'Offre de rachat acceptée' : 'Offre de rachat refusée');
       await onSubmitted(true);
       if (decision === 'accept') {
         onClose();
@@ -1120,7 +1120,7 @@ export function ManageBusinessModal({
     setReviewingShareProposalId(proposalId);
     try {
       await withRouteError(() => youApi.respondToShareholderProposal(proposalId, decision), 'Impossible de traiter cette proposition d actionnariat.');
-      toast.success(decision === 'accept' ? 'Actionnaire ajoute' : 'Proposition refusee');
+      toast.success(decision === 'accept' ? 'Actionnaire ajoute' : 'Proposition refusée');
       await onSubmitted(true);
     } finally {
       setReviewingShareProposalId(null);
@@ -1157,7 +1157,7 @@ export function ManageBusinessModal({
     if (!business) return;
     try {
       await withRouteError(() => youApi.buyLivretEpargneUpgrade(business.id), "Impossible d'acheter cet upgrade.");
-      toast.success('Livret Epargne active');
+      toast.success('Livret Épargne active');
       await onSubmitted(true);
     } catch {
       // error already toasted by withRouteError
@@ -1167,8 +1167,8 @@ export function ManageBusinessModal({
   const buyIllegalUpgrade = async (upgradeKey: string) => {
     if (!business) return;
     try {
-      await withRouteError(() => youApi.buyIllegalBusinessUpgrade(business.id, upgradeKey), "Impossible d'acheter cette amelioration.");
-      toast.success('Amelioration illegale debloquee');
+      await withRouteError(() => youApi.buyIllegalBusinessUpgrade(business.id, upgradeKey), "Impossible d'acheter cette amélioration.");
+      toast.success('Amélioration illégale debloquee');
       await onSubmitted(true);
     } catch {
       // withRouteError already shows a message
@@ -1201,7 +1201,7 @@ export function ManageBusinessModal({
     if (!business) return;
     setActingProductKey(`deploy:${product.slotIndex}`);
     try {
-      await withRouteError(() => youApi.runBusinessAction(business.id, 'deploy_product', { slotIndex: product.slotIndex }), 'Impossible de deployer ce produit.');
+      await withRouteError(() => youApi.runBusinessAction(business.id, 'deploy_product', { slotIndex: product.slotIndex }), 'Impossible de déployer ce produit.');
       toast.success(`${product.name} deploye`);
       await onSubmitted(true);
     } finally {
@@ -1224,8 +1224,8 @@ export function ManageBusinessModal({
   const repayLoanNow = async (loanId: string) => {
     setRepayingLoanId(loanId);
     try {
-      await withRouteError(() => youApi.repayLoan(loanId), 'Impossible de saisir l hypotheque.');
-      toast.success('Hypotheque saisie');
+      await withRouteError(() => youApi.repayLoan(loanId), 'Impossible de saisir l’hypothèque.');
+      toast.success('Hypothèque saisie');
       await onSubmitted(true);
     } finally {
       setRepayingLoanId(null);
@@ -1236,7 +1236,7 @@ export function ManageBusinessModal({
     if (!business) return;
     const confirmed = await confirm({
       title: `Liquider ${business.name} ?`,
-      description: 'Cette action est irreversible.',
+      description: 'Cette action est irréversible.',
       confirmLabel: 'Liquider',
       cancelLabel: 'Annuler',
       variant: 'destructive',
@@ -1269,7 +1269,7 @@ export function ManageBusinessModal({
     if (!business || !buybackTarget) return;
     const amount = Number(buybackAmountInput);
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error('Montant invalide', { description: 'Veuillez entrer un montant valide superieur a 0.' });
+      toast.error('Montant invalide', { description: 'Veuillez entrer un montant valide supérieur a 0.' });
       return;
     }
 
@@ -1280,7 +1280,7 @@ export function ManageBusinessModal({
         'Impossible d\'envoyer l\'offre de rachat.'
       );
       if (success) {
-        toast('Offre de rachat envoyee', { description: `L'offre de ${amount.toLocaleString('fr-FR')} money a bien ete envoyee a ${buybackTarget.username}.` });
+        toast('Offre de rachat envoyée', { description: `L'offre de ${amount.toLocaleString('fr-FR')} money a bien ete envoyee a ${buybackTarget.username}.` });
         setBuybackTarget(null);
         setBuybackAmountInput('');
       }
@@ -1355,7 +1355,7 @@ export function ManageBusinessModal({
                 <ActionRow
                   icon={Wallet}
                   label={npcOnCooldown ? 'Collecter les recettes (cooldown)' : 'Collecter les recettes'}
-                  sub={npcOnCooldown ? 'Disponible dans quelques heures' : 'Ajoute les recettes clients a la tresorerie'}
+                  sub={npcOnCooldown ? 'Disponible dans quelques heures' : 'Ajoute les recettes clients a la trésorerie'}
                   iconBg="bg-warning/15"
                   iconColor="text-warning"
                   onClick={() => { if (!npcOnCooldown && !collectingNpc) void collectNpc(); }}
@@ -1393,8 +1393,8 @@ export function ManageBusinessModal({
                 <>
                   <ActionRow
                     icon={ShieldAlert}
-                    label="Ameliorations illegales"
-                    sub="Augmente revenus, satisfaction et XP Illegalite"
+                    label="Améliorations illégales"
+                    sub="Augmente revenus, satisfaction et XP Illégalité"
                     iconBg="bg-muted/15"
                     iconColor="text-primary"
                     onClick={() => toggleSection('illegalUpgrades')}
@@ -1427,7 +1427,7 @@ export function ManageBusinessModal({
                         </CardContent></Card>
                       ))}
                       {(business.illegalUpgrades ?? []).length === 0 ? (
-                        <p className="text-xs text-muted-foreground">Aucune amelioration disponible.</p>
+                        <p className="text-xs text-muted-foreground">Aucune amélioration disponible.</p>
                       ) : null}
                     </div>
                   </InlineSection>
@@ -1610,7 +1610,7 @@ export function ManageBusinessModal({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-xs text-muted-foreground/60">Capital partage</p>
-                      <p className="mt-1 text-sm font-semibold">{business.isShared ? 'Entreprise partagee' : 'Fondateur seul'}</p>
+                      <p className="mt-1 text-sm font-semibold">{business.isShared ? 'Entreprise partagée' : 'Fondateur seul'}</p>
                     </div>
                     <Pill label={`${business.ownerSharePercent.toFixed(0)}% fondateur`} color="bg-warning/15 text-warning" />
                   </div>
@@ -1738,7 +1738,7 @@ export function ManageBusinessModal({
                                   Saisir l'hypothèque
                                 </Button>
                               ) : isPastDue ? (
-                                <p className="shrink-0 text-xs text-destructive/70">En defaut · pas d'hypothèque</p>
+                                <p className="shrink-0 text-xs text-destructive/70">En défaut · pas d'hypothèque</p>
                               ) : isActive ? (
                                 <p className="shrink-0 text-xs text-muted-foreground">Remboursement en cours</p>
                               ) : null}
@@ -1971,8 +1971,8 @@ export function ManageTeamModal({
 
   const sack = async (memberId: string) => {
     const confirmed = await confirm({
-      title: 'Renvoyer cet employe ?',
-      description: 'Il perdra l acces a l entreprise.',
+      title: 'Renvoyer cet employé ?',
+      description: 'Il perdra l’accès a l’entreprise.',
       confirmLabel: 'Renvoyer',
       cancelLabel: 'Annuler',
       variant: 'destructive',
@@ -2681,7 +2681,7 @@ export function ManageFormationsModal({
   const remove = async (productId: string) => {
     const confirmed = await confirm({
       title: 'Supprimer cette formation ?',
-      description: 'Cette action est irreversible.',
+      description: 'Cette action est irréversible.',
       confirmLabel: 'Supprimer',
       cancelLabel: 'Annuler',
       variant: 'destructive',
@@ -2864,7 +2864,7 @@ export function BusinessProfileModal({
       {logoUrl ? (
         <Item variant="muted" className="gap-3">
           <img src={logoUrl} alt="apercu" className="h-10 w-10 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          <p className="text-xs text-muted-foreground">Apercu du logo</p>
+          <p className="text-xs text-muted-foreground">Aperçu du logo</p>
         </Item>
       ) : null}
       </AppModal.Body>
@@ -2963,7 +2963,7 @@ export function FormationCatalogModal({
   const getFileActionLabel = (product: YouFormationProduct) =>
     product.attachmentMimeType === 'application/pdf'
       ? 'Ouvrir le PDF'
-      : 'Telecharger le fichier';
+      : 'Télécharger le fichier';
 
   return (
     <AppModal open={open} onClose={onClose} tone="blue" size="xl" description={catalogDescription}>
@@ -2974,7 +2974,7 @@ export function FormationCatalogModal({
           <Alert variant="success">
             <GraduationCap className="mx-auto h-10 w-10 text-success" />
             <p className="mt-3 text-sm font-semibold">{purchasedAccess.title}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Clique pour reouvrir ton acces securise.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Clique pour reouvrir ton accès sécurisé.</p>
           </Alert>
           <Button className="w-full" onClick={() => void openFormationAccess(business.id, purchasedAccess.productId).then(onAccessed)}>
             <Download className="mr-2 h-4 w-4" />Acceder a la formation
@@ -2987,7 +2987,7 @@ export function FormationCatalogModal({
         </div>
       ) : visibleProducts.length === 0 ? (
         <Empty className="border"><EmptyHeader><EmptyDescription>
-          {isOwnerPreview ? 'Aucune formation creee pour le moment.' : 'Aucune formation disponible pour le moment.'}
+          {isOwnerPreview ? 'Aucune formation créée pour le moment.' : 'Aucune formation disponible pour le moment.'}
         </EmptyDescription></EmptyHeader></Empty>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -3016,9 +3016,9 @@ export function FormationCatalogModal({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <p className="text-sm font-semibold">{product.title}</p>
-                        {hasPurchased ? <Pill label="Achetee" color="bg-success/15 text-success" /> : null}
+                        {hasPurchased ? <Pill label="Achetée" color="bg-success/15 text-success" /> : null}
                         {product.status === 'PENDING' ? <Pill label="En attente" color="bg-warning/15 text-warning" /> : null}
-                        {product.status === 'REJECTED' ? <Pill label="Refusee" color="bg-destructive/15 text-destructive" /> : null}
+                        {product.status === 'REJECTED' ? <Pill label="Refusée" color="bg-destructive/15 text-destructive" /> : null}
                       </div>
                       {product.description ? <p className="mt-0.5 text-xs text-muted-foreground">{product.description}</p> : null}
                       <p className="mt-1.5 text-sm font-bold text-warning">{product.price.toLocaleString('fr-FR')} EUR</p>

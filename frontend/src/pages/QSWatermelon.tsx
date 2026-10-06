@@ -98,7 +98,7 @@ export default function QSWatermelon() {
 
     console.error('Failed to submit QS Watermelon score after retries:', lastError);
     toast('Score non comptabilise', {
-      description: "La fin de partie n'a pas pu etre enregistree. Rejoue une partie dans quelques secondes.",
+      description: "La fin de partie n'a pas pu être enregistrée. Rejoue une partie dans quelques secondes.",
       duration: 4500,
     });
   }, [fetchLeaderboard, fetchStats, refreshUser]);

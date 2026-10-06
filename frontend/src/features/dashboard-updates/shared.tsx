@@ -18,12 +18,12 @@ export const feedCategoryMeta: Record<DashboardUpdateEntry['feedCategory'], {
   },
   COMMUNITY: {
     label: 'Communauté',
-    shortLabel: 'Communaute',
+    shortLabel: 'Communauté',
     icon: Users,
   },
   DEV: {
     label: 'Équipe',
-    shortLabel: 'Equipe',
+    shortLabel: 'Équipe',
     icon: Megaphone,
   },
 };

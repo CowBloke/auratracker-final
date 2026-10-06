@@ -132,9 +132,9 @@ const COURT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
 COURT_ROLE_LABELS.DEFENDANT = 'Coupable';
 COURT_ROLE_LABELS.LAWYER_PLAINTIFF = 'Avocat du plaignant';
 COURT_ROLE_LABELS.LAWYER_DEFENDANT = 'Avocat du coupable';
-COURT_ROLE_LABELS.PUBLIC_DEFENDER_PLAINTIFF = 'Defenseur public du plaignant';
-COURT_ROLE_LABELS.PUBLIC_DEFENDER_DEFENDANT = 'Defenseur public du coupable';
-COURT_STATUS_LABELS.DELIBERATION = { label: 'Deliberation', color: 'text-muted-foreground' };
+COURT_ROLE_LABELS.PUBLIC_DEFENDER_PLAINTIFF = 'Défenseur public du plaignant';
+COURT_ROLE_LABELS.PUBLIC_DEFENDER_DEFENDANT = 'Défenseur public du coupable';
+COURT_STATUS_LABELS.DELIBERATION = { label: 'Délibération', color: 'text-muted-foreground' };
 
 const getCourtAnonymousSenderLabel = (role: string | null) => {
   if (role && COURT_ROLE_LABELS[role]) return COURT_ROLE_LABELS[role];
@@ -1170,7 +1170,7 @@ export default function MessagesPage() {
       await refreshConversations();
       setSelectedId(r.data.conversation.id);
     } catch {
-      toast.error('Creation impossible');
+      toast.error('Création impossible');
     }
   };
 
@@ -1469,7 +1469,7 @@ export default function MessagesPage() {
       setCourtCase(response.data.courtCase);
       setShowRepresentationDialog(false);
       void Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]).catch(() => {});
-      toast(representationType === 'PRIVATE_LAWYER' ? 'Representation mise a jour' : 'Defenseur public demande');
+      toast(representationType === 'PRIVATE_LAWYER' ? 'Representation mise a jour' : 'Défenseur public demande');
     } catch (error: any) {
       const apiError = typeof error?.response?.data?.error === 'string' ? error.response.data.error : null;
       toast.error('Representation impossible', { description: apiError ?? undefined });
@@ -1523,9 +1523,9 @@ export default function MessagesPage() {
       });
       setWitnessRequestOpen(false);
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
-      toast('Demande de temoin envoyee aux admins');
+      toast('Demande de témoin envoyée aux admins');
     } catch {
-      toast.error('Impossible de demander ce temoin');
+      toast.error('Impossible de demander ce témoin');
     } finally {
       setWitnessSubmitting(false);
     }
@@ -1611,7 +1611,7 @@ export default function MessagesPage() {
       <Dialog open={Boolean(dmOtherUser) && dmProfilePreviewOpen} onOpenChange={setDmProfilePreviewOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Apercu du profil</DialogTitle>
+            <DialogTitle>Aperçu du profil</DialogTitle>
             <DialogDescription>
               Ouvre le profil complet pour voir ses stats, badges et activite.
             </DialogDescription>
@@ -1627,7 +1627,7 @@ export default function MessagesPage() {
                   <p className="truncate text-sm font-semibold" style={{ color: dmOtherUser.usernameColor ?? undefined }}>
                     {dmOtherUser.username}
                   </p>
-                  <p className="text-xs text-muted-foreground">Discussion privee</p>
+                  <p className="text-xs text-muted-foreground">Discussion privée</p>
                 </div>
               </Item>
               <DialogFooter>
@@ -2091,11 +2091,11 @@ export default function MessagesPage() {
           <div className="space-y-4 p-4">
             <div className="grid gap-2 sm:grid-cols-2">
               <Item asChild variant="outline" size="sm" className={representationType === 'PRIVATE_LAWYER' ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setRepresentationType('PRIVATE_LAWYER')} className="text-left text-left">
-                <p className="text-sm font-semibold">Cabinet prive</p>
-                <p className="mt-1 text-xs text-muted-foreground">Choisis un avocat et sa specialite.</p>
+                <p className="text-sm font-semibold">Cabinet privé</p>
+                <p className="mt-1 text-xs text-muted-foreground">Choisis un avocat et sa spécialité.</p>
               </button></Item>
               <Item asChild variant="outline" size="sm" className={representationType === 'PUBLIC_DEFENDER' ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setRepresentationType('PUBLIC_DEFENDER')} className="text-left text-left">
-                <p className="text-sm font-semibold">Defenseur public</p>
+                <p className="text-sm font-semibold">Défenseur public</p>
                 <p className="mt-1 text-xs text-muted-foreground">Representation par l'institution judiciaire.</p>
               </button></Item>
             </div>
@@ -2204,7 +2204,7 @@ export default function MessagesPage() {
               <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
                 <p className="text-sm font-semibold">{assignedLawyer.username}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{assignedLawyerProfile?.specialty ?? 'Avocat generaliste'}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet prive'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet privé'}</p>
               </CardContent></Card>
             ) : null}
             <div className="flex items-center justify-center gap-2">
@@ -2219,7 +2219,7 @@ export default function MessagesPage() {
               onChange={(e) => setLawyerRatingComment(e.target.value)}
               rows={4}
               maxLength={500}
-              placeholder="Decris ton experience avec cet avocat..."
+              placeholder="Décris ton expérience avec cet avocat..."
             />
             <p className="text-xs text-muted-foreground/60">{lawyerRatingComment.trim().length}/500</p>
           </div>
@@ -2433,14 +2433,14 @@ export default function MessagesPage() {
                         <Briefcase className="h-3 w-3 shrink-0 text-success" />
                         <span className="text-xs font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Avocat du plaignant' : 'Avocat du coupable'}</span>
                         <span className="text-xs text-muted-foreground">
-                          {(assignedLawyerProfile?.specialty ?? 'Avocat generaliste')} · {(assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet prive')}
+                          {(assignedLawyerProfile?.specialty ?? 'Avocat generaliste')} · {(assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet privé')}
                         </span>
                       </div>
                     ) : null}
                     {hasAssignedPublicDefender && !assignedLawyer ? (
                       <div className="flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1">
                         <Shield className="h-3 w-3 shrink-0 text-success" />
-                        <span className="text-xs font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Defenseur public du plaignant' : 'Defenseur public du coupable'}</span>
+                        <span className="text-xs font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Défenseur public du plaignant' : 'Défenseur public du coupable'}</span>
                       </div>
                     ) : null}
                     <div className="ml-auto flex items-center gap-1.5 flex-wrap">

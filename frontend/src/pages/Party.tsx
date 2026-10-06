@@ -44,7 +44,7 @@ const multiplayerGames = [
   {
     id: 'petit-bac',
     name: 'Petit Bac',
-    description: 'Remplis les categories avec la bonne lettre avant la fin du temps.',
+    description: 'Remplis les catégories avec la bonne lettre avant la fin du temps.',
     type: 'Groupe',
     image: getGameImage('petit-bac'),
   },

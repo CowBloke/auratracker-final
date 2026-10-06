@@ -964,7 +964,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
         <GuideSection title="Ce que ça change pour toi">
           <div className="divide-y divide-border/20">
             {[
-              { t: 'Sous le seuil',      d: "Aucun impôt prélevé. Tu accumules librement." },
+              { t: 'Sous le seuil',      d: "Aucun impôt prélevé. Tu accumulés librement." },
               { t: 'Au-dessus du seuil', d: "Un pourcentage est déduit chaque jour sur la totalité de ton solde. Plus tu es riche, plus les montants sont significatifs." },
               { t: 'Stratégie',          d: "Beaucoup de joueurs investissent en banque, dépensent en boutique ou dans You pour éviter de dépasser le seuil. Garde un œil sur les paliers en vigueur dans la page Tutoriels." },
             ].map(({ t, d }) => (
@@ -1115,7 +1115,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
         <GuideSection title="Comment ça marche">
           <div className="divide-y divide-border/20">
             {[
-              { t: 'Déposer',     d: "Depuis l'onglet Banque du clan, tout membre peut verser de l'argent dans la caisse. Le dépôt est irreversible — l'argent appartient au clan, pas à toi personnellement." },
+              { t: 'Déposer',     d: "Depuis l'onglet Banque du clan, tout membre peut verser de l'argent dans la caisse. Le dépôt est irréversible — l'argent appartient au clan, pas à toi personnellement." },
               { t: 'Historique',  d: 'Chaque contribution est tracée avec le nom du membre, la date et le montant. Accessible depuis la liste des contributions.' },
               { t: 'Utilisation', d: 'Le chef utilise la caisse pour acheter des boosts hebdomadaires Nation (150 000 $) ou des armes au marché noir.' },
             ].map(({ t, d }) => (

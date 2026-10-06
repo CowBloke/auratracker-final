@@ -365,7 +365,7 @@ export default function BlockBlast() {
         controls={(
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">Glisse une piece sur la grille ou selectionne-la puis clique un emplacement valide.</p>
-            <p className="text-xs text-muted-foreground">Completer une ligne ou une colonne declenche un bonus combo.</p>
+            <p className="text-xs text-muted-foreground">Compléter une ligne ou une colonne declenche un bonus combo.</p>
             <div className="grid grid-cols-2 gap-1 pt-1">
               {(['classic', 'chaos'] as BlockBlastMode[]).map((mode) => (
                 <Button
@@ -378,7 +378,7 @@ export default function BlockBlast() {
                 >
                   <span>{getModeConfig(mode).label}</span>
                   <span className="text-[10px] font-normal opacity-80">
-                    {mode === 'classic' ? '8x8, 3 pieces' : '10x10, 5 pieces'}
+                    {mode === 'classic' ? '8x8, 3 pièces' : '10x10, 5 pièces'}
                   </span>
                 </Button>
               ))}

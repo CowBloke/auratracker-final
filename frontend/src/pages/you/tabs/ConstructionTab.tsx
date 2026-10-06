@@ -102,7 +102,7 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
       await Promise.all([onReload(), refreshUser()]);
       const response = await youApi.getResourceActionState();
       setState(response.data);
-      toast.success('Entreprise creee et chantier lance.');
+      toast.success('Entreprise créée et chantier lance.');
     } catch (error: any) {
       const code = error?.response?.data?.error ?? '';
       if (typeof code === 'string' && code.startsWith('INSUFFICIENT_INVENTORY_')) {

@@ -301,7 +301,7 @@ export default function Inventory() {
       await refreshUser();
       await fetchInventory();
       
-      toast.success(imageEffectType === 'PROFILE_BANNER' ? 'Banniere de profil appliquee' : 'Photo de profil appliquee');
+      toast.success(imageEffectType === 'PROFILE_BANNER' ? 'Bannière de profil appliquee' : 'Photo de profil appliquee');
       setImageDialogOpen(false);
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Echec');
@@ -390,7 +390,7 @@ export default function Inventory() {
       case 'PROFILE_PICTURE':
         return 'Photo de profil';
       case 'PROFILE_BANNER':
-        return 'Banniere de profil';
+        return 'Bannière de profil';
       case 'DOODLE_JUMP_SKIN':
         return 'Apparence Doodle Jump';
       case 'CLAN_TAG_UNLOCK':

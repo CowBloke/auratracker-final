@@ -114,7 +114,7 @@ export default function PixelBoard() {
       setNextPlaceAt(data.nextPlaceAt ?? null);
     };
     const onReset = () => setBoard(emptyBoard());
-    const onError = (data: { message?: string }) => setStatus(data.message || 'Action refusee');
+    const onError = (data: { message?: string }) => setStatus(data.message || 'Action refusée');
 
     socket.on('pixel-board:state', onState);
     socket.on('pixel-board:pixel', onPixel);

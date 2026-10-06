@@ -1095,14 +1095,14 @@ export default function Admin() {
       setPendingAds((prev) => prev.filter((ad) => ad.id !== adId));
       setAllAds((prev) => prev.map((ad) => (ad.id === adId ? res.data.ad : ad)));
       if (decision === 'approve') {
-        showMessage('success', 'Publicite approuvee');
+        showMessage('success', 'Publicité approuvée');
       } else {
-        showMessage('success', 'Publicite rejetee');
+        showMessage('success', 'Publicité rejetée');
       }
       return res.data.ad;
     } catch (error: any) {
       console.error('Failed to review ad:', error);
-      showMessage('error', error.response?.data?.error || 'Erreur lors de la revue de la publicite');
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la revue de la publicité');
       return null;
     } finally {
       setReviewingAdId(null);
@@ -1111,8 +1111,8 @@ export default function Admin() {
 
   const handleDeleteAdForever = async (adId: string) => {
     const confirmed = await confirm({
-      title: 'Supprimer cette publicite ?',
-      description: 'Cette action est irreversible.',
+      title: 'Supprimer cette publicité ?',
+      description: 'Cette action est irréversible.',
       confirmLabel: 'Supprimer',
       cancelLabel: 'Annuler',
       variant: 'destructive',
@@ -1124,10 +1124,10 @@ export default function Admin() {
       await adminApi.deleteAdForever(adId);
       setPendingAds((prev) => prev.filter((ad) => ad.id !== adId));
       setAllAds((prev) => prev.filter((ad) => ad.id !== adId));
-      showMessage('success', 'Publicite supprimee definitivement');
+      showMessage('success', 'Publicité supprimée définitivement');
     } catch (error: any) {
       console.error('Failed to delete ad forever:', error);
-      showMessage('error', error.response?.data?.error || 'Erreur lors de la suppression definitive de la publicite');
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la suppression definitive de la publicité');
     } finally {
       setReviewingAdId(null);
     }
@@ -3064,7 +3064,7 @@ export default function Admin() {
     try {
       const trimmedMessage = chatBlockMessage.trim();
       if (!trimmedMessage) {
-        showMessage('error', 'Le message de blocage du chat ne peut pas etre vide');
+        showMessage('error', 'Le message de blocage du chat ne peut pas être vide');
         return;
       }
 
@@ -3075,7 +3075,7 @@ export default function Admin() {
 
       if (chatAutoBlockEnabled) {
         if (!isValidChatTimeValue(chatAutoBlockStart) || !isValidChatTimeValue(chatAutoBlockEnd)) {
-          showMessage('error', 'Les horaires du blocage auto doivent etre au format HH:mm');
+          showMessage('error', 'Les horaires du blocage auto doivent être au format HH:mm');
           return;
         }
       }
@@ -3110,7 +3110,7 @@ export default function Admin() {
       setSavingTrustedSharedIps(true);
       await adminApi.updateSetting('trusted_shared_ip_addresses', normalized);
       setTrustedSharedIpAddresses(normalized);
-      showMessage('success', 'IP STDO sauvegardees');
+      showMessage('success', 'IP STDO sauvegardées');
     } catch (error) {
       console.error('Failed to save trusted shared IPs:', error);
       showMessage('error', 'Erreur lors de la sauvegarde des IP STDO');
@@ -3141,17 +3141,17 @@ export default function Admin() {
     try {
       const parsed = Number.parseInt(referralRewardAmount, 10);
       if (!Number.isInteger(parsed) || parsed < 0) {
-        showMessage('error', 'La recompense de parrainage doit etre un entier positif ou nul');
+        showMessage('error', 'La récompense de parrainage doit être un entier positif ou nul');
         return;
       }
 
       setSavingReferralReward(true);
       await adminApi.updateSetting('referral_reward_amount', parsed);
       setReferralRewardAmount(String(parsed));
-      showMessage('success', 'Recompense de parrainage sauvegardee');
+      showMessage('success', 'Récompense de parrainage sauvegardée');
     } catch (error) {
       console.error('Failed to save referral reward:', error);
-      showMessage('error', 'Erreur lors de la sauvegarde de la recompense');
+      showMessage('error', 'Erreur lors de la sauvegarde de la récompense');
     } finally {
       setSavingReferralReward(false);
     }
@@ -3181,7 +3181,7 @@ export default function Admin() {
       setSavingReferralDashboardCardEnabled(true);
       await adminApi.updateSetting('referral_dashboard_card_enabled', value ? 'true' : 'false');
       refreshFeatures();
-      showMessage('success', value ? 'Carte de parrainage sur le dashboard activee' : 'Carte de parrainage sur le dashboard desactivee');
+      showMessage('success', value ? 'Carte de parrainage sur le dashboard activée' : 'Carte de parrainage sur le dashboard désactivée');
     } catch (error) {
       setReferralDashboardCardEnabled(previousValue);
       console.error('Failed to save referral dashboard card enabled setting:', error);
@@ -3195,7 +3195,7 @@ export default function Admin() {
     try {
       const parsed = Number.parseInt(dailyAuraDistributionLimit, 10);
       if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10000) {
-        showMessage('error', "Le quota d'aura journalier doit etre un entier entre 0 et 10000");
+        showMessage('error', "Le quota d'aura journalier doit être un entier entre 0 et 10000");
         return;
       }
 
@@ -3217,12 +3217,12 @@ export default function Admin() {
       const parsedMoney = Number.parseInt(dailyGameMoneyLimit, 10);
 
       if (!Number.isInteger(parsedAura) || parsedAura < 0 || parsedAura > 100000) {
-        showMessage('error', "Le plafond d'aura des jeux doit etre un entier entre 0 et 100000");
+        showMessage('error', "Le plafond d'aura des jeux doit être un entier entre 0 et 100000");
         return;
       }
 
       if (!Number.isInteger(parsedMoney) || parsedMoney < 0 || parsedMoney > 100000) {
-        showMessage('error', "Le plafond d'argent des jeux doit etre un entier entre 0 et 100000");
+        showMessage('error', "Le plafond d'argent des jeux doit être un entier entre 0 et 100000");
         return;
       }
 
@@ -3233,7 +3233,7 @@ export default function Admin() {
       });
       setDailyGameAuraLimit(String(parsedAura));
       setDailyGameMoneyLimit(String(parsedMoney));
-      showMessage('success', 'Plafonds de recompense des jeux sauvegardes');
+      showMessage('success', 'Plafonds de récompense des jeux sauvegardes');
     } catch (error) {
       console.error('Failed to save daily game limits:', error);
       showMessage('error', "Erreur lors de la sauvegarde des plafonds des jeux");
@@ -3246,14 +3246,14 @@ export default function Admin() {
     try {
       const parsed = Number.parseFloat(auraCoinBuyFeePercentage);
       if (!Number.isFinite(parsed) || parsed < 0 || parsed > 0.5) {
-        showMessage('error', 'Les frais AuraCoin doivent etre compris entre 0% et 50%');
+        showMessage('error', 'Les frais AuraCoin doivent être compris entre 0% et 50%');
         return;
       }
 
       setSavingAuraCoinBuyFee(true);
       await adminApi.updateSetting('auracoin_buy_fee_percentage', parsed.toFixed(4));
       setAuraCoinBuyFeePercentage(parsed.toFixed(4));
-      showMessage('success', 'Frais d achat AuraCoin sauvegardes');
+      showMessage('success', 'Frais d’achat AuraCoin sauvegardes');
     } catch (error) {
       console.error('Failed to save AuraCoin buy fee:', error);
       showMessage('error', 'Erreur lors de la sauvegarde des frais AuraCoin');
@@ -3266,7 +3266,7 @@ export default function Admin() {
     try {
       const parsed = Number.parseFloat(stableCoinBuyFeePercentage);
       if (!Number.isFinite(parsed) || parsed < 0 || parsed > 0.5) {
-        showMessage('error', 'Les frais Aura Stable doivent etre compris entre 0% et 50%');
+        showMessage('error', 'Les frais Aura Stable doivent être compris entre 0% et 50%');
         return;
       }
 
@@ -3286,7 +3286,7 @@ export default function Admin() {
     try {
       const parsed = Number.parseFloat(chaosCoinBuyFeePercentage);
       if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
-        showMessage('error', 'Les frais Chaos Coin doivent etre compris entre 0% et 100%');
+        showMessage('error', 'Les frais Chaos Coin doivent être compris entre 0% et 100%');
         return;
       }
 
@@ -3306,7 +3306,7 @@ export default function Admin() {
     try {
       const parsed = Number.parseInt(clashAttackCooldownMinutes, 10);
       if (!Number.isInteger(parsed) || parsed < 0 || parsed > 1440) {
-        showMessage('error', 'Le cooldown d attaque Clash doit etre un entier entre 0 et 1440 minutes');
+        showMessage('error', 'Le cooldown d attaque Clash doit être un entier entre 0 et 1440 minutes');
         return;
       }
 
@@ -3343,7 +3343,7 @@ export default function Admin() {
       setLoginRegisterCtaEnabled(value);
       setSavingLoginRegisterCta(true);
       await adminApi.updateSetting('login_register_cta_enabled', value ? 'true' : 'false');
-      showMessage('success', value ? 'Bouton creer un compte active' : 'Bouton creer un compte desactive');
+      showMessage('success', value ? 'Bouton créer un compte active' : 'Bouton créer un compte desactive');
     } catch (error) {
       setLoginRegisterCtaEnabled(previousValue);
       console.error('Failed to save login register CTA setting:', error);
@@ -3360,7 +3360,7 @@ export default function Admin() {
       await adminApi.updateSetting(DEFAULT_LANDING_PAGE_KEY, normalizedValue);
       setDefaultLandingPage(normalizedValue);
       refreshFeatures();
-      showMessage('success', 'Page principale sauvegardee');
+      showMessage('success', 'Page principale sauvegardée');
     } catch (error) {
       console.error('Failed to save default landing page setting:', error);
       showMessage('error', 'Erreur lors de la sauvegarde de la page principale');
@@ -3404,7 +3404,7 @@ export default function Admin() {
   const purgeAllBusinesses = async () => {
     const confirmed = await confirm({
       title: 'Purger toutes les entreprises ?',
-      description: 'Les proprietaires seront rembourses. Action irreversible.',
+      description: 'Les propriétaires seront rembourses. Action irréversible.',
       confirmLabel: 'Purger',
       cancelLabel: 'Annuler',
       variant: 'destructive',
@@ -3463,7 +3463,7 @@ export default function Admin() {
 
   const resetBusinessUnlockLevels = async () => {
     const confirmed = await confirm({
-      title: 'Reinitialiser les niveaux debloques ?',
+      title: 'Réinitialiser les niveaux débloqués ?',
       description: 'Le niveau de tous les joueurs sera remis a 0.',
       confirmLabel: 'Reinitialiser',
       cancelLabel: 'Annuler',
@@ -4241,11 +4241,11 @@ export default function Admin() {
     const nextAura = toSafeNumber(editValues.aura) + editAuraAddAmount - editAuraRemoveAmount;
     const nextMoney = toSafeNumber(editValues.money) + editMoneyAddAmount - editMoneyRemoveAmount;
     if (nextAura < 0) {
-      showMessage('error', 'Le total d\'aura ne peut pas etre negatif');
+      showMessage('error', 'Le total d\'aura ne peut pas être negatif');
       return;
     }
     if (nextMoney < 0) {
-      showMessage('error', 'Le total d\'argent ne peut pas etre negatif');
+      showMessage('error', 'Le total d\'argent ne peut pas être negatif');
       return;
     }
 

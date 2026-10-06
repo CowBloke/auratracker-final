@@ -102,28 +102,28 @@ export default function Numbers() {
 
         const computedSections: StatSection[] = [
           {
-            title: 'Communaute',
+            title: 'Communauté',
             items: [
               { label: 'Joueurs inscrits', value: formatNumber(totalUsers), hint: 'Tous les profils actifs et valides.' },
-              { label: 'Nouveaux joueurs (7 jours)', value: formatNumber(newUsers7d), hint: 'Arrivees recentes dans la communaute.' },
+              { label: 'Nouveaux joueurs (7 jours)', value: formatNumber(newUsers7d), hint: 'Arrivées récentes dans la communaute.' },
               { label: 'Clans actifs', value: formatNumber(totalClans), hint: 'Clans qui comptent au moins un membre.' },
               { label: 'Membres en clan', value: formatNumber(totalClanMembers), hint: 'Somme des membres dans tous les clans.' },
             ],
           },
           {
-            title: 'Economie',
+            title: 'Économie',
             items: [
-              { label: 'Aura totale', value: formatNumber(totalAura), hint: 'Aura cumulee sur tous les joueurs.' },
+              { label: 'Aura totale', value: formatNumber(totalAura), hint: 'Aura cumulée sur tous les joueurs.' },
               { label: 'Argent total', value: formatMoney(totalMoney), hint: 'Solde global en dollars virtuels.' },
               { label: 'Aura Coin total', value: formatNumber(totalAuraCoin, 2), hint: 'Somme des balances Aura Coin.' },
-              { label: 'Richesse estimee', value: formatMoney(totalWealth), hint: 'Argent + Aura Coin au prix actuel.' },
+              { label: 'Richesse estimée', value: formatMoney(totalWealth), hint: 'Argent + Aura Coin au prix actuel.' },
             ],
           },
           {
             title: 'Jeux',
             items: [
               { label: 'Jeux disponibles', value: formatNumber(gamesCatalog.length), hint: gamesCatalog.join(', ') + '.' },
-              { label: 'Parties jouees (tous jeux)', value: formatNumber(totalGamesPlayed), hint: 'Total cumule des parties enregistrees.' },
+              { label: 'Parties jouées (tous jeux)', value: formatNumber(totalGamesPlayed), hint: 'Total cumule des parties enregistrées.' },
             ],
           },
         ];

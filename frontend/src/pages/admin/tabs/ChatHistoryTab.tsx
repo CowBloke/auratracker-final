@@ -59,7 +59,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                 </Button>
                 <Item variant="outline" className="gap-2">
                   <Switch checked={showDeletedChatMessages} onCheckedChange={setShowDeletedChatMessages} />
-                  <span className="text-xs text-muted-foreground">Afficher les supprimes</span>
+                  <span className="text-xs text-muted-foreground">Afficher les supprimés</span>
                 </Item>
               </div>
             </div>

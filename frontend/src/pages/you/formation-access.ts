@@ -8,7 +8,7 @@ export async function openFormationAccess(
 ) {
   const access = await withRouteError(
     () => youApi.accessFormationProduct(businessId, productId),
-    'Impossible d acceder a cette formation.',
+    'Impossible d accéder a cette formation.',
   );
   const result = access.data.result;
 
@@ -31,7 +31,7 @@ export async function openFormationAccess(
 
   const blobResponse = await withRouteError(
     () => youApi.downloadFormationProductFile(businessId, productId),
-    'Impossible de telecharger ce fichier.',
+    'Impossible de télécharger ce fichier.',
   );
   const blob = new Blob([blobResponse.data], { type: result.attachmentMimeType ?? 'application/octet-stream' });
   const objectUrl = window.URL.createObjectURL(blob);

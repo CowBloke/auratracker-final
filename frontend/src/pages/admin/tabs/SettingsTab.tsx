@@ -182,7 +182,7 @@ export function SettingsTab(props: SettingsTabProps) {
   const showComm = matchesSearch(['chat block', 'communication', 'blocage du chat', 'message', 'annonce topbar', 'page de connexion', 'landing page', 'logo sidebar', 'updates', 'maintenance', 'anti alt', 'ip stdo', 'lycee']);
   const showFeatures = matchesSearch(['fonctionnalites', 'pages du site', 'bloquer']);
   const showDeploy = matchesSearch(['deploiement', 'deploy', 'version', 'git']);
-  const showDanger = matchesSearch(['danger', 'zone de danger', 'vider le chat', 'purger toutes les entreprises', 'reinitialiser les niveaux', 'purger la marketplace', 'purger le marche de ressources', 'cancel listings', 'delete offers', 'delete listings']);
+  const showDanger = matchesSearch(['danger', 'zone de danger', 'vider le chat', 'purger toutes les entreprises', 'réinitialiser les niveaux', 'purger la marketplace', 'purger le marche de ressources', 'cancel listings', 'delete offers', 'delete listings']);
 
   return (
     <TabsContent value="settings" className={cn('space-y-6', "space-y-6")}>
@@ -619,7 +619,7 @@ export function SettingsTab(props: SettingsTabProps) {
               <div className="mb-2">
                 <div className="text-sm font-medium text-primary/90">IP STDO ignorees pour le ban rapide</div>
                 <div className="text-xs text-muted-foreground">
-                  Une IP par ligne. Si une IP est ici, la popup "meme IP" n'affichera pas les autres comptes lies.
+                  Une IP par ligne. Si une IP est ici, la popup "même IP" n'affichera pas les autres comptes lies.
                 </div>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -680,7 +680,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/30">
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
-                  <div className="text-sm font-medium">Bouton &ldquo;Creer un compte&rdquo;</div>
+                  <div className="text-sm font-medium">Bouton &ldquo;Créer un compte&rdquo;</div>
                   <div className="text-xs text-muted-foreground">Affiche ou masque le gros bouton anime sur la page de connexion.</div>
                 </div>
                 <Switch checked={loginRegisterCtaEnabled} onCheckedChange={saveLoginRegisterCta} disabled={savingLoginRegisterCta} />
@@ -713,7 +713,7 @@ export function SettingsTab(props: SettingsTabProps) {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Maintenance</DialogTitle>
-            <DialogDescription>Quand activee, toutes les pages affichent la maintenance sauf /admin, /login et /register.</DialogDescription>
+            <DialogDescription>Quand activée, toutes les pages affichent la maintenance sauf /admin, /login et /register.</DialogDescription>
           </DialogHeader>
           {loadingSettings ? (
             <div className="flex justify-center py-8"><div className="w-1 h-8 bg-foreground/20" /></div>
@@ -780,7 +780,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 <div className="text-xs text-muted-foreground">
                   {blockedPages.length > 0
                     ? `${blockedPages.length} page${blockedPages.length > 1 ? 's' : ''} désactivée${blockedPages.length > 1 ? 's' : ''}`
-                    : 'Toutes les pages sont actives'}
+                    : 'Toutes les pages sont activés'}
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => setFonctionnalitesOpen(true)} className="shrink-0">
@@ -973,7 +973,7 @@ export function SettingsTab(props: SettingsTabProps) {
               Sortie du deploiement
             </DialogTitle>
             <DialogDescription>
-              {deployOutput?.success ? 'Le script s\'est termine avec succes.' : 'Le script a echoue.'}
+              {deployOutput?.success ? 'Le script s\'est terminé avec succès.' : 'Le script a échoué.'}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto p-4">
@@ -991,7 +991,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {user?.isSuperAdmin && (
         <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted-foreground/60 px-1">Classements par periode</p>
+          <p className="text-xs font-semibold text-muted-foreground/60 px-1">Classements par période</p>
           <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="divide-y divide-border/30">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
@@ -1011,7 +1011,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 onClick={async () => {
                   const confirmed = await confirm({
                     title: 'Lancer le backfill des scores ?',
-                    description: 'Cette operation peut prendre quelques secondes.',
+                    description: 'Cette opération peut prendre quelques secondes.',
                     confirmLabel: 'Lancer',
                     cancelLabel: 'Annuler',
                     variant: 'destructive',
@@ -1044,7 +1044,7 @@ export function SettingsTab(props: SettingsTabProps) {
       <Dialog open={fonctionnalitesOpen} onOpenChange={setFonctionnalitesOpen}>
         <DialogContent className="max-w-xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
-            <DialogTitle>Fonctionnalites</DialogTitle>
+            <DialogTitle>Fonctionnalités</DialogTitle>
             <DialogDescription>
               Activez ou desactivez chaque page. Une page desactivee disparait de la navigation et redirige vers un message.
             </DialogDescription>
@@ -1058,10 +1058,10 @@ export function SettingsTab(props: SettingsTabProps) {
               <Textarea
                 value={blockedMessage}
                 onChange={(e) => setBlockedMessage(e.target.value)}
-                placeholder="Ex: Cette page est momentanement desactivee."
+                placeholder="Ex: Cette page est momentanement désactivée."
                 className="min-h-[70px] text-sm"
               />
-              <p className="text-xs text-muted-foreground">Laisser vide pour le message par defaut.</p>
+              <p className="text-xs text-muted-foreground">Laisser vide pour le message par défaut.</p>
             </div>
 
             {Object.entries(

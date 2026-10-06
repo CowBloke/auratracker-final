@@ -52,7 +52,7 @@ const difficultyConfig: Record<Difficulty, DifficultyConfig> = {
   },
   expert: {
     label: 'Expert',
-    description: 'Grilles denses a resoudre proprement.',
+    description: 'Grilles denses a résoudre proprement.',
     blanks: 58,
     scoreMultiplier: 2.2,
   },
@@ -657,7 +657,7 @@ return (
 
           {completed && (
             <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-              <p className="font-medium">Grille resolue.</p>
+              <p className="font-medium">Grille résolue.</p>
               <p className="mt-2 text-sm text-muted-foreground">
                 Score {currentScore} • temps {formatDuration(elapsedSeconds)} • {hintsUsed} indice{hintsUsed > 1 ? 's' : ''} • {mistakesFound} erreur{mistakesFound > 1 ? 's' : ''}
               </p>

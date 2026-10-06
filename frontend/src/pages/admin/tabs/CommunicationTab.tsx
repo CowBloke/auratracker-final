@@ -544,7 +544,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold tracking-tight">Signalements de conversations</h3>
-              <p className={cn('text-xs', 'text-muted-foreground')}>Les derniers messages sont envoyes ici quand un joueur signale un DM ou un groupe.</p>
+              <p className={cn('text-xs', 'text-muted-foreground')}>Les derniers messages sont envoyés ici quand un joueur signale un DM ou un groupe.</p>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchSupportReports}>
               <RefreshCw className="h-3.5 w-3.5" />
@@ -727,7 +727,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSupportReply(); }
                       }}
-                      placeholder="Repondre..."
+                      placeholder="Répondre..."
                       className="resize-none text-sm min-h-[36px] max-h-24 py-2"
                       rows={1}
                       maxLength={1000}

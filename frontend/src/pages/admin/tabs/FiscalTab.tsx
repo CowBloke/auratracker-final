@@ -45,7 +45,7 @@ export function FiscalTab(props: FiscalTabProps) {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold">Inspection fiscale - Patrimoine des joueurs</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Vue lecture seule. Utilisez le bouton ci-dessous pour soumettre une demande de recuperation fiscale.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Vue lecture seule. Utilisez le bouton ci-dessous pour soumettre une demande de récupération fiscale.</p>
           </div>
           <Button size="sm" onClick={() => setShowFiscalSanctionModal(true)} className="gap-1.5">
             <Gavel className="w-3.5 h-3.5" />

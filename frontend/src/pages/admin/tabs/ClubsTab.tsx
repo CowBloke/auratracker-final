@@ -138,7 +138,7 @@ export function ClubsTab(props: ClubsTabProps) {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Reset toutes les ecuries et tous les chevaux ?</AlertDialogTitle>
+                  <AlertDialogTitle>Reset toutes les écuries et tous les chevaux ?</AlertDialogTitle>
                   <AlertDialogDescription>
                     Cette action supprime toutes les ecuries, tous les chevaux, et rembourse 12 500 money par cheval retire, repartis entre les membres de chaque clan.
                   </AlertDialogDescription>

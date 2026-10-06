@@ -112,7 +112,7 @@ const createDefaultState = (): EditorState => ({
   isFeatured: false,
   ctaLabel: '',
   ctaHref: '',
-  authorName: 'Equipe AuraTracker',
+  authorName: 'Équipe AuraTracker',
   authorRole: '',
   authorAvatarUrl: '',
   isPublished: true,
@@ -623,7 +623,7 @@ export function DashboardUpdatesManagerDialog({
                           <InlineInput
                             value={form.authorName}
                             onChange={(event) => setForm((current) => ({ ...current, authorName: event.target.value }))}
-                            placeholder="Equipe AuraTracker"
+                            placeholder="Équipe AuraTracker"
                             className="text-sm font-medium"
                           />
                           <InlineInput

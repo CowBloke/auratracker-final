@@ -341,11 +341,11 @@ const LOG_SKINS: LogSkin[] = [
   { name: 'Planète gel', profile: 'planet', rim: '#67e8f9', core: '#1d4ed8', barkA: '#38bdf8', barkB: '#1e3a8a', rings: 'rgba(236,254,255,0.35)', crack: 'rgba(125,211,252,0.34)', sprinkle: '#fde68a' },
   { name: 'Cassette retro', profile: 'cassette', rim: '#eab308', core: '#0f172a', barkA: '#1e293b', barkB: '#334155', rings: 'rgba(226,232,240,0.3)', crack: 'rgba(250,204,21,0.38)', sprinkle: '#f8fafc' },
   { name: 'Donut menthe', profile: 'donut', rim: '#34d399', core: '#fef3c7', barkA: '#6ee7b7', barkB: '#047857', rings: 'rgba(255,255,255,0.34)', crack: 'rgba(16,185,129,0.34)', sprinkle: '#f472b6' },
-  { name: 'Bouee pastel', profile: 'lifebuoy', rim: '#fb7185', core: '#fff7ed', barkA: '#fdba74', barkB: '#fed7aa', rings: 'rgba(255,255,255,0.9)', crack: 'rgba(251,113,133,0.28)', sprinkle: '#38bdf8' },
+  { name: 'Bouée pastel', profile: 'lifebuoy', rim: '#fb7185', core: '#fff7ed', barkA: '#fdba74', barkB: '#fed7aa', rings: 'rgba(255,255,255,0.9)', crack: 'rgba(251,113,133,0.28)', sprinkle: '#38bdf8' },
   { name: 'Vinyle orage', profile: 'vinyl', rim: '#020617', core: '#111827', barkA: '#111827', barkB: '#1e293b', rings: 'rgba(148,163,184,0.26)', crack: 'rgba(96,165,250,0.42)', sprinkle: '#f59e0b' },
-  { name: 'Planete corail', profile: 'planet', rim: '#fca5a5', core: '#fb7185', barkA: '#fdba74', barkB: '#9a3412', rings: 'rgba(255,245,245,0.34)', crack: 'rgba(255,255,255,0.24)', sprinkle: '#fde68a' },
+  { name: 'Planète corail', profile: 'planet', rim: '#fca5a5', core: '#fb7185', barkA: '#fdba74', barkB: '#9a3412', rings: 'rgba(255,245,245,0.34)', crack: 'rgba(255,255,255,0.24)', sprinkle: '#fde68a' },
   { name: 'Cassette chrome', profile: 'cassette', rim: '#94a3b8', core: '#0f172a', barkA: '#334155', barkB: '#64748b', rings: 'rgba(226,232,240,0.44)', crack: 'rgba(148,163,184,0.34)', sprinkle: '#e2e8f0' },
-  { name: 'Bouee lagon', profile: 'lifebuoy', rim: '#06b6d4', core: '#ecfeff', barkA: '#67e8f9', barkB: '#a5f3fc', rings: 'rgba(255,255,255,0.85)', crack: 'rgba(34,211,238,0.28)', sprinkle: '#facc15' },
+  { name: 'Bouée lagon', profile: 'lifebuoy', rim: '#06b6d4', core: '#ecfeff', barkA: '#67e8f9', barkB: '#a5f3fc', rings: 'rgba(255,255,255,0.85)', crack: 'rgba(34,211,238,0.28)', sprinkle: '#facc15' },
   { name: 'Donut galaxie', profile: 'donut', rim: '#8b5cf6', core: '#1e1b4b', barkA: '#c084fc', barkB: '#4c1d95', rings: 'rgba(255,255,255,0.34)', crack: 'rgba(216,180,254,0.32)', sprinkle: '#22d3ee' },
 ];
 
@@ -1164,7 +1164,7 @@ export default function KnifeHit() {
             {gameOver && (
               <div className="absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/50 backdrop-blur-sm">
                 <div className="w-full max-w-xs rounded-2xl border border-border/60 bg-background/95 p-6 text-center shadow-xl">
-                  <p className="text-sm text-muted-foreground">Run terminee</p>
+                  <p className="text-sm text-muted-foreground">Run terminée</p>
                   <p className="mt-1 text-4xl font-bold">{score}</p>
                   <p className="mt-1 text-sm text-muted-foreground">couteaux places avant collision</p>
                   {isNewHighScore && <p className="mt-3 text-sm font-medium text-amber-500">Nouveau record</p>}

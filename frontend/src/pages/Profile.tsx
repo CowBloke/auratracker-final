@@ -53,8 +53,8 @@ const PROFILE_GAME_CATALOG = [
   { gameType: 'doodle_jump', label: 'Doodle Jump' },
   { gameType: 'doodle_jump_mort_subite', label: 'Doodle Jump Mort Subite' },
   { gameType: 'logic_lab', label: 'Sudoku' },
-  { gameType: 'minesweeper', label: 'Demineur' },
-  { gameType: 'minesweeper_speedrun', label: 'Demineur Speedrun' },
+  { gameType: 'minesweeper', label: 'Démineur' },
+  { gameType: 'minesweeper_speedrun', label: 'Démineur Speedrun' },
   { gameType: 'game_2048', label: '2048' },
   { gameType: 'flappy_bird', label: 'Flappy Bird' },
   { gameType: 'chrome_dino', label: 'Chrome Dino' },
@@ -72,7 +72,7 @@ const PROFILE_GAME_CATALOG = [
   { gameType: 'goyave_empire', label: 'Goyave Empire' },
   { gameType: 'crossy_road', label: 'Crossy Road' },
   { gameType: 'puissance_4', label: 'Puissance 4' },
-  { gameType: 'chess', label: 'Echecs' },
+  { gameType: 'chess', label: 'Échecs' },
   { gameType: 'ballarena', label: 'Arène des balles' },
   { gameType: 'morpion', label: 'Morpion' },
 ] as const;
@@ -390,7 +390,7 @@ export default function Profile() {
       setWarningDialogOpen(false);
       setWarningMessage('');
       setWarningSeverity('MEDIUM');
-      toast('Avertissement envoye', { description: res.data.message || `L'utilisateur ${profileUser.username} verra un popup a confirmer.` });
+      toast('Avertissement envoyé', { description: res.data.message || `L'utilisateur ${profileUser.username} verra un popup a confirmer.` });
     } catch (error) {
       toast.error('Erreur', { description: getApiErrorMessage(error, "Impossible d'envoyer l'avertissement.") });
     } finally {
@@ -520,7 +520,7 @@ export default function Profile() {
           `${bombPartyStats.totalPlayed} jouees`,
           `${bombPartyStats.totalPlayed > 0 ? Math.round((bombPartyStats.wins / bombPartyStats.totalPlayed) * 100) : 0}%`,
         ]
-        : ['- record', '0 mots', '0 V', '0 jouees', '0%'],
+        : ['- record', '0 mots', '0 V', '0 jouées', '0%'],
     },
     ...catalogGameRows,
     ...unknownGameRows,

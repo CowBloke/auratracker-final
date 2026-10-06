@@ -137,7 +137,7 @@ const CASINO_TABLES: Array<{
     id: 'blackjack',
     title: 'Blackjack',
     subtitle: 'Grand tapis cartes et duel contre le croupier',
-    caption: 'Le coin strategique, calme en apparence, dangereux pour le banquier.',
+    caption: 'Le coin stratégique, calme en apparence, dangereux pour le banquier.',
     seatLabel: "S'asseoir au blackjack",
     icon: Spade,
     accentClass: 'from-amber-300 via-yellow-400 to-lime-300',
@@ -234,7 +234,7 @@ const buildCelebration = (
       cathyLines: [
         'Cathy: On le garde ou on le met en vitrine ce gain ?',
         'Cathy: Tout le casino te regarde, continue comme ca.',
-        'Cathy: Sirenes, jetons, flashs... c est un vrai loto.',
+        'Cathy: Sirenes, jetons, flashs... c’est un vrai loto.',
       ],
       popupBursts: ['Gain monstre', 'Table en fusion', 'Cathy en PLS', 'Jackpot x100'],
       accentClass: 'from-amber-200 via-yellow-300 to-orange-500',
@@ -255,7 +255,7 @@ const buildCelebration = (
       subheadline: `${gameLabel} vient de sortir un gain enorme. Cathy declenche les lumieres VIP.`,
       cathyLines: [
         'Cathy: Ouh la, la machine chante pour toi.',
-        'Cathy: C est le genre de coup qui rend jaloux la table d a cote.',
+        'Cathy: C’est le genre de coup qui rend jaloux la table d’a cote.',
         'Cathy: On veut du bruit, on veut des popups, on veut du cash.',
       ],
       popupBursts: ['Belle gagne', 'Alerte VIP', 'Pluie de jetons'],
@@ -279,7 +279,7 @@ const buildCelebration = (
         'Cathy: Ouiii, ca commence a sentir la bonne soiree.',
         'Cathy: On garde la cadence, le casino adore ca.',
       ],
-      popupBursts: ['Gain', 'Serie chaude'],
+      popupBursts: ['Gain', 'Série chaude'],
       accentClass: 'from-emerald-300 via-lime-300 to-yellow-300',
       glowClass: 'shadow-[0_0_56px_rgba(74,222,128,0.34)]',
       chipCount: 12,
@@ -866,7 +866,7 @@ function SoccerGame({
 
         await refreshUser();
       } catch {
-        setError('Le resultat du tir n a pas pu etre synchronise.');
+        setError('Le résultat du tir n’a pas pu être synchronisé.');
         try { await refreshUser(); } catch {}
       } finally {
         setShooting(false);
@@ -1008,7 +1008,7 @@ function MinesGame({
       setRewards({ aura: response.data.auraReward || 0, money: response.data.moneyReward || 0 });
       await refreshUser();
     } catch {
-      setError('Le resultat de la manche n a pas pu etre synchronise.');
+      setError('Le résultat de la manche n’a pas pu être synchronisé.');
       try { await refreshUser(); } catch {}
     }
   };
@@ -1029,7 +1029,7 @@ function MinesGame({
         await refreshUser();
       } catch {
         setBusy(false);
-        setError('Impossible de demarrer la manche.');
+        setError('Impossible de démarrer la manche.');
         return;
       }
       const nextLossMode = Math.random() < 0.7;
@@ -1192,7 +1192,7 @@ function CrashGame({
       setRewards({ aura: response.data.auraReward || 0, money: response.data.moneyReward || 0 });
       await refreshUser();
     } catch {
-      setError('Le resultat de la manche n a pas pu etre synchronise.');
+      setError('Le résultat de la manche n’a pas pu être synchronisé.');
       try { await refreshUser(); } catch {}
     }
   };
@@ -1205,7 +1205,7 @@ function CrashGame({
       await gamesApi.startCasino(bet);
       await refreshUser();
     } catch {
-      setError('Impossible de demarrer la fusee.');
+      setError('Impossible de démarrer la fusee.');
       return;
     }
 
@@ -1303,8 +1303,8 @@ function CrashGame({
                 : status === 'crashed'
                   ? `Crash a x${(crashPoint ?? currentMultiplier).toFixed(2)}`
                   : status === 'cashed'
-                    ? 'Cashout securise'
-                    : 'Pret pour le prochain depart'}
+                    ? 'Cashout sécurisé'
+                    : 'Prêt pour le prochain départ'}
             </div>
           </div>
         </CardContent>
@@ -1455,7 +1455,7 @@ export default function Casino() {
           <div className="w-[300px] shrink-0 hidden lg:block h-full">
              <Card className="rounded-[32px] border-border/40 shadow-xl p-6">
                 <h3 className="text-sm font-bold flex items-center gap-2 mb-4"><Trophy className="h-4 w-4 text-amber-500" /> High Rollers</h3>
-                <p className="text-xs text-muted-foreground italic">Le classement casino est global. Consulte la page Classements pour le detail.</p>
+                <p className="text-xs text-muted-foreground italic">Le classement casino est global. Consulte la page Classements pour le détail.</p>
              </Card>
           </div>
         )}

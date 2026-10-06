@@ -1051,7 +1051,7 @@ export default function Racer() {
         setRewardSummary(
           [
             rewardResponse.data.moneyReward > 0 || rewardResponse.data.auraReward > 0 ? 'tour complete' : null,
-            dailyResponse.data.rewards?.isFirstRunToday ? 'premiere tentative du jour' : null,
+            dailyResponse.data.rewards?.isFirstRunToday ? 'première tentative du jour' : null,
             dailyResponse.data.rewards?.isNewDailyBest ? 'meilleur tour perso du jour' : null,
             rewardResponse.data.isNewHighScore ? 'Nouveau record personnel !' : null,
           ]
@@ -1385,7 +1385,7 @@ export default function Racer() {
         rewards={rewards}
         controls={(
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Course de rue retro — completez un tour le plus vite possible.</p>
+            <p className="text-xs text-muted-foreground">Course de rue retro — complétez un tour le plus vite possible.</p>
             <p className="text-xs text-muted-foreground tabular-nums">
               Vitesse: {speed} mph · Temps: {formatTime(currentLapTime)}
             </p>

@@ -18,7 +18,7 @@ export const youOnboarding: TutorialFlow = {
       title: 'Bienvenue sur AuraTracker !',
       content: (
         <div className="space-y-3">
-          <p>AuraTracker est une simulation économique multijoueur où tu gères des entreprises, investis, formes des alliances et accumules des richesses.</p>
+          <p>AuraTracker est une simulation économique multijoueur où tu gères des entreprises, investis, formes des alliances et accumulés des richesses.</p>
           <p className="text-muted-foreground">Ce tutoriel te présente les éléments essentiels. Tu peux le quitter ou passer une section à tout moment.</p>
         </div>
       ),
@@ -156,7 +156,7 @@ export const youOnboarding: TutorialFlow = {
       placement: 'right',
       title: 'Marketplace',
       content: (
-        <p>La <strong>Marketplace</strong> est la place de marche du jeu : achete et vends des <strong>ressources</strong>, des objets et des actions d'entreprises entre joueurs en temps reel.</p>
+        <p>La <strong>Marketplace</strong> est la place de marche du jeu : achete et vends des <strong>ressources</strong>, des objets et des actions d'entreprises entre joueurs en temps réel.</p>
       ),
       route: '/marketplace',
     },

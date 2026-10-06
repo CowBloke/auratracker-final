@@ -61,7 +61,7 @@ export function ContentTab(props: ContentTabProps) {
         <div className="w-72 shrink-0 space-y-4 sticky top-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription>Categories</CardDescription>
+              <CardDescription>Catégories</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {loadingCategories ? (
@@ -100,7 +100,7 @@ export function ContentTab(props: ContentTabProps) {
                       <Input
                         value={newCategoryLabel}
                         onChange={(e) => setNewCategoryLabel(e.target.value)}
-                        placeholder="Libelle"
+                        placeholder="Libellé"
                         className="bg-transparent h-8 text-xs flex-1"
                         onKeyDown={(e) => e.key === 'Enter' && addShopCategory()}
                       />
@@ -134,7 +134,7 @@ export function ContentTab(props: ContentTabProps) {
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <Gamepad2 className="h-3.5 w-3.5 text-primary" />
-                    <CardDescription className="text-primary">Apparence forcee du jour</CardDescription>
+                    <CardDescription className="text-primary">Apparence forcée du jour</CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -144,7 +144,7 @@ export function ContentTab(props: ContentTabProps) {
                       Chargement...
                     </div>
                   ) : djRotatingItems.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Aucun skin dans le pool. Creez des skins avec le placement <em>Pool de rotation</em>.</p>
+                    <p className="text-xs text-muted-foreground">Aucun skin dans le pool. Créez des skins avec le placement <em>Pool de rotation</em>.</p>
                   ) : (
                     <>
                       <Select value={djForcedSkinSelected} onValueChange={setDjForcedSkinSelected}>
@@ -152,7 +152,7 @@ export function ContentTab(props: ContentTabProps) {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__none__">Rotation aleatoire</SelectItem>
+                          <SelectItem value="__none__">Rotation aléatoire</SelectItem>
                           {djRotatingItems.map((item: any) => (
                             <SelectItem key={item.id} value={item.id}>
                               Pool {item.name}

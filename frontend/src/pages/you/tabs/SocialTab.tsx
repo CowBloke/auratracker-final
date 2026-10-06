@@ -86,8 +86,8 @@ function CourtCaseItem({ courtCase, onReload }: { courtCase: YouCourtCase; onRel
   const respond = async (decision: 'court' | 'drop') => {
     setLoading(true);
     try {
-      await withRouteError(() => youApi.respondToCourtCase(courtCase.id, decision), 'Impossible de repondre.');
-      if (decision === 'court') toast.success('Jugement rendu - tu as recupere tout l argent');
+      await withRouteError(() => youApi.respondToCourtCase(courtCase.id, decision), 'Impossible de répondre.');
+      if (decision === 'court') toast.success('Jugement rendu - tu as recupere tout l’argent');
       else toast.success('Accusation ignoree');
       await onReload();
     } finally {
@@ -139,7 +139,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
   const coupleDeposit = () =>
     run('coupleDeposit', async () => {
       const amt = parseInt(coupleAmount, 10);
-      await withRouteError(() => youApi.coupleDeposit(relationship.id, amt), 'Impossible de deposer.');
+      await withRouteError(() => youApi.coupleDeposit(relationship.id, amt), 'Impossible de déposer.');
       setCoupleAmount('');
       toast.success(`+${amt} deposé sur le compte commun`);
     });
@@ -155,13 +155,13 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
   const respondToProposal = (proposalId: string, decision: 'accept' | 'reject') =>
     run('proposal', async () => {
       await withRouteError(() => youApi.respondToMarriageProposal(proposalId, decision), 'Impossible de traiter la demande.');
-      toast.success(decision === 'accept' ? 'Mariage valide' : 'Demande refusee');
+      toast.success(decision === 'accept' ? 'Mariage valide' : 'Demande refusée');
     });
 
   const divorce = () =>
     run('divorce', async () => {
       await withRouteError(() => youApi.divorceRelationship(relationship.id), 'Impossible d enregistrer la demande de divorce.');
-      toast.success('Demande de divorce envoyee');
+      toast.success('Demande de divorce envoyée');
     });
 
   const respondToDivorce = (proposalId: string, decision: 'accept' | 'reject') =>
@@ -173,26 +173,26 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
   const proposeMarriage = () =>
     run('proposeMarriage', async () => {
       await withRouteError(() => youApi.proposeMarriage(relationship.id), 'Impossible d envoyer la demande.');
-      toast.success('Demande en mariage envoyee');
+      toast.success('Demande en mariage envoyée');
     });
 
   const forget = () =>
     run('forget', async () => {
       await withRouteError(() => youApi.forgetRelationship(relationship.id), 'Impossible d oublier cette relation.');
-      toast.success('Relation supprimee');
+      toast.success('Relation supprimée');
     });
 
   const makeMistress = () =>
     run('mistress', async () => {
       await withRouteError(() => youApi.makeMistress(relationship.id), 'Impossible de modifier la relation.');
-      toast.success('Liaison creee');
+      toast.success('Liaison créée');
     });
 
   const suspectCheating = () =>
     run('suspect', async () => {
       const result = await withRouteError(() => youApi.suspectCheating(relationship.id), 'Impossible d envoyer la suspicion.');
-      if (result?.data?.correct) toast.success('Tricherie prouvee ! Tu as recupere tout l argent.');
-      else toast.info('Suspicion envoyee. Ton conjoint peut aller en justice.');
+      if (result?.data?.correct) toast.success('Tricherie prouvee ! Tu as recupere tout l’argent.');
+      else toast.info('Suspicion envoyée. Ton conjoint peut aller en justice.');
     });
 
   const pill = getRelationshipPill(relationship.status);
@@ -207,13 +207,13 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
             <Pill label={pill.label} color={pill.color} />
             {relationship.pendingProposal && (
               <Pill
-                label={relationship.pendingProposal.direction === 'sent' ? 'Demande envoyee' : 'Demande recue'}
+                label={relationship.pendingProposal.direction === 'sent' ? 'Demande envoyée' : 'Demande reçue'}
                 color="bg-warning/15 text-warning"
               />
             )}
             {relationship.pendingDivorceProposal && (
               <Pill
-                label={relationship.pendingDivorceProposal.direction === 'sent' ? 'Divorce envoye' : 'Divorce recu'}
+                label={relationship.pendingDivorceProposal.direction === 'sent' ? 'Divorce envoyé' : 'Divorce reçu'}
                 color="bg-destructive/15 text-destructive"
               />
             )}
@@ -253,7 +253,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
           {confirmMarriage ? (
             <div className="space-y-2">
               <Alert variant="warning" className="space-y-1">
-                <p className="font-semibold">Consequences du mariage :</p>
+                <p className="font-semibold">Conséquences du mariage :</p>
                 <p>· Compte bancaire commun partage avec ton conjoint</p>
                 <p>· En cas de divorce, le compte commun est divise en deux</p>
                 <p>· Si ton conjoint triche, il peut perdre tout son argent au tribunal</p>
@@ -284,7 +284,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
           {relationship.pendingDivorceProposal.message?.trim() && (
             <p className="mt-1 text-xs text-muted-foreground">{relationship.pendingDivorceProposal.message}</p>
           )}
-          <p className="mt-1 text-xs text-warning">Le divorce partage l argent du foyer en deux.</p>
+          <p className="mt-1 text-xs text-warning">Le divorce partage l’argent du foyer en deux.</p>
           <div className="mt-3 flex gap-2">
             <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToDivorce(relationship.pendingDivorceProposal!.id, 'accept')}>Accepter</Button>
             <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToDivorce(relationship.pendingDivorceProposal!.id, 'reject')}>Refuser</Button>
@@ -318,7 +318,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
           <Alert variant="warning">
             <div className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-              <p className="text-xs text-warning">Attention : ton/ta conjoint(e) peut te soupçonner de tricherie. Si la suspicion est confirmee, il/elle recupere TOUT l argent du foyer et vous divorcez automatiquement.</p>
+              <p className="text-xs text-warning">Attention : ton/ta conjoint(e) peut te soupçonner de tricherie. Si la suspicion est confirmee, il/elle recupere TOUT l’argent du foyer et vous divorcez automatiquement.</p>
             </div>
             <div className="mt-3 flex gap-2">
               <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => { setConfirmMistress(false); void makeMistress(); }}>Confirmer</Button>
@@ -335,7 +335,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
           <Alert variant="warning">
             <div className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-              <p className="text-xs text-warning">Si ton/ta conjoint(e) a une liaison, tu recuperes tout l argent du foyer et vous divorcez automatiquement. Si tu as tort, il/elle peut aller en justice et prendre tout ton argent.</p>
+              <p className="text-xs text-warning">Si ton/ta conjoint(e) a une liaison, tu recuperes tout l’argent du foyer et vous divorcez automatiquement. Si tu as tort, il/elle peut aller en justice et prendre tout ton argent.</p>
             </div>
             <div className="mt-3 flex gap-2">
               <Button size="sm" variant="destructive" className="text-xs" disabled={!!loading} onClick={() => { setConfirmSuspect(false); void suspectCheating(); }}>Confirmer</Button>
@@ -350,7 +350,7 @@ function RelationActions({ relationship, onReload }: { relationship: YouRelation
         )}
         {confirmForget && (
           <Card className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
-            <p className="text-xs text-muted-foreground">Supprimer cette relation definitivement ?</p>
+            <p className="text-xs text-muted-foreground">Supprimer cette relation définitivement ?</p>
             <div className="mt-3 flex gap-2">
               <Button size="sm" variant="destructive" className="text-xs" disabled={!!loading} onClick={() => { setConfirmForget(false); void forget(); }}>Oublier</Button>
               <Button size="sm" variant="ghost" className="text-xs" onClick={() => setConfirmForget(false)}>Annuler</Button>

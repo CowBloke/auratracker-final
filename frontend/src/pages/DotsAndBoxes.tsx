@@ -172,7 +172,7 @@ export default function DotsAndBoxes() {
         <DuelPlayerSelectionModal
           open={showChallengePicker}
           onOpenChange={setShowChallengePicker}
-          title="Defier en Dots and Boxes"
+          title="Défier en Dots and Boxes"
           gameType="dotsandboxes"
           onlineUsers={onlineUsers}
           currentUserId={user?.id}
@@ -277,7 +277,7 @@ export default function DotsAndBoxes() {
                 ? gameState.winnerId === user?.id
                   ? 'Tu as gagne !'
                   : `${opponent?.username} a gagne.`
-                : 'Egalite !'
+                : 'Égalité !'
               : isMyTurn
                 ? 'C\'est ton tour - place une ligne'
                 : `Au tour de ${opponent?.username ?? '...'}`}
@@ -431,7 +431,7 @@ function PostGameModals({
         <div className="space-y-6 py-4">
           {gameOver?.isDraw ? (
             <div className="text-center">
-              <p className="text-2xl font-light">Egalite !</p>
+              <p className="text-2xl font-light">Égalité !</p>
               {gameOver.rewards.draw && (
                 <p className="text-sm text-muted-foreground mt-2">
                   +{gameOver.rewards.draw.aura} aura - +{gameOver.rewards.draw.money}$

@@ -141,7 +141,7 @@ export default function HexGL() {
     submittedRunRef.current = null;
     console.error('Failed to submit HexGL score after retries:', lastError);
     toast('Temps non comptabilise', {
-      description: "Le chrono n'a pas pu etre enregistre. Relance une course dans quelques secondes.",
+      description: "Le chrono n'a pas pu être enregistré. Relance une course dans quelques secondes.",
       duration: 4500,
     });
   }, [fetchLeaderboard, refreshUser, sessionKey]);

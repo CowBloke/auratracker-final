@@ -139,7 +139,7 @@ export default function CrossyRoad() {
 
     console.error('Failed to submit crossy road score after retries:', lastError);
     toast('Run non comptabilise', {
-      description: "La recompense n'a pas pu etre enregistree. Rejoue une run dans quelques secondes.",
+      description: "La récompense n'a pas pu être enregistrée. Rejoue une run dans quelques secondes.",
       duration: 4500,
     });
   }, [fetchLeaderboard, refreshUser]);
@@ -261,7 +261,7 @@ export default function CrossyRoad() {
         rewards={null}
         controls={(
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Fleches directionnelles pour se deplacer.</p>
+            <p className="text-xs text-muted-foreground">Flèches directionnelles pour se déplacer.</p>
             <p className="text-xs text-muted-foreground">Espace pour avancer, P pour pause.</p>
             <p className="text-xs text-muted-foreground">{CROSSY_SUMMARY}</p>
           </div>
@@ -307,7 +307,7 @@ export default function CrossyRoad() {
                 onResume={() => {
                   handlePauseToggle();
                 }}
-                description="La session reste affichee mais le jeu est suspendu."
+                description="La session reste affichée mais le jeu est suspendu."
               />
             </GameFullscreenStage>
           ) : (

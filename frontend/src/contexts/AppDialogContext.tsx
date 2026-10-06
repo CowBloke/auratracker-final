@@ -49,7 +49,7 @@ const AppDialogContext = createContext<AppDialogContextValue>(DEFAULT_CONTEXT);
 function normalizeInput(kind: 'confirm' | 'alert', input: DialogInput): DialogRequest['options'] {
   if (typeof input === 'string') {
     return {
-      title: kind === 'confirm' ? 'Confirmer l action' : 'Information',
+      title: kind === 'confirm' ? 'Confirmer l’action' : 'Information',
       description: input,
       confirmLabel: kind === 'confirm' ? 'Confirmer' : 'OK',
       cancelLabel: 'Annuler',
@@ -58,7 +58,7 @@ function normalizeInput(kind: 'confirm' | 'alert', input: DialogInput): DialogRe
   }
 
   return {
-    title: input.title || (kind === 'confirm' ? 'Confirmer l action' : 'Information'),
+    title: input.title || (kind === 'confirm' ? 'Confirmer l’action' : 'Information'),
     description: input.description || '',
     confirmLabel: input.confirmLabel || (kind === 'confirm' ? 'Confirmer' : 'OK'),
     cancelLabel: input.cancelLabel || 'Annuler',

@@ -212,7 +212,7 @@ export default function PetitBac() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs   text-muted-foreground">Categories</label>
+              <label className="text-xs   text-muted-foreground">Catégories</label>
               <Input
                 value={categoriesInput}
                 onChange={(e) => setCategoriesInput(e.target.value)}
@@ -365,7 +365,7 @@ export default function PetitBac() {
                   className="gap-2"
                 >
                   <Send className="h-4 w-4" />
-                  {hasSubmittedReview ? 'Verification envoyee' : 'Envoyer ma verification'}
+                  {hasSubmittedReview ? 'Vérification envoyée' : 'Envoyer ma vérification'}
                 </Button>
               </div>
             ) : null}

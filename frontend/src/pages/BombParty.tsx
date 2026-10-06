@@ -259,7 +259,7 @@ export default function BombParty() {
 
               {/* Difficulty */}
               <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">Difficulte</label>
+                <label className="text-sm text-muted-foreground">Difficulté</label>
                 <div className="flex gap-2">
                   {(['easy', 'medium', 'hard'] as const).map((d) => (
                     <Button variant="ghost"

@@ -140,7 +140,7 @@ export default function ChromeDino() {
     lastSubmittedScoreRef.current = null;
     console.error('Failed to submit chrome dino score after retries:', lastError);
     toast('Run non comptabilise', {
-      description: "La recompense n'a pas pu etre enregistree. Rejoue une run dans quelques secondes.",
+      description: "La récompense n'a pas pu être enregistrée. Rejoue une run dans quelques secondes.",
       duration: 4500,
     });
   }, [fetchLeaderboard, refreshUser]);

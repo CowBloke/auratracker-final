@@ -1057,11 +1057,11 @@ export default function Clans() {
         setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, imageUrl: appliedImageUrl } : c));
       }
       setBannerItemDialogOpen(false);
-      toast(bannerItemEffectType === 'CLAN_BANNER' ? "Banniere de clan appliquee" : 'Photo de profil de clan appliquee');
+      toast(bannerItemEffectType === 'CLAN_BANNER' ? "Bannière de clan appliquee" : 'Photo de profil de clan appliquee');
     } catch (error: any) {
       toast.error("Erreur", { description: error.response?.data?.error || (
           bannerItemEffectType === 'CLAN_BANNER'
-            ? "Impossible d'appliquer la banniere."
+            ? "Impossible d'appliquer la bannière."
             : "Impossible d'appliquer la photo de profil du clan."
         ) });
     } finally {

@@ -70,7 +70,7 @@ export function AdsTab(props: AdsTabProps) {
                         )}
                       </AlertDescription></Alert>
                       <Card className="gap-0 py-0 shadow-none"><CardContent className="p-4 space-y-3">
-                        <p className="text-xs text-muted-foreground">Apercu joueur</p>
+                        <p className="text-xs text-muted-foreground">Aperçu joueur</p>
                         <div className="space-y-1">
                           <p className="text-sm font-semibold">{ad.title}</p>
                           <p className="text-sm text-muted-foreground">{ad.tagline}</p>
@@ -91,13 +91,13 @@ export function AdsTab(props: AdsTabProps) {
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Toutes les publicites</h2>
+            <h2 className="text-base font-semibold">Toutes les publicités</h2>
             <span className="text-xs">{allAds.length} au total</span>
           </div>
           {allAdsLoading ? (
             <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement...</CardContent></Card>
           ) : allAds.length === 0 ? (
-            <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Aucune publicite creee par les utilisateurs.</CardContent></Card>
+            <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Aucune publicité créée par les utilisateurs.</CardContent></Card>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {allAds.map((ad: any) => (
@@ -113,7 +113,7 @@ export function AdsTab(props: AdsTabProps) {
                         {ad.status === 'APPROVED' ? 'Approuvee' : ad.status === 'PENDING' ? 'En attente' : 'Rejetee'}
                       </span>
                       {!ad.isActive && (
-                        <span className="rounded-full bg-background/80 border border-border/50 px-2 py-0.5 text-xs text-muted-foreground font-medium">Masquee</span>
+                        <span className="rounded-full bg-background/80 border border-border/50 px-2 py-0.5 text-xs text-muted-foreground font-medium">Masquée</span>
                       )}
                     </div>
                   </div>
