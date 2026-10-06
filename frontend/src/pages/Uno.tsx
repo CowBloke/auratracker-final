@@ -232,31 +232,31 @@ interface ColorPickerProps {
 }
 
 function ColorPicker({ open, onPick }: ColorPickerProps) {
-  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-4 w-72">
-        <p className="text-center font-semibold text-sm">Choisir une couleur</p>
+    <Dialog open={open}>
+      <DialogContent className="sm:max-w-xs" showCloseButton={false} onInteractOutside={(event) => event.preventDefault()} onEscapeKeyDown={(event) => event.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle>Choisir une couleur</DialogTitle>
+        </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          {COLORS.map(c => (
-            <button
+          {COLORS.map((c) => (
+            <Button
               key={c}
               onClick={() => onPick(c)}
               className={cn(
-                'py-3 rounded-xl font-bold text-white text-sm transition-all',
-                'hover:scale-105 active:scale-95 shadow-md',
+                'font-bold text-white',
                 c === 'red' && 'bg-red-500 hover:bg-red-400',
                 c === 'green' && 'bg-green-500 hover:bg-green-400',
                 c === 'blue' && 'bg-blue-600 hover:bg-blue-500',
-                c === 'yellow' && 'bg-yellow-400 hover:bg-yellow-300 text-black',
+                c === 'yellow' && 'bg-yellow-400 text-black hover:bg-yellow-300',
               )}
             >
               {COLOR_NAMES[c]}
-            </button>
+            </Button>
           ))}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

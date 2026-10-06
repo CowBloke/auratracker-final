@@ -1,7 +1,7 @@
-import { BookOpen, X } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTutorial } from './TutorialContext';
-import { Card, CardContent } from '@/components/ui/card';
 
 export function TutorialWelcomeModal() {
   const { hasSeenWelcome, acknowledgeWelcome, start } = useTutorial();
@@ -13,39 +13,28 @@ export function TutorialWelcomeModal() {
     start();
   };
 
-  const handleDecline = () => {
-    acknowledgeWelcome();
-  };
-
   return (
-    <>
-      <div className="fixed inset-0 bg-black/50" style={{ zIndex: 1000000 }} />
-      <Card className="gap-0 py-0 shadow-none left-1/2 top-1/2 z-[1000001] w-[min(420px,calc(100vw-2rem))]"><CardContent className="p-6 fixed -translate-x-1/2 -translate-y-1/2">
-        <Button variant="ghost" size="icon-xs" onClick={handleDecline} aria-label="Fermer" className="absolute right-4 top-4">
-          <X className="h-4 w-4" />
-        </Button>
-
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
-          <BookOpen className="h-6 w-6 text-primary" />
-        </div>
-
-        <h2 className="text-lg font-semibold mb-1">Bienvenue sur AuraTracker !</h2>
-        <p className="mb-1 text-sm text-muted-foreground">
-          C'est ta première connexion. Souhaites-tu suivre un tutoriel interactif pour découvrir les bases du jeu ?
-        </p>
-        <p className="mb-6 text-xs text-muted-foreground">
-          Tu pourras le relancer à tout moment depuis la page <strong>Tutoriels</strong>.
-        </p>
-
-        <div className="flex flex-col gap-2">
+    <Dialog open onOpenChange={(open) => !open && acknowledgeWelcome()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/15">
+            <BookOpen className="size-6 text-primary" />
+          </div>
+          <DialogTitle>Bienvenue sur AuraTracker !</DialogTitle>
+          <DialogDescription>
+            C'est ta première connexion. Souhaites-tu suivre un tutoriel interactif pour découvrir les bases du jeu ?
+            Tu pourras le relancer à tout moment depuis la page Tutoriels.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-col sm:flex-col">
           <Button onClick={handleStart} className="w-full">
             Oui, commencer le tutoriel
           </Button>
-          <Button onClick={handleDecline} variant="ghost" className="w-full text-muted-foreground">
+          <Button onClick={acknowledgeWelcome} variant="ghost" className="w-full text-muted-foreground">
             Non merci, je vais explorer seul
           </Button>
-        </div>
-      </CardContent></Card>
-    </>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
