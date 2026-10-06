@@ -237,7 +237,7 @@ export default function Inventory() {
           effectText += ` • +${response.data.effect.bonusAura} aura`;
         }
         if (response.data.effect.bonusMoney) {
-          effectText += ` • +$${response.data.effect.bonusMoney}`;
+          effectText += ` • +${response.data.effect.bonusMoney} €`;
         }
         if (response.data.effect.type === 'CLAN_SLOT_UPGRADE') {
           effectText += ' • +1 slot clan (jusqu\'à 7 membres)';
@@ -404,7 +404,7 @@ export default function Inventory() {
       case 'BONUS_AURA':
         return `+${effect.value || '?'} aura`;
       case 'BONUS_MONEY':
-        return `+$${effect.value || '?'}`;
+        return `+${effect.value || '?'} €`;
       default:
       return humanizeUiLabel(effect.type);
     }

@@ -71,7 +71,7 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
         <div>
           <p className={cn('text-sm', 'text-muted-foreground')}>
             {wealthStats
-              ? `${wealthStats.userCount.toLocaleString('fr-FR')} joueurs analysés · Prix AuraCoin : $${wealthStats.auraCoinPrice.toFixed(2)}`
+              ? `${wealthStats.userCount.toLocaleString('fr-FR')} joueurs analysés · Prix AuraCoin : ${wealthStats.auraCoinPrice.toFixed(2)} €`
               : 'Statistiques de richesse du serveur'}
           </p>
         </div>

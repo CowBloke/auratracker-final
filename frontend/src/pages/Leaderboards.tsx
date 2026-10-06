@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatMoney, formatNumber } from '@/lib/format';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { type Ad, adsApi, auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
@@ -58,8 +59,8 @@ const PERIOD_OPTIONS: { id: Period; label: string }[] = [
 const categories: { id: Category; name: string; valueLabel: string; icon: CategoryIcon }[] = [
   { id: 'overall', name: 'Classement global', valueLabel: 'score', icon: Trophy },
   { id: 'aura', name: 'Aura', valueLabel: 'aura', icon: Zap },
-  { id: 'money', name: 'Argent', valueLabel: '$', icon: Coins },
-  { id: 'total_money', name: 'Argent total', valueLabel: '$', icon: Coins },
+  { id: 'money', name: 'Argent', valueLabel: '€', icon: Coins },
+  { id: 'total_money', name: 'Argent total', valueLabel: '€', icon: Coins },
   { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AuraCoin', icon: Gem },
   { id: 'followers', name: 'Followers', valueLabel: 'followers', icon: Users },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score', icon: ArrowUp },
@@ -83,8 +84,8 @@ const categories: { id: Category; name: string; valueLabel: string; icon: Catego
   { id: 'fruit_ninja', name: 'Fruit Ninja', valueLabel: 'score', icon: Target },
   { id: 'goyave_empire', name: 'Goyave Empire', valueLabel: 'score', icon: Flame },
   { id: 'logic_lab', name: 'Sudoku', valueLabel: 'score', icon: Hash },
-  { id: 'casino', name: 'Gains Casino (partie unique)', valueLabel: '$', icon: Sparkles },
-  { id: 'casino_losses', name: 'Pertes Casino (totales)', valueLabel: '$', icon: TrendingDown },
+  { id: 'casino', name: 'Gains Casino (partie unique)', valueLabel: '€', icon: Sparkles },
+  { id: 'casino_losses', name: 'Pertes Casino (totales)', valueLabel: '€', icon: TrendingDown },
   { id: 'chess', name: 'Échecs', valueLabel: 'victoires', icon: Hash },
   { id: 'petit_bac', name: 'Petit Bac', valueLabel: 'victoires', icon: Sparkles },
   { id: 'puissance_4', name: 'Puissance 4', valueLabel: 'victoires', icon: Layers },
@@ -138,9 +139,6 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
 
 const gamesCatalog = ['Doodle Jump', 'Démineur', '2048', 'Flappy Bird', 'Chrome Dino', 'Crossy Road', 'Tour empilée', 'Geometry Dash', 'Fruit Ninja', 'Goyave Empire', 'Sudoku', 'Casino', 'Bombe de mots', 'Poker', 'Petit Bac', 'Bataille navale', 'Solitaire', 'Racer', 'HexGL', 'Tetris', 'Knife Hit', 'Polymarket', 'Échecs', 'Puissance 4', 'Arène des balles', 'Roulette russe', 'Uno', 'Morpion'];
 
-const formatNumber = (value: number, digits = 0) =>
-  value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digits)}`;
 
 export default function Leaderboards() {
   const { user } = useAuth();
@@ -332,14 +330,14 @@ export default function Leaderboards() {
     const numericValue = typeof ranking.value === 'number' ? ranking.value : Number(ranking.value);
     switch (category) {
       case 'auracoin':
-        return `${numericValue.toFixed(4)} AuraCoin • ≈ $${(ranking.moneyValue || 0).toFixed(2)}`;
+        return `${numericValue.toFixed(4)} AuraCoin • ≈ ${formatMoney(ranking.moneyValue || 0, 2)}`;
       case 'total_money':
-        return `$${numericValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return formatMoney(numericValue, 2);
       case 'money':
       case 'casino':
-        return `$${numericValue.toLocaleString()}`;
+        return formatMoney(numericValue);
       case 'casino_losses':
-        return `-$${numericValue.toLocaleString()}`;
+        return `-${formatMoney(numericValue)}`;
       case 'overall':
         return `${Math.round(numericValue).toLocaleString('fr-FR')} pts`;
       case 'racer':

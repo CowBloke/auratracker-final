@@ -723,7 +723,7 @@ export default function StackTower() {
                     {isNewHighScore && <p className="text-sm">Nouveau record personnel.</p>}
                     {reward && (reward.money > 0 || reward.aura > 0) && (
                       <p className="text-sm text-muted-foreground">
-                        {reward.money > 0 && `+$${reward.money}`}
+                        {reward.money > 0 && `+${reward.money} €`}
                         {reward.money > 0 && reward.aura > 0 && ' · '}
                         {reward.aura > 0 && `+${reward.aura} aura`}
                       </p>

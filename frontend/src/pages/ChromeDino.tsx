@@ -248,7 +248,7 @@ export default function ChromeDino() {
               Score: {lastScore}
               {rewards && (rewards.money > 0 || rewards.aura > 0) ? (
                 <span className="block text-[10px] text-emerald-500 mt-0.5">
-                  {rewards.money > 0 && `+$${rewards.money}`} {rewards.aura > 0 && `· +${rewards.aura} aura`}
+                  {rewards.money > 0 && `+${rewards.money} €`} {rewards.aura > 0 && `· +${rewards.aura} aura`}
                   {isNewHighScore && ' · NOUVEAU RECORD'}
                 </span>
               ) : (

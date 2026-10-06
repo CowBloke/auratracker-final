@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { formatSignedMoney } from '@/lib/format';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api, gamesApi } from '../services/api';
@@ -900,7 +901,7 @@ function SoccerGame({
             {shooting ? 'Tir...' : 'Tirer'}
           </Button>
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
-          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${rewards.money > 0 ? '+' : ''}$${rewards.money}` : ''}</p> : null}
+          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${formatSignedMoney(rewards.money)}` : ''}</p> : null}
         </CardContent>
       </Card>
 
@@ -1116,7 +1117,7 @@ function MinesGame({
             <Button variant="outline" onClick={resetBoard} disabled={busy}>Reset</Button>
           </div>
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
-          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${rewards.money > 0 ? '+' : ''}$${rewards.money}` : ''}</p> : null}
+          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${formatSignedMoney(rewards.money)}` : ''}</p> : null}
         </CardContent>
       </Card>
 
@@ -1264,7 +1265,7 @@ function CrashGame({
             <Button variant="outline" onClick={() => void cashOut()} disabled={status !== 'running'}>Cashout</Button>
           </div>
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
-          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${rewards.money > 0 ? '+' : ''}$${rewards.money}` : ''}</p> : null}
+          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${formatSignedMoney(rewards.money)}` : ''}</p> : null}
         </CardContent>
       </Card>
 
@@ -3038,7 +3039,7 @@ function SlotMachineGame({
             "text-center text-lg mb-6",
             winAmount > 0 ? "text-foreground" : "text-muted-foreground"
           )}>
-            {winAmount > 0 ? `+$${winAmount.toLocaleString()}` : `-$${bet.toLocaleString()}`}
+            {winAmount > 0 ? formatSignedMoney(winAmount) : formatSignedMoney(-bet)}
           </p>
         )}
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatMoney, formatNumber } from '@/lib/format';
 import { auraCoinApi, clansApi, leaderboardsApi, usersApi } from '../services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
@@ -44,10 +45,6 @@ const gamesCatalog = [
   'Polymarket',
 ];
 
-const formatNumber = (value: number, digits = 0) =>
-  value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-
-const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digits)}`;
 
 const StatCard = ({ label, value, hint }: StatItem) => (
   <Card>
@@ -105,7 +102,7 @@ export default function Numbers() {
             title: 'Communauté',
             items: [
               { label: 'Joueurs inscrits', value: formatNumber(totalUsers), hint: 'Tous les profils actifs et valides.' },
-              { label: 'Nouveaux joueurs (7 jours)', value: formatNumber(newUsers7d), hint: 'Arrivées récentes dans la communaute.' },
+              { label: 'Nouveaux joueurs (7 jours)', value: formatNumber(newUsers7d), hint: 'Arrivées récentes dans la communauté.' },
               { label: 'Clans actifs', value: formatNumber(totalClans), hint: 'Clans qui comptent au moins un membre.' },
               { label: 'Membres en clan', value: formatNumber(totalClanMembers), hint: 'Somme des membres dans tous les clans.' },
             ],

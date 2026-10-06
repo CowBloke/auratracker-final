@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { formatCompactMoney } from '@/lib/format';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import {
@@ -29,12 +30,7 @@ const fmtCoin = (n: number) => {
   return fmt(n, 6);
 };
 
-const fmtMoney = (n: number) => {
-  if (n >= 1e9) return `$${fmt(n / 1e9, 2)}B`;
-  if (n >= 1e6) return `$${fmt(n / 1e6, 2)}M`;
-  if (n >= 1e3) return `$${fmt(n / 1e3, 1)}k`;
-  return `$${fmt(n, 0)}`;
-};
+const fmtMoney = (n: number) => formatCompactMoney(n);
 
 const fmtMoneyExpanded = (n: number) => {
   return new Intl.NumberFormat('fr-FR', {

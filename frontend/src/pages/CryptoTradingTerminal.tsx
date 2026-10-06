@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { formatMoney } from '@/lib/format';
 import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
@@ -319,7 +320,7 @@ export function CryptoTradingTerminal({
                 <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} vertical={false} />
                   <XAxis dataKey="time" stroke="currentColor" opacity={0.5} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis stroke="currentColor" opacity={0.5} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v.toFixed(2)}`} domain={['auto', 'auto']} />
+                  <YAxis stroke="currentColor" opacity={0.5} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => formatMoney(v, 2)} domain={['auto', 'auto']} />
                   <Tooltip content={<CustomTooltip />} />
                   <Line type="monotone" dataKey="price" stroke={priceChange >= 0 ? '#10b981' : '#ef4444'} strokeWidth={2.5} dot={false} activeDot={{ r: 5, strokeWidth: 2 }} />
                 </LineChart>
@@ -342,7 +343,7 @@ export function CryptoTradingTerminal({
                       <h2 className="text-sm font-semibold tracking-tight">Acheter</h2>
                     </div>
                     <div>
-                      <label className="text-xs">Montant ($)</label>
+                      <label className="text-xs">Montant (€)</label>
                       <div className="flex items-center gap-2 mt-1">
                         <Input type="number" value={buyAmount} onChange={(e) => setBuyAmount(e.target.value)} placeholder="0" className="flex-1 tabular-nums" />
                         <Button type="button" onClick={() => setBuyAmount(moneyBalance.toString())} disabled={loading || moneyBalance <= 0} variant="outline" size="sm" className="text-xs whitespace-nowrap border-success/60 text-success hover:bg-success hover:text-background">Max</Button>
@@ -406,7 +407,7 @@ export function CryptoTradingTerminal({
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs">Marge ($)</label>
+                        <label className="text-xs">Marge (€)</label>
                         <div className="flex items-center gap-2 mt-1">
                           <Input type="number" value={marginAmount} onChange={(e) => setMarginAmount(e.target.value)} placeholder="0" className="flex-1 tabular-nums" />
                           <Button type="button" onClick={() => setMarginAmount(moneyBalance.toString())} disabled={loading || moneyBalance <= 0} variant="outline" size="sm" className="text-xs whitespace-nowrap">Max</Button>
@@ -446,7 +447,7 @@ export function CryptoTradingTerminal({
                                   <div className="flex justify-between">
                                     <span className="text-muted-foreground">P&L</span>
                                     <span className={cn("tabular-nums font-medium", (pos.pnl || 0) >= 0 ? "text-success" : "text-destructive")}>
-                                      {pos.pnl && pos.pnl >= 0 ? '+' : ''}{pos.pnl?.toFixed(2) || '0.00'} $ ({pos.pnlPercentage?.toFixed(2) || '0.00'}%)
+                                      {pos.pnl && pos.pnl >= 0 ? '+' : ''}{pos.pnl?.toFixed(2) || '0.00'} € ({pos.pnlPercentage?.toFixed(2) || '0.00'}%)
                                     </span>
                                   </div>
                                 </div>

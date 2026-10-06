@@ -819,7 +819,7 @@ export default function GeometryDash() {
                   {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
                   {rewards && (rewards.money > 0 || rewards.aura > 0) && (
                     <p className="text-sm text-muted-foreground">
-                      {rewards.money > 0 && `+$${rewards.money}`}
+                      {rewards.money > 0 && `+${rewards.money} €`}
                       {rewards.money > 0 && rewards.aura > 0 && ' · '}
                       {rewards.aura > 0 && `+${rewards.aura} aura`}
                     </p>

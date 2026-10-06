@@ -54,7 +54,7 @@ const getEffectLabel = (effect: string | null) => {
   try {
     const p = JSON.parse(effect) as { type?: string; bonusAura?: number; bonusMoney?: number; percentage?: number };
     if (typeof p.bonusAura === 'number') return `+${p.bonusAura} aura`;
-    if (typeof p.bonusMoney === 'number') return `+$${p.bonusMoney}`;
+    if (typeof p.bonusMoney === 'number') return `+${p.bonusMoney} €`;
     if (p.type === 'USERNAME_COLOR') return 'Couleur de pseudo';
     if (p.type === 'PROFILE_PICTURE') return 'Photo de profil';
     if (p.type === 'PROFILE_BANNER') return 'Bannière de profil';
@@ -121,7 +121,7 @@ function ProductCard({ media, title, badge, price, description, action }: Produc
         <CardTitle className="flex items-center justify-between gap-2">
           <span className="truncate">{title}</span>
           <Badge variant="outline" className="tabular-nums">
-            ${price}
+            {price} €
           </Badge>
         </CardTitle>
         {badge ? (

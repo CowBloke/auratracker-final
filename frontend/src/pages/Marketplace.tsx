@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { formatMoney } from '@/lib/format';
 import { ArrowDownRight, ArrowUpRight, BellRing, CheckCircle2, Package, Search, Tag, TrendingUp, X } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 import { toast } from 'sonner';
@@ -61,9 +62,6 @@ const SORT_OPTIONS: Array<{ value: MarketplaceSortMode; label: string }> = [
 ];
 
 // ── Formatters ───────────────────────────────────────────
-function formatMoney(amount: number) {
-  return `$${amount.toLocaleString('fr-FR')}`;
-}
 
 function formatRelativeDate(dateStr: string) {
   const date = new Date(dateStr);

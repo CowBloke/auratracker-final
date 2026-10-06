@@ -794,7 +794,7 @@ export default function Solitaire() {
               {isNewHighScore && <div className="mt-1 text-sm">Nouveau record !</div>}
               {rewards && (rewards.money > 0 || rewards.aura > 0) && (
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {rewards.money > 0 && `+$${rewards.money}`}
+                  {rewards.money > 0 && `+${rewards.money} €`}
                   {rewards.money > 0 && rewards.aura > 0 && ' · '}
                   {rewards.aura > 0 && `+${rewards.aura} aura`}
                 </div>

@@ -211,7 +211,7 @@ function rewardPreviewText(totalGuavas: number): string {
     Math.round(100 + (maxAuraReward - 100) * scaledProgress)
   );
 
-  return `Récompense: $${moneyReward.toLocaleString('fr-FR')} + ${auraReward.toLocaleString('fr-FR')} aura`;
+  return `Récompense: ${moneyReward.toLocaleString('fr-FR')} € + ${auraReward.toLocaleString('fr-FR')} aura`;
 }
 
 function defaultSave(): SaveState {

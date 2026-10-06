@@ -89,4 +89,11 @@ describe('cohérence de l’interface', () => {
     expect(titles.filter((text) => EMOJI.test(text))).toEqual([]);
     expect(titles.filter((text) => /(?<!\p{L})(volatilite|reduite|serres|tres|Economie|Communaute)(?!\p{L})/u.test(text))).toEqual([]);
   });
+
+  it('la monnaie s’affiche en euro, jamais en dollar', () => {
+    const offenders = [...walk('pages'), ...walk('components')]
+      .filter((file) => /\.tsx?$/.test(file) && !file.endsWith('.test.ts'))
+      .filter((file) => /\$\$\{|`[+-]?\$\$\{/.test(read(file)));
+    expect(offenders).toEqual([]);
+  });
 });

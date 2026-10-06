@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { formatMoney } from '@/lib/format';
 import {
   Trophy,
   Wallet,
@@ -186,9 +187,6 @@ function formatMs(ms: number): string {
 }
 function formatOdds(decimal: number): string {
   return `${decimal.toFixed(2)}x`;
-}
-function formatMoney(value: number): string {
-  return `$${Math.round(value).toLocaleString()}`;
 }
 
 function fallbackCosmetics(c: Partial<HorseCosmetics> | null | undefined): HorseCosmetics {
@@ -1733,7 +1731,7 @@ function BetModal({
                   Max
                 </button>
               </div>
-              <AppModal.Field label="Mise" value={amount} onChange={setAmount} type="number" suffix="$" />
+              <AppModal.Field label="Mise" value={amount} onChange={setAmount} type="number" suffix="€" />
               {potentialGain > 0 && (
                 <div
                   className="rounded-lg py-2 text-center"
