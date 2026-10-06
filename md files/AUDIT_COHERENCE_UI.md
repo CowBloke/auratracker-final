@@ -102,3 +102,33 @@ Autres écarts de nommage :
 ## 10. Ce qui est déjà cohérent (à conserver)
 
 `Layout`, `Sidebar`, `SiteHeader`, composants `ui/*` shadcn, `AuthShell` (Login, Register, Banned, Maintenance), `PageShell` sur ~35 pages, `Card` / `Item` / `Empty` / `Alert` pour les surfaces récemment migrées.
+
+## 11. Avancement de la refonte (2026-10-06)
+
+Garde-fous : `frontend/src/ui-consistency.test.ts` (22 tests au total avec les tests existants).
+
+### Fait
+
+| Sujet | Résultat |
+|---|---|
+| Conteneur de page | `PageShell` unique (`max-w-7xl`, `p-4 md:p-6`, `gap-6`), sans variante de largeur. Clans, Forum, Sudoku, Echecs, HorseRace, Loto alignés. Polymarket, Messages/Support, Admin, Aura Coin/Stable/Chaos, Salle de marché, Clash Village migrés. |
+| En-tête de page | `PageHeader` partout (titre et description lus dans `page-meta.ts`). `GameShell` l'affiche aussi ; `GameTopBar` n'a plus de titre. 60 des 65 routes sondées conformes (le reste : Loto, mesure faussée par l'overlay de confettis ; 4 faux positifs « $ » corrigés depuis). |
+| Noms de pages | Une seule source (`page-meta.ts`), toutes les routes enregistrées, sidebar alignée (Classement, Groupe, Règlement, Tutoriels, Marché). |
+| Emojis | Retirés des titres, messages d'état, logs admin ; icônes lucide à la place. Conservés dans le contenu des jeux (symboles, produits, réactions, carte). |
+| Typographie | `h1` 24 px partout (profil et carte exceptés, voir test), `h2` = `text-lg font-semibold`, `h3` = `text-base font-semibold`. |
+| Dialogues | Plus de `confirm`/`alert` natifs ; Dialog pour la bienvenue du tutoriel et le choix de couleur d'Uno. |
+| Écrans de jeu | `GameStartOverlay` / `GameOverOverlay` (même libellé, mêmes boutons, même format de récompenses) sur 10 jeux. |
+| Monnaie | Euro partout ; `lib/format.ts` (formatMoney, formatSignedMoney, formatCompactMoney, formatRewards) ; backend (notification de Passe, badges du seed) aligné. |
+| Langue | Accents corrigés sur ~330 chaînes, apostrophes, tutoiement généralisé (~110 phrases). |
+| Tableaux | Les 7 `<table>` de l'admin utilisent le composant `Table`. |
+
+### Reste à faire / limites connues
+
+- `pages/Games.tsx` et `lib/game-images.ts` : travail en cours côté utilisateur, volontairement non commités. Contiennent encore ~120 montants en `$` (corrigés dans l'arbre de travail, non commités), du vouvoiement et des accents manquants.
+- Accents : un détecteur trouve encore ~580 occurrences candidates dans 88 fichiers (dont beaucoup de mots valides sans accent comme « base » ou « mise »). Les plus concentrées : `AdminPage`, `you/components/modals`, `lib/i18n`, `Tutoriels`, `Clans`.
+- `lib/tutorials/*` : non repris pour le tutoiement ni la monnaie.
+- `<button>` bruts (≈125) et `<input>` (19, surtout `file` et `color`) : non convertis, un audit au cas par cas reste nécessaire.
+- Couches plein écran faites main conservées : intro vidéo, confettis, animations de récompense, tutoriel pas à pas.
+- Couleurs de palette brutes : confinées aux plateaux de jeu thématiques (Casino, HorseRace, Uno, Minesweeper…) et aux textes sur images.
+- Données de démonstration en anglais dans le seed (« Seed now includes… ») et défaut `authorName` du schéma Prisma (« Equipe AuraTracker », nécessiterait une migration).
+- Les jeux plateau multi-joueurs gardent leurs écrans de fin propres (Uno, Poker, Échecs, etc.).
