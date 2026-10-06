@@ -818,7 +818,7 @@ export function InboxTab(props: InboxTabProps) {
                               {sanction.status === 'PENDING' ? 'Sanction en attente' : sanction.status === 'APPROVED' ? 'Approuvée' : 'Refusée'}
                             </span>
                             <span className={cn('text-xs px-2 py-0.5 rounded', sanction.requestedByRole === 'JUDGE' ? 'bg-muted/20 text-primary' : 'bg-muted/20 text-primary')}>
-                              {sanction.requestedByRole === 'JUDGE' ? '⚖️ Juge' : '🏛️ Agent du fisc'}
+                              {sanction.requestedByRole === 'JUDGE' ? 'Juge' : 'Agent du fisc'}
                             </span>
                             <span className="text-xs text-muted-foreground/60">
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

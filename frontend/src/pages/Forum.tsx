@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -341,6 +342,7 @@ function ForumLink({ sub, active, rank }: { sub: ForumSubreddit; active: boolean
 export default function Forum() {
   const { subredditName } = useParams<{ subredditName?: string }>();
   const { user } = useAuth();
+  const { confirm } = useAppDialog();
   const navigate = useNavigate();
 
   const [subreddits, setSubreddits] = useState<ForumSubreddit[]>([]);
@@ -399,7 +401,7 @@ export default function Forum() {
   };
 
   const handleDelete = async (postId: string) => {
-    if (!confirm('Supprimer ce post ?')) return;
+    if (!(await confirm({ title: 'Supprimer ce post ?', description: 'Cette action est irréversible.', confirmLabel: 'Supprimer' }))) return;
     try {
       await forumApi.deletePost(postId);
       setPosts((prev) => prev.filter((p) => p.id !== postId));

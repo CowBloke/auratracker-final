@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, CornerDownRight, ExternalLink, MessageSquare, Trash2, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -143,6 +144,7 @@ function CommentNode({
 export default function ForumPost() {
   const { subredditName, postId } = useParams<{ subredditName: string; postId: string }>();
   const { user } = useAuth();
+  const { confirm } = useAppDialog();
   const navigate = useNavigate();
 
   const [post, setPost] = useState<(ForumPostType & { comments: ForumComment[] }) | null>(null);
@@ -237,7 +239,7 @@ export default function ForumPost() {
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Supprimer ce commentaire ?')) return;
+    if (!(await confirm({ title: 'Supprimer ce commentaire ?', description: 'Cette action est irréversible.', confirmLabel: 'Supprimer' }))) return;
     try {
       await forumApi.deleteComment(commentId);
       setPost((prev) =>
@@ -247,7 +249,8 @@ export default function ForumPost() {
   };
 
   const handleDeletePost = async () => {
-    if (!post || !confirm('Supprimer ce post ?')) return;
+    if (!post) return;
+    if (!(await confirm({ title: 'Supprimer ce post ?', description: 'Cette action est irréversible.', confirmLabel: 'Supprimer' }))) return;
     try {
       await forumApi.deletePost(post.id);
       navigate(`/forum/c/${subredditName}`);

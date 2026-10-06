@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { formatMoney } from '@/lib/format';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -602,7 +603,7 @@ const renderLogSummary = (log: ActivityLog): ReactNode => {
       const money = toNumber(metadata.moneyAmount);
       const parts: string[] = [];
       if (aura !== null && aura !== 0) parts.push(`${aura} aura`);
-      if (money !== null && money !== 0) parts.push(`${money} 💰`);
+      if (money !== null && money !== 0) parts.push(formatMoney(money));
       return <>Transfert{parts.length > 0 && <> : {parts.join(' + ')}</>} de {actor}{log.targetName && <> → {log.targetName}</>}</>;
     }
   }
@@ -611,12 +612,12 @@ const renderLogSummary = (log: ActivityLog): ReactNode => {
     if (log.action === 'auracoin_buy') {
       const coins = toNumber(metadata.coinsReceived);
       const money = toNumber(metadata.moneySpent);
-      return <>Achat AuraCoin{coins !== null && <> : {coins} coins</>}{money !== null && <> pour {money} 💰</>} par {actor}</>;
+      return <>Achat AuraCoin{coins !== null && <> : {coins} coins</>}{money !== null && <> pour {formatMoney(money)}</>} par {actor}</>;
     }
     if (log.action === 'auracoin_sell') {
       const coins = toNumber(metadata.coinsSold);
       const money = toNumber(metadata.moneyReceived);
-      return <>Vente AuraCoin{coins !== null && <> : {coins} coins</>}{money !== null && <> → {money} 💰</>} par {actor}</>;
+      return <>Vente AuraCoin{coins !== null && <> : {coins} coins</>}{money !== null && <> → {formatMoney(money)}</>} par {actor}</>;
     }
   }
 

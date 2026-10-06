@@ -1818,7 +1818,7 @@ export default function Polymarket() {
             </p>
             {(selectedEventForDelete?.betCount || 0) > 0 && (
               <p className="text-sm text-warning">
-                ⚠ {selectedEventForDelete?.betCount} pari{(selectedEventForDelete?.betCount || 0) > 1 ? 's' : ''} seront remboursés.
+                Attention : {selectedEventForDelete?.betCount} pari{(selectedEventForDelete?.betCount || 0) > 1 ? 's' : ''} seront remboursés.
               </p>
             )}
             <div className="flex justify-end gap-2">

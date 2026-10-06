@@ -860,7 +860,7 @@ export default function Uno() {
       <div className="text-center space-y-1">
         <p className="text-sm text-muted-foreground">
           {gameState.phase === 'finished'
-            ? gameState.winnerId === user?.id ? '🏆 Tu as gagné !' : `${gameState.players.find(p => p.userId === gameState.winnerId)?.username ?? '?'} a gagné.`
+            ? gameState.winnerId === user?.id ? 'Tu as gagné !' : `${gameState.players.find(p => p.userId === gameState.winnerId)?.username ?? '?'} a gagné.`
             : hasChallengeWindow
             ? 'Conteste le Wild +4 ?'
             : isMyTurn
@@ -1043,7 +1043,7 @@ function PostGameDialog({
         <div className="space-y-4 py-4">
           <div className="text-center">
             <p className="text-2xl font-light">
-              {iWon ? '🏆 Tu as gagné !' : `${gameOver.winnerUsername} a gagné`}
+              {iWon ? 'Tu as gagné !' : `${gameOver.winnerUsername} a gagné`}
             </p>
           </div>
           <div className="space-y-2">

@@ -1181,9 +1181,9 @@ const clanGuideSubsections: TutorialSubsection[] = [
         </GuideSection>
         <GuideSection title="Structures défensives (3 niveaux max chacune)">
           <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
-            <Row label="🏰 Forteresse" value="−4 pts/niveau sur les bombardements ennemis" />
-            <Row label="⚔️ Armurerie"  value="+3 pts/niveau sur vos propres bombardements" />
-            <Row label="🚩 Bannière"   value="+2 pts/niveau sur vos tirs navals" />
+            <Row label="Forteresse" value="−4 pts/niveau sur les bombardements ennemis" />
+            <Row label="Armurerie"  value="+3 pts/niveau sur vos propres bombardements" />
+            <Row label="Bannière"   value="+2 pts/niveau sur vos tirs navals" />
           </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-2">
             Les défenses se renforcent via le jeu mémoire. Chaque membre contribue jusqu'à 2 fois. Elles ont une durabilité qui décroît sous les attaques ennemies.

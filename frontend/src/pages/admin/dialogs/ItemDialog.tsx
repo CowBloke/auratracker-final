@@ -224,8 +224,8 @@ export function ItemDialog({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Non placé (invisible en boutique)</SelectItem>
-                        <SelectItem value="static">⭐ Boutique permanente</SelectItem>
-                        <SelectItem value="rotating">🔥 Pool de rotation quotidienne</SelectItem>
+                        <SelectItem value="static">Boutique permanente</SelectItem>
+                        <SelectItem value="rotating">Pool de rotation quotidienne</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">

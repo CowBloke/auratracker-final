@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { formatMoney } from '@/lib/format';
 import {
   Trophy,
@@ -1807,6 +1808,7 @@ function StableModal({
   onOpenAtelier: (horse: StableHorseDto) => void;
 }) {
   const { user } = useAuth();
+  const { confirm } = useAppDialog();
   const [selectedHorseId, setSelectedHorseId] = useState<string | null>(null);
   const [foalName, setFoalName] = useState('');
   const [breedH1, setBreedH1] = useState<string>('');
@@ -1934,7 +1936,7 @@ function StableModal({
   };
   const doRetire = async () => {
     if (!selected) return;
-    if (!confirm(`Vendre/retirer ${selected.name} ? Remboursement: ${formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))}`)) return;
+    if (!(await confirm({ title: `Vendre ${selected.name} ?`, description: `Remboursement : ${formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))}.`, confirmLabel: 'Vendre' }))) return;
     try {
       setBusy(true);
       await horseRaceApi.retireHorse(selected.id);
@@ -2537,7 +2539,7 @@ function StableModal({
                                 size="md"
                                 disabled={busy || userMoney < h.salePrice}
                                 onClick={async () => {
-                                  if (!confirm(`Confirmer l'achat de ${h.name} pour ${formatMoney(h.salePrice)} ?`)) return;
+                                  if (!(await confirm({ title: `Acheter ${h.name} ?`, description: `Prix : ${formatMoney(h.salePrice)}.`, confirmLabel: 'Acheter', variant: 'default' }))) return;
                                   try {
                                     setBusy(true);
                                     await horseRaceApi.buyHorse({

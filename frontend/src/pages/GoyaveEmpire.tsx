@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
@@ -257,6 +258,7 @@ export default function GoyaveEmpire() {
   const hideGameLeaderboards = useHideGameLeaderboards();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
+  const { confirm } = useAppDialog();
 
   const [save, setSave] = useState<SaveState>(() => defaultSave());
   const [isInitialized, setIsInitialized] = useState(false);
@@ -530,7 +532,7 @@ export default function GoyaveEmpire() {
             className="h-7 px-3 text-[10px] uppercase font-bold"
             disabled={save.totalGuavas < 100 || isCashingOut}
             onClick={async () => {
-              if (!(await confirm('Encaisser et réinitialiser votre empire ?'))) return;
+              if (!(await confirm({ title: 'Encaisser et réinitialiser ton empire ?', description: 'Tes goyaves seront converties en récompenses et ta progression repartira de zéro.', confirmLabel: 'Encaisser' }))) return;
               void handleCashOut();
             }}
           >

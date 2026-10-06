@@ -96,4 +96,11 @@ describe('cohérence de l’interface', () => {
       .filter((file) => /\$\$\{|`[+-]?\$\$\{/.test(read(file)));
     expect(offenders).toEqual([]);
   });
+
+  it('aucun dialogue natif du navigateur (confirm / alert / prompt)', () => {
+    const offenders = [...walk('pages'), ...walk('components')]
+      .filter((file) => /\.tsx?$/.test(file) && !file.endsWith('.test.ts') && !file.startsWith('components/ui'))
+      .filter((file) => /(^|[^.\w])(confirm|alert|prompt)\(/.test(read(file)) && !/useAppDialog|\bconfirm[,:]/.test(read(file)));
+    expect(offenders).toEqual([]);
+  });
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   CheckCircle2, ChevronRight, Hammer, Loader2,
-  Package, Plus, ShoppingCart, Warehouse, X, Flame,
+  Package, Plus, ShoppingCart, Warehouse, X, Flame, Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -312,7 +312,7 @@ function MiniGameModal({
         <div className="p-5">
           {result ? (
             <Card className={cn("gap-0 py-0 shadow-none", result.success ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5')}><CardContent className="py-8 flex flex-col items-center gap-3">
-              <span className="text-4xl">{result.success ? '✅' : '⚡'}</span>
+              {result.success ? <CheckCircle2 className="size-10 text-success" /> : <Zap className="size-10 text-warning" />}
               <p className={cn('text-lg font-bold', result.success ? 'text-success' : 'text-warning')}>
                 {result.success ? 'Succès !' : 'Effort partiel'}
               </p>
@@ -587,7 +587,7 @@ function CraftingTab({ business, stock }: { business: YouBusiness; stock: StockE
                   })}
                   {recipe.moneyCost > 0 && (
                     <div className="flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs text-warning">
-                      💰 {recipe.moneyCost.toLocaleString('fr-FR')} €
+                      {recipe.moneyCost.toLocaleString('fr-FR')} €
                     </div>
                   )}
                 </div>
