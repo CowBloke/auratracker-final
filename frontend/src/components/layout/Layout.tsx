@@ -1,5 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Suspense, useEffect, useRef } from 'react';
+import { PageHeader, PageShell } from './PageShell';
 import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
@@ -157,7 +158,7 @@ export default function Layout() {
               ref={mainRef}
               className={cn('min-h-0 flex-1', isMessagesPage || isCartePage ? 'overflow-hidden' : 'overflow-auto')}
             >
-              <Suspense fallback={<div className="p-4"><CenteredSkeletonCard /></div>}>
+              <Suspense fallback={<PageShell><PageHeader /><CenteredSkeletonCard /></PageShell>}>
                 <Outlet />
               </Suspense>
             </div>
