@@ -6,12 +6,24 @@ import { randomUUID } from 'crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const prisma = new PrismaClient();
+const seedDatabaseUrl = process.env.SEED_DATABASE_URL;
+const prisma = new PrismaClient(
+  seedDatabaseUrl
+    ? { datasources: { db: { url: seedDatabaseUrl } } }
+    : undefined
+);
 const prismaAny = prisma as any;
-const SEED_DATA_VERSION = 7; // Increment this whenever the seed data changes.
+const SEED_DATA_VERSION = 9; // Increment this whenever the seed data changes.
 const SEED_VERSION_MARKER_PATH = path.resolve('prisma', '.seed-version.json');
+const SEED_REFERENCE_DATE = new Date(process.env.SEED_REFERENCE_DATE ?? '2026-10-08T12:00:00+02:00');
+
+if (Number.isNaN(SEED_REFERENCE_DATE.getTime())) {
+  throw new Error('SEED_REFERENCE_DATE doit etre une date ISO valide.');
+}
 
 const writeSeedVersionMarker = async () => {
+  if (process.env.SEED_SKIP_VERSION_MARKER === 'true') return;
+
   try {
     await fs.writeFile(
       SEED_VERSION_MARKER_PATH,
@@ -26,34 +38,58 @@ const writeSeedVersionMarker = async () => {
 const DEV_PASSWORD = 'aaaaaa';
 const COMMON_PASSWORD = DEV_PASSWORD;
 const ADMIN_PASSWORD = DEV_PASSWORD;
-const MOCK_IMAGE = {
-  lena: '/images/mock/avatar-lena.svg',
-  milo: '/images/mock/avatar-milo.svg',
-  salma: '/images/mock/avatar-salma.svg',
-  clanNebula: '/images/mock/clan-nebula.svg',
-  clan: '/images/mock/jared-rice-qzgmZKsyVsQ-unsplash.jpg',
-  market: '/images/mock/nir-himi-gSIjbABf9sc-unsplash.jpg',
-  update: '/images/mock/matthew-mosbauer-7DV_dT3JuLs-unsplash.jpg',
-  cardA: '/images/mock/bennie-bates-rvV5zQEZBUU-unsplash.jpg',
-  cardB: '/images/mock/erik-fabian-t-ylGRIbyVY-unsplash.jpg',
-  cardC: '/images/mock/nir-himi-nd0x9zVw-hQ-unsplash.jpg',
-  cardD: '/images/mock/nir-himi-_jmXZHtCi4U-unsplash.jpg',
-  cardE: '/images/mock/nir-himi-A5BmPxqRlfc-unsplash.jpg',
-  cardF: '/images/mock/nir-himi-1WfegtbvNK8-unsplash.jpg',
-  cardG: '/images/mock/micke-lindstrom-w4OQcCFYdXc-unsplash.jpg',
-  bannerA: '/images/mock/jared-rice-qzgmZKsyVsQ-unsplash.jpg',
-  bannerB: '/images/mock/matthew-mosbauer-7DV_dT3JuLs-unsplash.jpg',
-  bannerC: '/images/mock/nir-himi-gSIjbABf9sc-unsplash.jpg',
-};
+const SEED_IMAGE = {
+  avatar: {
+    lena: '/images/seed/avatars/lena.webp',
+    milo: '/images/seed/avatars/milo.webp',
+    salma: '/images/seed/avatars/salma.webp',
+    zoe: '/images/seed/avatars/zoe.webp',
+    tom: '/images/seed/avatars/tom.webp',
+    ava: '/images/seed/avatars/ava.webp',
+    nina: '/images/seed/avatars/nina.webp',
+  },
+  banner: {
+    campus: '/images/seed/banners/campus.webp',
+    gaming: '/images/seed/banners/gaming.webp',
+    studio: '/images/seed/banners/studio.webp',
+  },
+  organization: {
+    finance: '/images/seed/organizations/finance.webp',
+    technology: '/images/seed/organizations/technology.webp',
+    justice: '/images/seed/organizations/justice.webp',
+    resources: '/images/seed/organizations/resources.webp',
+    equestrian: '/images/seed/organizations/equestrian.webp',
+  },
+  item: {
+    auraCapsule: '/images/seed/items/aura-capsule.webp',
+    cashSprint: '/images/seed/items/cash-sprint.webp',
+    neonAlias: '/images/seed/items/neon-alias.webp',
+    profileSnap: '/images/seed/items/profile-snap.webp',
+    profileBanner: '/images/seed/items/profile-banner.webp',
+    partyPermit: '/images/seed/items/party-permit.webp',
+    mysteryCrate: '/images/seed/items/mystery-crate.webp',
+    luckyKoi: '/images/seed/items/lucky-koi.webp',
+  },
+  editorial: {
+    racerFinish: '/images/seed/editorial/racer-finish.webp',
+    clanPlanning: '/images/seed/editorial/clan-planning.webp',
+    predictionMarket: '/images/seed/editorial/prediction-market.webp',
+    communityUpdate: '/images/seed/editorial/community-update.webp',
+  },
+} as const;
 
-const startOfDay = (date = new Date()) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-const hoursAgo = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000);
-const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60 * 1000);
+const AVATAR_ROTATION = Object.values(SEED_IMAGE.avatar);
+const BANNER_ROTATION = Object.values(SEED_IMAGE.banner);
+
+const startOfDay = (date = SEED_REFERENCE_DATE) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const hoursAgo = (hours: number) => new Date(SEED_REFERENCE_DATE.getTime() - hours * 60 * 60 * 1000);
+const minutesAgo = (minutes: number) => new Date(SEED_REFERENCE_DATE.getTime() - minutes * 60 * 1000);
 const daysAgo = (days: number, hour = 12) => {
-  const date = startOfDay(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
+  const date = startOfDay(new Date(SEED_REFERENCE_DATE.getTime() - days * 24 * 60 * 60 * 1000));
   date.setHours(hour, 0, 0, 0);
   return date;
 };
+const daysFromNow = (days: number, hour = 12) => daysAgo(-days, hour);
 const getDirectKey = (userAId: string, userBId: string) => [userAId, userBId].sort().join(':');
 const getCanonicalPair = (userIdA: string, userIdB: string) =>
   userIdA < userIdB
@@ -74,7 +110,53 @@ const getTableColumns = async (tableName: string) => {
   return new Set(rows.map((row) => row.name));
 };
 
-async function clearMockData(mockUsernames: string[], existingTables: Set<string>) {
+async function clearDemoData(demoUsernames: string[], existingTables: Set<string>) {
+  if (existingTables.has('YoutubeVideoLike')) await prisma.youtubeVideoLike.deleteMany();
+  if (existingTables.has('YoutubeVideoComment')) await prisma.youtubeVideoComment.deleteMany();
+  if (existingTables.has('YoutubeVideo')) await prisma.youtubeVideo.deleteMany();
+  if (existingTables.has('ClanEventMiniGameAttempt')) await prisma.clanEventMiniGameAttempt.deleteMany();
+  if (existingTables.has('ClanEventQuestProgress')) await prisma.clanEventQuestProgress.deleteMany();
+  if (existingTables.has('ClanEventActivity')) await prisma.clanEventActivity.deleteMany();
+  if (existingTables.has('ClanEventClanScore')) await prisma.clanEventClanScore.deleteMany();
+  if (existingTables.has('ClanEventRewardTier')) await prisma.clanEventRewardTier.deleteMany();
+  if (existingTables.has('ClanEventMiniGame')) await prisma.clanEventMiniGame.deleteMany();
+  if (existingTables.has('ClanEventQuest')) await prisma.clanEventQuest.deleteMany();
+  if (existingTables.has('ClanEvent')) await prisma.clanEvent.deleteMany();
+  if (existingTables.has('PixelBoardEvent')) await prisma.pixelBoardEvent.deleteMany();
+  if (existingTables.has('PixelBoardPixel')) await prisma.pixelBoardPixel.deleteMany();
+  if (existingTables.has('PixelBoardSettings')) await prisma.pixelBoardSettings.deleteMany();
+  if (existingTables.has('SurveyResponse')) await prisma.surveyResponse.deleteMany();
+  if (existingTables.has('SurveyTargetUser')) await prisma.surveyTargetUser.deleteMany();
+  if (existingTables.has('SurveyOption')) await prisma.surveyOption.deleteMany();
+  if (existingTables.has('Survey')) await prisma.survey.deleteMany();
+  if (existingTables.has('ForumCommentVote')) await prisma.forumCommentVote.deleteMany();
+  if (existingTables.has('ForumPostVote')) await prisma.forumPostVote.deleteMany();
+  if (existingTables.has('ForumComment')) {
+    await prisma.forumComment.deleteMany({ where: { parentId: { not: null } } });
+    await prisma.forumComment.deleteMany();
+  }
+  if (existingTables.has('ForumPost')) await prisma.forumPost.deleteMany();
+  if (existingTables.has('ForumSubredditMember')) await prisma.forumSubredditMember.deleteMany();
+  if (existingTables.has('ForumSubreddit')) await prisma.forumSubreddit.deleteMany();
+  if (existingTables.has('SocialContractParticipant')) await prisma.socialContractParticipant.deleteMany();
+  if (existingTables.has('SocialContract')) await prisma.socialContract.deleteMany();
+  if (existingTables.has('ResourceMarketListing')) await prisma.resourceMarketListing.deleteMany();
+  if (existingTables.has('CourtArgument')) await prisma.courtArgument.deleteMany();
+  if (existingTables.has('CourtParty')) await prisma.courtParty.deleteMany();
+  if (existingTables.has('LawyerRating')) await prisma.lawyerRating.deleteMany();
+  if (existingTables.has('ReviewEligibility')) await prisma.reviewEligibility.deleteMany();
+  if (existingTables.has('PendingSanction')) await prisma.pendingSanction.deleteMany();
+  if (existingTables.has('MessageConversation')) {
+    await prisma.messageConversation.updateMany({ data: { courtCaseId: null } });
+  }
+  if (existingTables.has('CourtCase')) await prisma.courtCase.deleteMany();
+  if (existingTables.has('Plainte')) await prisma.plainte.deleteMany();
+  if (existingTables.has('MessageConversationReaction')) await prisma.messageConversationReaction.deleteMany();
+  if (existingTables.has('MessageConversationReport')) await prisma.messageConversationReport.deleteMany();
+  if (existingTables.has('MessageConversationMessage')) await prisma.messageConversationMessage.deleteMany();
+  if (existingTables.has('MessageConversationParticipant')) await prisma.messageConversationParticipant.deleteMany();
+  if (existingTables.has('MessageConversation')) await prisma.messageConversation.deleteMany();
+  if (existingTables.has('BusinessActiveResourceAction')) await prisma.businessActiveResourceAction.deleteMany();
   if (existingTables.has('AuraScrollCommentLike')) {
     await prisma.auraScrollCommentLike.deleteMany();
   }
@@ -310,14 +392,18 @@ async function clearMockData(mockUsernames: string[], existingTables: Set<string
   await prisma.user.deleteMany({
     where: {
       username: {
-        in: mockUsernames,
+        in: demoUsernames,
       },
     },
   });
 }
 
 async function main() {
-  console.log('Seeding mock data...');
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Le seed de démonstration est bloqué en production. Définissez ALLOW_DEMO_SEED=true pour confirmer explicitement.');
+  }
+
+  console.log('Seeding realistic demo data...');
 
   const generatedClanProfiles = [
     { clanName: 'Crimson Orbit', clanTag: 'CRO', username: 'elio_crimson', firstName: 'Elio', description: 'Clan orienté rush, mini-jeux et guerre active.', color: '#F43F5E', isPublic: true },
@@ -342,15 +428,17 @@ async function main() {
     money: 4200 + index * 530,
     auraCoinBalance: Number((6.5 + index * 1.9).toFixed(1)),
     usernameColor: profile.color,
-    profilePicture: index % 3 === 0 ? MOCK_IMAGE.lena : index % 3 === 1 ? MOCK_IMAGE.milo : MOCK_IMAGE.salma,
-    profileBanner: index % 3 === 0 ? MOCK_IMAGE.bannerA : index % 3 === 1 ? MOCK_IMAGE.bannerB : MOCK_IMAGE.bannerC,
-    bio: `Founder of ${profile.clanName}, focused on clan missions and weekly wars.`,
+    profilePicture: AVATAR_ROTATION[index % AVATAR_ROTATION.length],
+    profileBanner: BANNER_ROTATION[index % BANNER_ROTATION.length],
+    bio: index < 5
+      ? `Fondateur de ${profile.clanName}, actif sur les missions de clan et les guerres hebdomadaires.`
+      : `Membre actif de ${generatedClanProfiles[index - 5]!.clanName}, présent sur les quêtes et les événements d’équipe.`,
     dailyPassStreak: (index % 8) + 1,
     lastDailyPassClaim: daysAgo(index % 3, 7 + (index % 5)),
     isApproved: true,
   }));
 
-  const mockUsers = [
+  const demoUsers = [
     {
       username: 'lena',
       firstName: 'Lena',
@@ -361,9 +449,9 @@ async function main() {
       money: 8450,
       auraCoinBalance: 21.4,
       usernameColor: '#FF7A59',
-      profilePicture: MOCK_IMAGE.lena,
-      profileBanner: MOCK_IMAGE.bannerA,
-      bio: 'Public parties, inbox zero, and far too many side quests.',
+      profilePicture: SEED_IMAGE.avatar.lena,
+      profileBanner: SEED_IMAGE.banner.campus,
+      bio: 'Organise les parties publiques, garde sa messagerie à jour et accepte toujours une quête de trop.',
       dailyPassStreak: 6,
       lastDailyPassClaim: daysAgo(0, 9),
       isApproved: true,
@@ -378,9 +466,9 @@ async function main() {
       money: 6620,
       auraCoinBalance: 13.1,
       usernameColor: '#1D9BF0',
-      profilePicture: MOCK_IMAGE.milo,
-      profileBanner: MOCK_IMAGE.bannerB,
-      bio: 'Always in the shop, always one cosmetic ahead.',
+      profilePicture: SEED_IMAGE.avatar.tom,
+      profileBanner: SEED_IMAGE.banner.studio,
+      bio: 'Toujours à l’affût d’un objet rare ou d’un bon échange sur le marché.',
       dailyPassStreak: 3,
       lastDailyPassClaim: daysAgo(1, 8),
       isApproved: true,
@@ -395,9 +483,9 @@ async function main() {
       money: 11240,
       auraCoinBalance: 34.8,
       usernameColor: '#22C55E',
-      profilePicture: MOCK_IMAGE.milo,
-      profileBanner: MOCK_IMAGE.bannerC,
-      bio: 'Racer hot laps and Doodle marathons.',
+      profilePicture: SEED_IMAGE.avatar.milo,
+      profileBanner: SEED_IMAGE.banner.gaming,
+      bio: 'Tours chronométrés sur Racer, longues sessions Doodle et recherche du meilleur split.',
       dailyPassStreak: 9,
       lastDailyPassClaim: daysAgo(0, 7),
       isApproved: true,
@@ -412,9 +500,9 @@ async function main() {
       money: 9780,
       auraCoinBalance: 27.2,
       usernameColor: '#F97316',
-      profilePicture: MOCK_IMAGE.salma,
-      profileBanner: MOCK_IMAGE.bannerA,
-      bio: 'Top of the boards, first in line for every update.',
+      profilePicture: SEED_IMAGE.avatar.salma,
+      profileBanner: SEED_IMAGE.banner.campus,
+      bio: 'En haut des classements, impliquée dans l’économie et toujours volontaire pour tester une nouveauté.',
       dailyPassStreak: 5,
       lastDailyPassClaim: daysAgo(2, 8),
       isApproved: true,
@@ -429,9 +517,9 @@ async function main() {
       money: 5930,
       auraCoinBalance: 8.6,
       usernameColor: '#A855F7',
-      profilePicture: MOCK_IMAGE.salma,
-      profileBanner: MOCK_IMAGE.bannerB,
-      bio: 'Gift economy gremlin and inventory curator.',
+      profilePicture: SEED_IMAGE.avatar.nina,
+      profileBanner: SEED_IMAGE.banner.studio,
+      bio: 'Collectionne les cadeaux, suit les prix du marché et soigne chaque détail de son inventaire.',
       dailyPassStreak: 2,
       lastDailyPassClaim: null,
       isApproved: true,
@@ -446,9 +534,9 @@ async function main() {
       money: 2840,
       auraCoinBalance: 2.2,
       usernameColor: '#0EA5E9',
-      profilePicture: MOCK_IMAGE.lena,
-      profileBanner: MOCK_IMAGE.bannerC,
-      bio: 'Still learning, still betting, still asking for rematches.',
+      profilePicture: SEED_IMAGE.avatar.tom,
+      profileBanner: SEED_IMAGE.banner.gaming,
+      bio: 'Progresse encore, tente quelques paris prudents et demande toujours une revanche.',
       dailyPassStreak: 1,
       lastDailyPassClaim: daysAgo(1, 10),
       isApproved: true,
@@ -463,9 +551,9 @@ async function main() {
       money: 7560,
       auraCoinBalance: 17.7,
       usernameColor: '#14B8A6',
-      profilePicture: MOCK_IMAGE.salma,
-      profileBanner: MOCK_IMAGE.bannerA,
-      bio: 'Clan organizer and quest optimizer.',
+      profilePicture: SEED_IMAGE.avatar.zoe,
+      profileBanner: SEED_IMAGE.banner.campus,
+      bio: 'Organise les événements de clan et optimise les quêtes sans laisser personne derrière.',
       dailyPassStreak: 7,
       lastDailyPassClaim: daysAgo(0, 6),
       isApproved: true,
@@ -480,9 +568,9 @@ async function main() {
       money: 4380,
       auraCoinBalance: 6.4,
       usernameColor: '#EAB308',
-      profilePicture: MOCK_IMAGE.milo,
-      profileBanner: MOCK_IMAGE.bannerB,
-      bio: 'Casual cards, serious clan loyalty.',
+      profilePicture: SEED_IMAGE.avatar.milo,
+      profileBanner: SEED_IMAGE.banner.studio,
+      bio: 'Joue aux cartes sans pression, mais prend la loyauté envers son clan très au sérieux.',
       dailyPassStreak: 4,
       lastDailyPassClaim: daysAgo(0, 11),
       isApproved: true,
@@ -497,8 +585,8 @@ async function main() {
       money: 10150,
       auraCoinBalance: 29.3,
       usernameColor: '#EC4899',
-      profilePicture: MOCK_IMAGE.lena,
-      profileBanner: MOCK_IMAGE.bannerC,
+      profilePicture: SEED_IMAGE.avatar.ava,
+      profileBanner: SEED_IMAGE.banner.gaming,
       bio: 'Toujours en haut des events de clan et des records Polytrack.',
       dailyPassStreak: 11,
       lastDailyPassClaim: daysAgo(0, 8),
@@ -514,8 +602,8 @@ async function main() {
       money: 6240,
       auraCoinBalance: 11.6,
       usernameColor: '#38BDF8',
-      profilePicture: MOCK_IMAGE.milo,
-      profileBanner: MOCK_IMAGE.bannerA,
+      profilePicture: SEED_IMAGE.avatar.milo,
+      profileBanner: SEED_IMAGE.banner.campus,
       bio: 'Main Tetris, radar à records, et spécialiste des défenses de guerre.',
       dailyPassStreak: 5,
       lastDailyPassClaim: daysAgo(0, 10),
@@ -531,8 +619,8 @@ async function main() {
       money: 8890,
       auraCoinBalance: 19.4,
       usernameColor: '#8B5CF6',
-      profilePicture: MOCK_IMAGE.salma,
-      profileBanner: MOCK_IMAGE.bannerB,
+      profilePicture: SEED_IMAGE.avatar.salma,
+      profileBanner: SEED_IMAGE.banner.studio,
       bio: 'Aime les profils soignés, les badges rares et les grosses séries de quêtes.',
       dailyPassStreak: 8,
       lastDailyPassClaim: daysAgo(0, 7),
@@ -548,8 +636,8 @@ async function main() {
       money: 4720,
       auraCoinBalance: 4.8,
       usernameColor: '#F59E0B',
-      profilePicture: MOCK_IMAGE.lena,
-      profileBanner: MOCK_IMAGE.bannerA,
+      profilePicture: SEED_IMAGE.avatar.lena,
+      profileBanner: SEED_IMAGE.banner.campus,
       bio: 'Teste tout: inbox, support, chat, cadeaux et alertes système.',
       dailyPassStreak: 3,
       lastDailyPassClaim: daysAgo(1, 7),
@@ -565,8 +653,8 @@ async function main() {
       money: 7310,
       auraCoinBalance: 9.9,
       usernameColor: '#10B981',
-      profilePicture: MOCK_IMAGE.milo,
-      profileBanner: MOCK_IMAGE.bannerC,
+      profilePicture: SEED_IMAGE.avatar.tom,
+      profileBanner: SEED_IMAGE.banner.gaming,
       bio: 'Joueur de Poker, Bomb Party et clan games la nuit.',
       dailyPassStreak: 6,
       lastDailyPassClaim: daysAgo(0, 9),
@@ -582,8 +670,8 @@ async function main() {
       money: 8040,
       auraCoinBalance: 15.7,
       usernameColor: '#EF4444',
-      profilePicture: MOCK_IMAGE.salma,
-      profileBanner: MOCK_IMAGE.bannerB,
+      profilePicture: SEED_IMAGE.avatar.zoe,
+      profileBanner: SEED_IMAGE.banner.studio,
       bio: 'Speedrunner Racer et capitaine officieux sur les mini-jeux de guerre.',
       dailyPassStreak: 10,
       lastDailyPassClaim: daysAgo(0, 6),
@@ -599,8 +687,8 @@ async function main() {
       money: 5480,
       auraCoinBalance: 7.3,
       usernameColor: '#14B8A6',
-      profilePicture: MOCK_IMAGE.lena,
-      profileBanner: MOCK_IMAGE.bannerC,
+      profilePicture: SEED_IMAGE.avatar.nina,
+      profileBanner: SEED_IMAGE.banner.gaming,
       bio: 'Clash Village, support, suivis sociaux et salons de clan.',
       dailyPassStreak: 4,
       lastDailyPassClaim: daysAgo(0, 12),
@@ -616,8 +704,8 @@ async function main() {
       money: 3560,
       auraCoinBalance: 3.7,
       usernameColor: '#60A5FA',
-      profilePicture: MOCK_IMAGE.milo,
-      profileBanner: MOCK_IMAGE.bannerA,
+      profilePicture: SEED_IMAGE.avatar.milo,
+      profileBanner: SEED_IMAGE.banner.campus,
       bio: 'Nouveau mais deja partout: leaderboards, social et guerres de clans.',
       dailyPassStreak: 2,
       lastDailyPassClaim: null,
@@ -684,7 +772,7 @@ async function main() {
   const giftColumns = existingTables.has('Gift')
     ? await getTableColumns('Gift')
     : new Set<string>();
-  await clearMockData(mockUsers.map((user) => user.username), existingTables);
+  await clearDemoData(demoUsers.map((user) => user.username), existingTables);
 
   const insertPolymarketSuggestion = async (data: {
     userId: string;
@@ -802,7 +890,7 @@ async function main() {
 
   const commonHash = await bcrypt.hash(COMMON_PASSWORD, 10);
   await prisma.user.createMany({
-    data: mockUsers.map((user) => ({
+    data: demoUsers.map((user) => ({
       username: user.username,
       firstName: user.firstName,
       schoolLevel: user.schoolLevel,
@@ -826,7 +914,7 @@ async function main() {
   const users = await prisma.user.findMany({
     where: {
       username: {
-        in: ['admin', ...mockUsers.map((user) => user.username)],
+        in: ['admin', ...demoUsers.map((user) => user.username)],
       },
     },
   });
@@ -914,6 +1002,22 @@ async function main() {
       { followerId: userByName.get('theo')!.id, followingId: userByName.get('salma')!.id, createdAt: daysAgo(2, 9) },
       { followerId: userByName.get('lucas')!.id, followingId: userByName.get('ines')!.id, createdAt: daysAgo(1, 18) },
       { followerId: userByName.get('ines')!.id, followingId: userByName.get('lucas')!.id, createdAt: daysAgo(1, 19) },
+      ...generatedClanProfiles.flatMap((profile, index) => {
+        const nextProfile = generatedClanProfiles[(index + 1) % generatedClanProfiles.length]!;
+        const communityAnchor = ['lena', 'milo', 'salma', 'zoe', 'ava'][index % 5]!;
+        return [
+          {
+            followerId: userByName.get(profile.username)!.id,
+            followingId: userByName.get(nextProfile.username)!.id,
+            createdAt: daysAgo(14 - (index % 7), 17 + (index % 4)),
+          },
+          {
+            followerId: userByName.get(profile.username)!.id,
+            followingId: userByName.get(communityAnchor)!.id,
+            createdAt: daysAgo(10 - (index % 5), 12 + (index % 6)),
+          },
+        ];
+      }),
     ],
   });
 
@@ -930,6 +1034,9 @@ async function main() {
     jade: 2,
     raph: 2,
     noah: 3,
+    ...Object.fromEntries(
+      generatedClanProfiles.map((profile, index) => [profile.username, 3 + (index % 4)])
+    ),
   };
 
   await prisma.userSkill.createMany({
@@ -1012,7 +1119,7 @@ async function main() {
         name: 'Orbit Banque',
         typeKey: 'bank',
         description: 'Banque communautaire pour depots, prets et virements.',
-        logoUrl: MOCK_IMAGE.market,
+        logoUrl: SEED_IMAGE.organization.finance,
         location: 'Quartier central',
         mapX: 27,
         mapY: 34,
@@ -1036,7 +1143,7 @@ async function main() {
         name: 'Nova Labs',
         typeKey: 'startup',
         description: 'Startup orientee produits SaaS et automatisation.',
-        logoUrl: MOCK_IMAGE.cardB,
+        logoUrl: SEED_IMAGE.organization.technology,
         location: 'Zone Tech',
         mapX: 61,
         mapY: 22,
@@ -1056,7 +1163,7 @@ async function main() {
         name: 'Lex Nova',
         typeKey: 'law_firm',
         description: 'Cabinet d avocats specialise en litiges entre joueurs.',
-        logoUrl: MOCK_IMAGE.bannerA,
+        logoUrl: SEED_IMAGE.organization.justice,
         location: 'District Justice',
         mapX: 74,
         mapY: 66,
@@ -1076,7 +1183,7 @@ async function main() {
         name: 'Campus Skills',
         typeKey: 'formation',
         description: 'Micro-formations pour optimiser jeu, commerce et social.',
-        logoUrl: MOCK_IMAGE.update,
+        logoUrl: SEED_IMAGE.organization.technology,
         location: 'Campus Nord',
         mapX: 42,
         mapY: 58,
@@ -1098,7 +1205,7 @@ async function main() {
         name: 'Swift Transfer',
         typeKey: 'transfer',
         description: 'Service de transferts rapides avec frais reduits.',
-        logoUrl: MOCK_IMAGE.cardC,
+        logoUrl: SEED_IMAGE.organization.finance,
         location: 'Hub Commerce',
         mapX: 50,
         mapY: 40,
@@ -1119,7 +1226,7 @@ async function main() {
         name: 'Burger Pulse',
         typeKey: 'restaurant',
         description: 'Resto rapide orienté ventes NPC et commandes joueurs.',
-        logoUrl: MOCK_IMAGE.cardD,
+        logoUrl: SEED_IMAGE.organization.resources,
         location: 'Centre Ville',
         mapX: 33,
         mapY: 72,
@@ -1134,12 +1241,41 @@ async function main() {
         createdAt: daysAgo(9, 12),
       },
       {
+        ownerId: userByName.get('ines')!.id,
+        supportAgentId: userByName.get('milo')!.id,
+        name: 'Aura Studio',
+        typeKey: 'youtube',
+        description: 'Chaîne communautaire consacrée aux stratégies, événements et coulisses d AuraTracker.',
+        logoUrl: SEED_IMAGE.editorial.communityUpdate,
+        location: 'Quartier Créatif',
+        mapX: 45,
+        mapY: 18,
+        verified: true,
+        hiring: true,
+        startingCapital: 1800,
+        treasuryMoney: 3850,
+        monthlyRevenue: 920,
+        monthlyExpenses: 360,
+        satisfaction: 88,
+        customData: JSON.stringify({
+          totalViews: 12940,
+          subscribers: 1840,
+          videos: [
+            { title: 'Dans les coulisses du Sprint des clans', views: 8240, duration: 286 },
+            { title: 'Trois trajectoires pour gagner sur le Daily Racer', views: 4700, duration: 412 },
+          ],
+          sponsors: [],
+        }),
+        lastBusinessRevenueDate: startOfDay().toISOString(),
+        createdAt: daysAgo(11, 14),
+      },
+      {
         ownerId: admin.id,
         supportAgentId: null,
         name: 'Cour Supreme Aura',
         typeKey: 'supreme_court',
         description: 'Institution judiciaire d etat pour les plaintes formelles.',
-        logoUrl: MOCK_IMAGE.bannerC,
+        logoUrl: SEED_IMAGE.organization.justice,
         location: 'Capitole',
         mapX: 86,
         mapY: 18,
@@ -1159,7 +1295,7 @@ async function main() {
           name: 'Ferme Basse Plaine',
           typeKey: 'farm',
           description: 'Production alimentaire bon marche pour les chantiers locaux.',
-          logoUrl: MOCK_IMAGE.cardE,
+          logoUrl: SEED_IMAGE.organization.resources,
           location: 'Plaine Sud',
           mapX: 18,
           mapY: 46,
@@ -1178,7 +1314,7 @@ async function main() {
           name: 'Scierie Yanis',
           typeKey: 'sawmill',
           description: 'Bois de chantier a prix bas.',
-          logoUrl: MOCK_IMAGE.cardF,
+          logoUrl: SEED_IMAGE.organization.resources,
           location: 'Foret Est',
           mapX: 12,
           mapY: 64,
@@ -1197,7 +1333,7 @@ async function main() {
           name: 'Carriere Jade',
           typeKey: 'quarry',
           description: 'Pierre et beton disponibles pour les nouveaux commerces.',
-          logoUrl: MOCK_IMAGE.cardG,
+          logoUrl: SEED_IMAGE.organization.resources,
           location: 'Falaises Ouest',
           mapX: 44,
           mapY: 30,
@@ -1216,7 +1352,7 @@ async function main() {
           name: 'Mine Theo',
           typeKey: 'iron_mine',
           description: 'Fer et acier pour les structures avancees.',
-          logoUrl: MOCK_IMAGE.cardA,
+          logoUrl: SEED_IMAGE.organization.resources,
           location: 'Mont Nord',
           mapX: 66,
           mapY: 48,
@@ -1235,7 +1371,7 @@ async function main() {
           name: 'Textile Camille',
           typeKey: 'textile_mill',
           description: 'Tissu en gros pour boutiques et agences.',
-          logoUrl: MOCK_IMAGE.cardB,
+          logoUrl: SEED_IMAGE.organization.resources,
           location: 'Ateliers Centre',
           mapX: 58,
           mapY: 70,
@@ -1254,7 +1390,7 @@ async function main() {
           name: 'Depot Serveur Materiaux',
           typeKey: 'quarry',
           description: 'Offres serveur de secours pour tous les materiaux de chantier.',
-          logoUrl: MOCK_IMAGE.market,
+          logoUrl: SEED_IMAGE.organization.resources,
           location: 'Infrastructure serveur',
           mapX: 4,
           mapY: 12,
@@ -1271,11 +1407,11 @@ async function main() {
         {
           ownerId: admin.id,
           supportAgentId: null,
-          name: 'Haras Test',
+          name: 'Haras des Aurores',
           typeKey: 'horse_business',
-          description: 'Haras de test avec un stock d environ 100 chevaux pour les validations.',
-          logoUrl: MOCK_IMAGE.cardC,
-          location: 'Piste Sandbox',
+          description: 'Elevage local avec une selection resserree de chevaux aux profils complementaires.',
+          logoUrl: SEED_IMAGE.organization.equestrian,
+          location: 'Vallee des Aurores',
           mapX: 8,
           mapY: 84,
           verified: true,
@@ -1300,7 +1436,7 @@ async function main() {
 
   if (process.env.NODE_ENV !== 'production') {
     if (existingTables.has('HorseBusinessProfile') && existingTables.has('HorseBusinessHorse')) {
-      const testHorseBusiness = businessByName.get('Haras Test');
+      const testHorseBusiness = businessByName.get('Haras des Aurores');
       if (testHorseBusiness) {
         await prisma.horseBusinessProfile.upsert({
           where: { businessId: testHorseBusiness.id },
@@ -1313,7 +1449,7 @@ async function main() {
         });
 
         await prisma.horseBusinessHorse.createMany({
-          data: Array.from({ length: 100 }, (_, index) => ({
+          data: Array.from({ length: 16 }, (_, index) => ({
             businessId: testHorseBusiness.id,
             bodyColor: index % 3 === 0 ? '#92400e' : index % 3 === 1 ? '#a16207' : '#78350f',
             pattern: 'solid',
@@ -1757,7 +1893,7 @@ async function main() {
         description: 'Methodes simples pour convertir quetes en cash regulier.',
         price: 540,
         url: 'https://example.com/formation-quetes',
-        imageUrl: MOCK_IMAGE.cardE,
+        imageUrl: SEED_IMAGE.editorial.communityUpdate,
         status: 'APPROVED',
         createdAt: daysAgo(6, 10),
       },
@@ -1767,7 +1903,7 @@ async function main() {
         description: 'Ameliorer connexions, reputations et interactions utiles.',
         price: 620,
         url: 'https://example.com/formation-social',
-        imageUrl: MOCK_IMAGE.cardF,
+        imageUrl: SEED_IMAGE.editorial.clanPlanning,
         status: 'APPROVED',
         createdAt: daysAgo(4, 11),
       },
@@ -1883,7 +2019,7 @@ async function main() {
       description: 'Single-use boost that adds a clean aura bonus.',
       type: 'CONSUMABLE',
       price: 450,
-      imageUrl: MOCK_IMAGE.cardA,
+      imageUrl: SEED_IMAGE.item.auraCapsule,
       effect: JSON.stringify({ bonusAura: 30 }),
     },
     {
@@ -1891,7 +2027,7 @@ async function main() {
       description: 'Pocket money drop for quest resets and quick buys.',
       type: 'CONSUMABLE',
       price: 520,
-      imageUrl: MOCK_IMAGE.cardB,
+      imageUrl: SEED_IMAGE.item.cashSprint,
       effect: JSON.stringify({ bonusMoney: 500 }),
     },
     {
@@ -1899,7 +2035,7 @@ async function main() {
       description: 'Consumable cosmetic to change your username color.',
       type: 'COSMETIC',
       price: 900,
-      imageUrl: MOCK_IMAGE.cardC,
+      imageUrl: SEED_IMAGE.item.neonAlias,
       effect: JSON.stringify({ type: 'USERNAME_COLOR' }),
     },
     {
@@ -1907,7 +2043,7 @@ async function main() {
       description: 'Consumable cosmetic to set a profile picture.',
       type: 'COSMETIC',
       price: 1100,
-      imageUrl: MOCK_IMAGE.cardD,
+      imageUrl: SEED_IMAGE.item.profileSnap,
       effect: JSON.stringify({ type: 'PROFILE_PICTURE' }),
     },
     {
@@ -1915,7 +2051,7 @@ async function main() {
       description: 'Consumable cosmetic to set the banner shown on your profile.',
       type: 'COSMETIC',
       price: 1450,
-      imageUrl: MOCK_IMAGE.bannerA,
+      imageUrl: SEED_IMAGE.item.profileBanner,
       effect: JSON.stringify({ type: 'PROFILE_BANNER' }),
     },
     {
@@ -1923,7 +2059,7 @@ async function main() {
       description: 'Upgrade token reserved for future party capacity perks.',
       type: 'UPGRADE',
       price: 1800,
-      imageUrl: MOCK_IMAGE.cardE,
+      imageUrl: SEED_IMAGE.item.partyPermit,
       effect: JSON.stringify({ partySizeBonus: 1 }),
     },
     {
@@ -1931,7 +2067,7 @@ async function main() {
       description: 'Gift-only crate that can be sent to another user.',
       type: 'GIFT',
       price: 700,
-      imageUrl: MOCK_IMAGE.cardF,
+      imageUrl: SEED_IMAGE.item.mysteryCrate,
       effect: JSON.stringify({ rarity: 'rare' }),
     },
     {
@@ -1939,7 +2075,7 @@ async function main() {
       description: 'Decorative gift item for inbox tests and resale flows.',
       type: 'GIFT',
       price: 950,
-      imageUrl: MOCK_IMAGE.cardG,
+      imageUrl: SEED_IMAGE.item.luckyKoi,
       effect: JSON.stringify({ rarity: 'epic' }),
     },
   ];
@@ -2034,15 +2170,37 @@ async function main() {
     ['yanis', 'bataille_navale', 9, 3, 1, 12],
   ] as const;
 
+  const generatedClanGameStats = generatedClanProfiles.flatMap((profile, index) => [
+    {
+      userId: userByName.get(profile.username)!.id,
+      gameType: index % 2 === 0 ? 'racer' : 'polytrack',
+      wins: 6 + index,
+      losses: 3 + (index % 5),
+      highScore: 71_800 - index * 310,
+      totalPlayed: 12 + index * 2,
+    },
+    {
+      userId: userByName.get(profile.username)!.id,
+      gameType: index % 3 === 0 ? 'tetris' : 'bomb_party',
+      wins: 8 + (index % 7),
+      losses: 4 + (index % 4),
+      highScore: index % 3 === 0 ? 86_000 + index * 4_250 : 110 + index * 7,
+      totalPlayed: 16 + index * 2,
+    },
+  ]);
+
   await prisma.gameStats.createMany({
-    data: gameStatsSeed.map(([username, gameType, wins, losses, highScore, totalPlayed]) => ({
-      userId: userByName.get(username)!.id,
-      gameType,
-      wins,
-      losses,
-      highScore,
-      totalPlayed,
-    })),
+    data: [
+      ...gameStatsSeed.map(([username, gameType, wins, losses, highScore, totalPlayed]) => ({
+        userId: userByName.get(username)!.id,
+        gameType,
+        wins,
+        losses,
+        highScore,
+        totalPlayed,
+      })),
+      ...generatedClanGameStats,
+    ],
   });
 
   await prisma.gameScoreHistory.createMany({
@@ -2097,7 +2255,7 @@ async function main() {
       { userId: userByName.get('salma')!.id, message: 'Quelqu un valide ma suggestion Polymarket ?', createdAt: hoursAgo(2.1) },
       { userId: userByName.get('nina')!.id, message: 'Inbox pleine, je garde les Lucky Koi pour plus tard.', createdAt: hoursAgo(1.8) },
       { userId: userByName.get('zoe')!.id, message: 'Les Nebuleux prennent un nouveau membre ce soir.', createdAt: hoursAgo(1.4) },
-      { userId: userByName.get('ava')!.id, message: 'Je viens de poser un 67.3 sur le track daily, screenshot oblige.', imageUrl: MOCK_IMAGE.cardB, createdAt: hoursAgo(1.2) },
+      { userId: userByName.get('ava')!.id, message: 'Je viens de poser un 67.3 sur le track daily, capture obligatoire.', imageUrl: SEED_IMAGE.editorial.racerFinish, createdAt: hoursAgo(1.2) },
       { userId: userByName.get('jade')!.id, message: 'Le support répond vite, on peut tester la boîte admin aussi.', createdAt: hoursAgo(0.9) },
       { userId: null, type: 'system', message: 'Maya a demandé l accès au site. Pensez a traiter la demande dans l admin.', createdAt: hoursAgo(0.6) },
     ],
@@ -2183,9 +2341,9 @@ async function main() {
           userId: userByName.get('ava')!.id,
           title: 'Run propre sur Track 14',
           description: 'Setup stable, freinage tardif et gain net sur le dernier split.',
-          mediaUrls: JSON.stringify([MOCK_IMAGE.cardB]),
+          mediaUrls: JSON.stringify([SEED_IMAGE.editorial.racerFinish]),
           mediaType: 'PHOTO',
-          thumbnailUrl: MOCK_IMAGE.cardB,
+          thumbnailUrl: SEED_IMAGE.editorial.racerFinish,
           status: 'APPROVED',
           viewCount: 214,
           createdAt: hoursAgo(7),
@@ -2194,9 +2352,9 @@ async function main() {
           userId: userByName.get('zoe')!.id,
           title: 'Prépa de guerre: rotation mini-jeux',
           description: 'On alterne memory et bomb pour tenir le score et les fortifs.',
-          mediaUrls: JSON.stringify([MOCK_IMAGE.clan, MOCK_IMAGE.bannerA]),
+          mediaUrls: JSON.stringify([SEED_IMAGE.editorial.clanPlanning, SEED_IMAGE.banner.campus]),
           mediaType: 'PHOTOS',
-          thumbnailUrl: MOCK_IMAGE.clan,
+          thumbnailUrl: SEED_IMAGE.editorial.clanPlanning,
           status: 'APPROVED',
           viewCount: 167,
           createdAt: hoursAgo(6),
@@ -2205,9 +2363,9 @@ async function main() {
           userId: userByName.get('nina')!.id,
           title: null,
           description: 'Inbox cleanup fini, prêt pour une nouvelle vague de cadeaux.',
-          mediaUrls: JSON.stringify([MOCK_IMAGE.cardF]),
+          mediaUrls: JSON.stringify([SEED_IMAGE.item.mysteryCrate]),
           mediaType: 'PHOTO',
-          thumbnailUrl: MOCK_IMAGE.cardF,
+          thumbnailUrl: SEED_IMAGE.item.mysteryCrate,
           status: 'APPROVED',
           viewCount: 93,
           createdAt: hoursAgo(4.5),
@@ -2354,8 +2512,8 @@ async function main() {
     data: {
       name: 'Les Nebuleux',
       description: 'Clan public ultra actif pour profils, guerres, chat et inbox.',
-      imageUrl: MOCK_IMAGE.clanNebula,
-      banner: MOCK_IMAGE.bannerA,
+      imageUrl: SEED_IMAGE.organization.technology,
+      banner: SEED_IMAGE.banner.gaming,
       isPublic: true,
       maxMembers: 5,
       clanBankMoney: 2840,
@@ -2371,8 +2529,8 @@ async function main() {
     data: {
       name: 'Orbit Exchange',
       description: 'Clan prive oriente Aura Coin, Polymarket et fortifications optimales.',
-      imageUrl: MOCK_IMAGE.market,
-      banner: MOCK_IMAGE.bannerB,
+      imageUrl: SEED_IMAGE.organization.finance,
+      banner: SEED_IMAGE.banner.campus,
       isPublic: false,
       maxMembers: 5,
       clanBankMoney: 3210,
@@ -2388,8 +2546,8 @@ async function main() {
     data: {
       name: 'Voltage Drift',
       description: 'Clan public axe mini-jeux, Racer, Polytrack et guerres agressives.',
-      imageUrl: MOCK_IMAGE.cardG,
-      banner: MOCK_IMAGE.bannerC,
+      imageUrl: SEED_IMAGE.organization.resources,
+      banner: SEED_IMAGE.banner.studio,
       isPublic: true,
       maxMembers: 5,
       clanBankMoney: 1940,
@@ -2401,16 +2559,23 @@ async function main() {
     },
   });
 
+  const extraClanProfiles = generatedClanProfiles.slice(0, 5);
   const extraClans = await Promise.all(
-    generatedClanProfiles.map((profile, index) =>
+    extraClanProfiles.map((profile, index) =>
       prisma.clan.create({
         data: {
           name: profile.clanName,
           description: profile.description,
-          imageUrl: MOCK_IMAGE.clan,
-          banner: index % 3 === 0 ? MOCK_IMAGE.bannerA : index % 3 === 1 ? MOCK_IMAGE.bannerB : MOCK_IMAGE.bannerC,
+          imageUrl: [
+            SEED_IMAGE.organization.technology,
+            SEED_IMAGE.organization.finance,
+            SEED_IMAGE.organization.justice,
+            SEED_IMAGE.organization.resources,
+            SEED_IMAGE.organization.equestrian,
+          ][index % 5],
+          banner: BANNER_ROTATION[index % BANNER_ROTATION.length],
           isPublic: profile.isPublic,
-          maxMembers: 5,
+          maxMembers: 6,
           clanBankMoney: 1500 + index * 260,
           ownerId: userByName.get(profile.username)!.id,
           tagUnlocked: true,
@@ -2421,11 +2586,18 @@ async function main() {
       })
     )
   );
-  const extraClanMemberRows = extraClans.map((clan, index) => ({
-    clanId: clan.id,
-    userId: userByName.get(generatedClanProfiles[index]!.username)!.id,
-    isLeader: true,
-  }));
+  const extraClanMemberRows = extraClans.flatMap((clan, index) => [
+    {
+      clanId: clan.id,
+      userId: userByName.get(extraClanProfiles[index]!.username)!.id,
+      isLeader: true,
+    },
+    {
+      clanId: clan.id,
+      userId: userByName.get(generatedClanProfiles[index + 5]!.username)!.id,
+      isLeader: false,
+    },
+  ]);
 
   await prisma.clanMember.createMany({
     data: [
@@ -2571,7 +2743,7 @@ async function main() {
     data: [
       { warId: activeWar.id, clanId: nebuleux.id, type: 'FORTRESS', level: 2, durability: 76, maxDurability: 78 },
       { warId: activeWar.id, clanId: nebuleux.id, type: 'ARMORY', level: 1, durability: 53, maxDurability: 64 },
-      { warId: activeWar.id, clanId: nebuleux.id, type: 'BANNER', level: 2, durability: 57, maxDurability: 56 },
+      { warId: activeWar.id, clanId: nebuleux.id, type: 'BANNER', level: 2, durability: 56, maxDurability: 56 },
       { warId: activeWar.id, clanId: orbit.id, type: 'FORTRESS', level: 2, durability: 41, maxDurability: 78 },
       { warId: activeWar.id, clanId: orbit.id, type: 'ARMORY', level: 2, durability: 35, maxDurability: 64 },
       { warId: activeWar.id, clanId: orbit.id, type: 'BANNER', level: 1, durability: 18, maxDurability: 42 },
@@ -2948,7 +3120,7 @@ async function main() {
   const seedBadgeDefinitions = [
     {
       name: 'Fondateur de saison',
-      description: 'Compte seed historique visible sur les profils mock.',
+      description: 'Compte historique visible dans les scénarios de démonstration.',
       howToObtain: 'Attribué aux profils de démonstration principaux.',
       icon: '🌌',
       iconColor: '#ffffff',
@@ -3047,7 +3219,7 @@ async function main() {
       {
         userId: userByName.get('zoe')!.id,
         title: 'Clan dialog preview stretches wide images',
-        description: 'Mock banner images should keep aspect ratio in the create clan modal.',
+        description: 'Les bannières panoramiques doivent conserver leur ratio dans la modale de création de clan.',
         status: 'PENDING',
         createdAt: hoursAgo(8),
       },
@@ -3059,7 +3231,7 @@ async function main() {
       userId: userByName.get('tom')!.id,
       title: 'Daily clan contract',
       description: 'Add a rotating clan mission with shared reward and inbox recap.',
-      imageUrl: MOCK_IMAGE.clan,
+      imageUrl: SEED_IMAGE.editorial.clanPlanning,
       status: 'PENDING',
       createdAt: hoursAgo(48),
     },
@@ -3069,7 +3241,7 @@ async function main() {
       userId: userByName.get('salma')!.id,
       title: 'Polymarket event badges',
       description: 'Grant a visible badge when a user resolves three markets in a row.',
-      imageUrl: MOCK_IMAGE.market,
+      imageUrl: SEED_IMAGE.editorial.predictionMarket,
       status: 'DONE',
       createdAt: hoursAgo(36),
       resolvedAt: hoursAgo(10),
@@ -3080,7 +3252,7 @@ async function main() {
       userId: userByName.get('zoe')!.id,
       title: 'Quest reroll token',
       description: 'One reroll per day using money, visible from the dashboard quest widget.',
-      imageUrl: MOCK_IMAGE.update,
+      imageUrl: SEED_IMAGE.editorial.communityUpdate,
       status: 'PENDING',
       createdAt: hoursAgo(18),
     },
@@ -3118,7 +3290,7 @@ async function main() {
     userId: userByName.get('raph')!.id,
     title: 'Aura Coin closes above 1.80 tonight',
     description: 'Simple one-day market for the current trading streak.',
-    imageUrl: MOCK_IMAGE.market,
+    imageUrl: SEED_IMAGE.editorial.predictionMarket,
     eventDate: daysAgo(0, 23),
     suggestedYesOdds: 1.7,
     suggestedNoOdds: 2.1,
@@ -3130,7 +3302,7 @@ async function main() {
     userId: userByName.get('salma')!.id,
     title: 'New clan joins exceed 2 before Friday',
     description: 'Tracks whether two or more accepted join requests land before week end.',
-    imageUrl: MOCK_IMAGE.clan,
+    imageUrl: SEED_IMAGE.editorial.clanPlanning,
     eventDate: daysAgo(-3, 18),
     suggestedYesOdds: 1.9,
     suggestedNoOdds: 1.9,
@@ -3141,7 +3313,7 @@ async function main() {
   });
   const polyApprovedTitle = 'New clan joins exceed 2 before Friday';
   const polyApprovedDescription = 'Tracks whether two or more accepted join requests land before week end.';
-  const polyApprovedImage = MOCK_IMAGE.clan;
+  const polyApprovedImage = SEED_IMAGE.editorial.clanPlanning;
 
   const eventOpen = await prisma.polymarketEvent.create({
     data: {
@@ -3161,7 +3333,7 @@ async function main() {
     data: {
       title: 'Daily racer world record falls under 67 seconds',
       description: 'Community bet tied to the seeded daily racer leaderboard.',
-      imageUrl: MOCK_IMAGE.cardB,
+      imageUrl: SEED_IMAGE.editorial.racerFinish,
       eventDate: hoursAgo(5),
       yesOdds: 2.4,
       noOdds: 1.6,
@@ -3178,7 +3350,7 @@ async function main() {
     data: {
       title: 'Update popup ships before midnight',
       description: 'Tests CLOSED markets that are not yet resolved.',
-      imageUrl: MOCK_IMAGE.update,
+      imageUrl: SEED_IMAGE.editorial.communityUpdate,
       eventDate: daysAgo(-1, 0),
       yesOdds: 1.8,
       noOdds: 2.0,
@@ -3304,9 +3476,9 @@ async function main() {
 
   await prisma.giftTemplate.createMany({
     data: [
-      { name: 'Sticker Pack', description: 'Tiny cosmetic pack for inbox previews.', imageUrl: MOCK_IMAGE.update, price: 80, createdAt: hoursAgo(30) },
-      { name: 'Clan Banner', description: 'Banner token for clan themed gifts.', imageUrl: MOCK_IMAGE.clan, price: 140, createdAt: hoursAgo(28) },
-      { name: 'Market Ticket', description: 'Prediction token for Polymarket style gifts.', imageUrl: MOCK_IMAGE.market, price: 110, createdAt: hoursAgo(24) },
+      { name: 'Pack créatif', description: 'Petit assortiment cosmétique pour personnaliser les aperçus de messagerie.', imageUrl: SEED_IMAGE.item.profileSnap, price: 80, createdAt: hoursAgo(30) },
+      { name: 'Bannière de clan', description: 'Jeton de bannière à offrir pour personnaliser un clan.', imageUrl: SEED_IMAGE.item.profileBanner, price: 140, createdAt: hoursAgo(28) },
+      { name: 'Ticket marché', description: 'Jeton inspiré des marchés de prédiction, prêt à être envoyé.', imageUrl: SEED_IMAGE.editorial.predictionMarket, price: 110, createdAt: hoursAgo(24) },
     ],
   });
 
@@ -3316,7 +3488,7 @@ async function main() {
   const giftInbox = await insertGift({
     senderId: userByName.get('tom')!.id,
     receiverId: userByName.get('lena')!.id,
-    message: 'For your next clan push.',
+    message: 'Pour votre prochaine poussée en guerre de clans.',
     moneyAmount: 180,
     auraAmount: 14,
     createdAt: hoursAgo(5),
@@ -3324,7 +3496,7 @@ async function main() {
   const giftOpened = await insertGift({
     senderId: userByName.get('salma')!.id,
     receiverId: userByName.get('lena')!.id,
-    message: 'You earned this after the racer tie-break.',
+    message: 'Tu l’as mérité après le départage sur Racer.',
     moneyAmount: 320,
     auraAmount: 20,
     isOpened: true,
@@ -3343,10 +3515,10 @@ async function main() {
 
   await prisma.giftItem.createMany({
     data: [
-      { giftId: giftInbox.id, giftTemplateId: giftTemplateByName.get('Sticker Pack')!.id },
-      { giftId: giftInbox.id, giftTemplateId: giftTemplateByName.get('Market Ticket')!.id },
-      { giftId: giftOpened.id, giftTemplateId: giftTemplateByName.get('Clan Banner')!.id },
-      { giftId: giftShopItem.id, giftTemplateId: giftTemplateByName.get('Sticker Pack')!.id },
+      { giftId: giftInbox.id, giftTemplateId: giftTemplateByName.get('Pack créatif')!.id },
+      { giftId: giftInbox.id, giftTemplateId: giftTemplateByName.get('Ticket marché')!.id },
+      { giftId: giftOpened.id, giftTemplateId: giftTemplateByName.get('Bannière de clan')!.id },
+      { giftId: giftShopItem.id, giftTemplateId: giftTemplateByName.get('Pack créatif')!.id },
     ],
   });
 
@@ -3354,10 +3526,10 @@ async function main() {
   if (existingTables.has('UpdatePopup')) {
     const popup1 = await prismaAny.updatePopup.create({
       data: {
-        title: '1.9 mock data refresh',
-        summary: 'Dashboard, clans, inbox, market and quests now have richer seed data.',
-        message: 'This popup ships with seeded gifts, polymarket events, clans, quest progress, daily racer runs, and reusable mock images for cards and avatars.',
-        imageUrl: MOCK_IMAGE.update,
+        title: 'Le monde de démonstration s’enrichit',
+        summary: 'Tableau de bord, clans, messagerie, marché et quêtes disposent maintenant de scénarios plus vivants.',
+        message: 'Cette mise à jour ajoute des cadeaux, des marchés de prédiction, des guerres de clans, une progression de quêtes et des classements cohérents.',
+        imageUrl: SEED_IMAGE.editorial.communityUpdate,
         releaseDate: hoursAgo(12),
         isPublished: true,
         createdById: admin.id,
@@ -3369,10 +3541,10 @@ async function main() {
     });
     const popup2Created = await prismaAny.updatePopup.create({
       data: {
-        title: 'Prediction market visuals',
-        summary: 'Added local SVG mock visuals for polymarket and clan cards.',
-        message: 'Use the new local assets to preview suggestion images, event covers, update popups, and profile avatars without external URLs.',
-        imageUrl: MOCK_IMAGE.market,
+        title: 'Des visuels uniques pour chaque scénario',
+        summary: 'Les profils, objets, organisations et cartes éditoriales utilisent désormais des images générées pour AuraTracker.',
+        message: 'Les nouveaux assets locaux respectent les cadrages de chaque écran et ne dépendent d’aucune banque d’images ou URL externe.',
+        imageUrl: SEED_IMAGE.editorial.predictionMarket,
         releaseDate: hoursAgo(3),
         isPublished: true,
         createdById: admin.id,
@@ -3469,7 +3641,7 @@ async function main() {
         {
           userId: userByName.get('milo')!.id,
           type: 'SYSTEM',
-          title: 'Mock seed refreshed',
+          title: 'Données de démonstration actualisées',
           body: 'New seed data is available across the dashboard and admin tools.',
           data: JSON.stringify({ popupId: popup2?.id ?? null }),
           link: '/',
@@ -3551,12 +3723,12 @@ async function main() {
           summary: 'Seed now includes direct messages and seeded Aura Scroll activity.',
           body: 'Added realistic DM threads, scroll posts, likes, comments, and comment likes to improve local QA coverage.',
           feedCategory: 'PATCH',
-          imageUrl: MOCK_IMAGE.update,
+          imageUrl: SEED_IMAGE.editorial.communityUpdate,
           accentColor: '#0EA5E9',
           isFeatured: true,
           authorName: 'Équipe AuraTracker',
           authorRole: 'Backend Seed',
-          authorAvatarUrl: MOCK_IMAGE.lena,
+          authorAvatarUrl: SEED_IMAGE.avatar.lena,
           isPublished: true,
           publishedAt: hoursAgo(1.2),
           createdAt: hoursAgo(1.2),
@@ -3567,12 +3739,12 @@ async function main() {
           summary: 'Changelog cards now have seeded entries, bullets, and reactions.',
           body: 'This helps validate update-feed UI states without relying on manual admin creation.',
           feedCategory: 'DEV',
-          imageUrl: MOCK_IMAGE.market,
+          imageUrl: SEED_IMAGE.editorial.predictionMarket,
           accentColor: '#22C55E',
           isFeatured: false,
           authorName: 'Équipe AuraTracker',
           authorRole: 'Data Ops',
-          authorAvatarUrl: MOCK_IMAGE.milo,
+          authorAvatarUrl: SEED_IMAGE.avatar.milo,
           isPublished: true,
           publishedAt: hoursAgo(0.9),
           createdAt: hoursAgo(0.9),
@@ -3634,6 +3806,386 @@ async function main() {
         },
       ],
     });
+  }
+
+  // Cross-feature fixtures: each block mirrors a complete user-visible workflow.
+  await prisma.user.update({
+    where: { id: userByName.get('ava')!.id },
+    data: { isBetaTester: true },
+  });
+
+  if (existingTables.has('YoutubeVideo')) {
+    const studio = businessByName.get('Aura Studio');
+    if (studio) {
+      const studioVideos = await prisma.youtubeVideo.createManyAndReturn({
+        data: [
+          {
+            businessId: studio.id,
+            title: 'Dans les coulisses du Sprint des clans',
+            description: 'Préparation, rôles et débrief d une soirée compétitive entre trois clans.',
+            videoPath: '/videos/intro.mp4',
+            thumbnailPath: SEED_IMAGE.editorial.clanPlanning,
+            duration: 286,
+            views: 8240,
+            createdAt: daysAgo(8, 18),
+          },
+          {
+            businessId: studio.id,
+            title: 'Trois trajectoires pour gagner sur le Daily Racer',
+            description: 'Tutoriel court avec repères de freinage et comparaison des chronos.',
+            videoPath: '/videos/intro.mp4',
+            thumbnailPath: SEED_IMAGE.editorial.racerFinish,
+            duration: 412,
+            views: 4700,
+            createdAt: daysAgo(3, 17),
+          },
+        ],
+        select: { id: true, title: true },
+      });
+      const videoByTitle = new Map(studioVideos.map((video) => [video.title, video.id]));
+      await prisma.youtubeVideoComment.createMany({
+        data: [
+          { videoId: videoByTitle.get('Dans les coulisses du Sprint des clans')!, userId: userByName.get('zoe')!.id, rating: 5, content: 'Le passage sur la rotation des rôles est vraiment utile.', createdAt: daysAgo(7, 20) },
+          { videoId: videoByTitle.get('Dans les coulisses du Sprint des clans')!, userId: userByName.get('salma')!.id, rating: 4, content: 'Bon rythme et les exemples ressemblent à nos vraies soirées.', createdAt: daysAgo(6, 12) },
+          { videoId: videoByTitle.get('Trois trajectoires pour gagner sur le Daily Racer')!, userId: userByName.get('milo')!.id, rating: 5, content: 'Le repère du deuxième virage m a fait gagner quatre dixièmes.', createdAt: daysAgo(2, 21) },
+          { videoId: videoByTitle.get('Trois trajectoires pour gagner sur le Daily Racer')!, userId: userByName.get('lena')!.id, rating: 4, content: 'Clair et assez court pour tester la ligne tout de suite.', createdAt: daysAgo(1, 19) },
+        ],
+      });
+      await prisma.youtubeVideoLike.createMany({
+        data: [
+          { videoId: videoByTitle.get('Dans les coulisses du Sprint des clans')!, userId: userByName.get('zoe')!.id, isLike: true },
+          { videoId: videoByTitle.get('Dans les coulisses du Sprint des clans')!, userId: userByName.get('salma')!.id, isLike: true },
+          { videoId: videoByTitle.get('Dans les coulisses du Sprint des clans')!, userId: userByName.get('theo')!.id, isLike: false },
+          { videoId: videoByTitle.get('Trois trajectoires pour gagner sur le Daily Racer')!, userId: userByName.get('milo')!.id, isLike: true },
+          { videoId: videoByTitle.get('Trois trajectoires pour gagner sur le Daily Racer')!, userId: userByName.get('lena')!.id, isLike: true },
+        ],
+      });
+    }
+  }
+
+  if (existingTables.has('Survey')) {
+    const featureSurvey = await prisma.survey.create({
+      data: {
+        title: 'Quelle prochaine soirée communautaire ?',
+        description: 'Choisissez le format que vous aimeriez retrouver vendredi soir.',
+        imageUrl: SEED_IMAGE.editorial.communityUpdate,
+        audienceType: 'ALL_USERS',
+        popupDelaySeconds: 30,
+        createdById: admin.id,
+        createdAt: daysAgo(4, 10),
+        options: {
+          create: [
+            { label: 'Tournoi Daily Racer', color: '#38BDF8', sortOrder: 0 },
+            { label: 'Défi de clans', color: '#A78BFA', sortOrder: 1 },
+            { label: 'Soirée Bomb Party', color: '#F97316', sortOrder: 2 },
+          ],
+        },
+      },
+      include: { options: true },
+    });
+    const featureOption = new Map(featureSurvey.options.map((option) => [option.label, option.id]));
+    await prisma.surveyResponse.createMany({
+      data: [
+        { surveyId: featureSurvey.id, userId: userByName.get('lena')!.id, optionId: featureOption.get('Défi de clans')!, createdAt: daysAgo(3, 18) },
+        { surveyId: featureSurvey.id, userId: userByName.get('milo')!.id, optionId: featureOption.get('Tournoi Daily Racer')!, createdAt: daysAgo(3, 19) },
+        { surveyId: featureSurvey.id, userId: userByName.get('salma')!.id, optionId: featureOption.get('Soirée Bomb Party')!, createdAt: daysAgo(2, 20) },
+        { surveyId: featureSurvey.id, userId: userByName.get('zoe')!.id, optionId: featureOption.get('Défi de clans')!, createdAt: daysAgo(1, 13) },
+      ],
+    });
+
+    const betaSurvey = await prisma.survey.create({
+      data: {
+        title: 'Le nouveau tableau de pixels est-il assez lisible ?',
+        description: 'Sondage court réservé aux bêta-testeurs.',
+        imageUrl: SEED_IMAGE.banner.gaming,
+        audienceType: 'BETA_TESTERS',
+        popupDelaySeconds: 20,
+        createdById: admin.id,
+        createdAt: daysAgo(2, 11),
+        options: { create: [
+          { label: 'Oui, très clair', color: '#22C55E', sortOrder: 0 },
+          { label: 'Encore trop dense', color: '#EF4444', sortOrder: 1 },
+        ] },
+      },
+    });
+
+    const targetedSurvey = await prisma.survey.create({
+      data: {
+        title: 'Tester le prochain événement de clan',
+        description: 'Une invitation ciblée pour vérifier quêtes et mini-jeux avant ouverture.',
+        audienceType: 'SELECTED_USERS',
+        popupDelaySeconds: 15,
+        createdById: admin.id,
+        createdAt: hoursAgo(18),
+        options: { create: [
+          { label: 'Disponible', color: '#22C55E', sortOrder: 0 },
+          { label: 'Pas cette semaine', color: '#64748B', sortOrder: 1 },
+        ] },
+        targetUsers: { create: ['lena', 'milo', 'nina'].map((username) => ({ userId: userByName.get(username)!.id })) },
+      },
+      include: { options: true },
+    });
+    await prisma.surveyResponse.create({
+      data: {
+        surveyId: targetedSurvey.id,
+        userId: userByName.get('lena')!.id,
+        optionId: targetedSurvey.options.find((option) => option.label === 'Disponible')!.id,
+        createdAt: hoursAgo(12),
+      },
+    });
+
+    const archivedSurvey = await prisma.survey.create({
+      data: {
+        title: 'Priorité de la précédente mise à jour',
+        audienceType: 'ADMINS',
+        status: 'ARCHIVED',
+        popupDelaySeconds: 45,
+        createdById: admin.id,
+        archivedAt: daysAgo(10, 16),
+        createdAt: daysAgo(18, 9),
+        options: { create: [
+          { label: 'Messagerie', color: '#8B5CF6', sortOrder: 0 },
+          { label: 'Économie', color: '#F59E0B', sortOrder: 1 },
+          { label: 'Jeux', color: '#06B6D4', sortOrder: 2 },
+        ] },
+      },
+      include: { options: true },
+    });
+    await prisma.surveyResponse.create({
+      data: { surveyId: archivedSurvey.id, userId: admin.id, optionId: archivedSurvey.options[0]!.id, createdAt: daysAgo(15, 14) },
+    });
+    void betaSurvey;
+  }
+
+  if (existingTables.has('ForumSubreddit')) {
+    const communities = await prisma.forumSubreddit.createManyAndReturn({
+      data: [
+        { name: 'entraide', description: 'Questions, guides et retours d expérience entre joueurs.', icon: '🤝', creatorId: userByName.get('lena')!.id, createdAt: daysAgo(30, 10) },
+        { name: 'bons_plans', description: 'Opportunités du marché, formations et économies utiles.', icon: '💡', creatorId: userByName.get('salma')!.id, createdAt: daysAgo(24, 12) },
+        { name: 'debats', description: 'Discussions argumentées sur les règles et l équilibre du jeu.', icon: '💬', creatorId: userByName.get('zoe')!.id, createdAt: daysAgo(20, 15) },
+        { name: 'annonces', description: 'Rendez-vous, recrutements et actualités de la communauté.', icon: '📣', creatorId: admin.id, createdAt: daysAgo(40, 9) },
+      ],
+      select: { id: true, name: true },
+    });
+    const communityByName = new Map(communities.map((community) => [community.name, community.id]));
+    await prisma.forumSubredditMember.createMany({
+      data: [
+        ['lena', 'entraide'], ['milo', 'entraide'], ['nina', 'entraide'], ['salma', 'bons_plans'],
+        ['ava', 'bons_plans'], ['zoe', 'debats'], ['theo', 'debats'], ['lena', 'debats'],
+        ['admin', 'annonces'], ['camille', 'annonces'], ['yanis', 'annonces'],
+      ].map(([username, community]) => ({ userId: userByName.get(username)?.id ?? admin.id, subredditId: communityByName.get(community)! })),
+    });
+    const forumPosts = await prisma.forumPost.createManyAndReturn({
+      data: [
+        { title: 'Le guide simple pour commencer sans gaspiller son argent', body: 'Je regroupe ici les achats vraiment utiles pendant les trois premiers jours, avec un budget réaliste.', type: 'text', authorId: userByName.get('lena')!.id, subredditId: communityByName.get('entraide')!, score: 3, createdAt: daysAgo(6, 18) },
+        { title: 'Les prix du bois ont baissé ce matin', body: 'Deux vendeurs actifs et assez de stock pour les petits chantiers.', url: '/you?tab=market', type: 'link', authorId: userByName.get('salma')!.id, subredditId: communityByName.get('bons_plans')!, score: 2, createdAt: hoursAgo(7) },
+        { title: 'Faut-il limiter les dépôts pendant un événement de clan ?', body: 'La progression est rapide pour les gros comptes. Un plafond quotidien rendrait-il le classement plus juste ?', type: 'text', authorId: userByName.get('zoe')!.id, subredditId: communityByName.get('debats')!, score: 0, createdAt: daysAgo(2, 20) },
+        { title: 'Soirée jeux vendredi à 20 h 30', body: 'Racer, Bomb Party puis mini-jeu de clan. Tous les niveaux sont bienvenus.', type: 'text', authorId: userByName.get('camille')!.id, subredditId: communityByName.get('annonces')!, score: 2, createdAt: hoursAgo(5) },
+      ],
+      select: { id: true, title: true },
+    });
+    const forumPostByTitle = new Map(forumPosts.map((post) => [post.title, post.id]));
+    const guideId = forumPostByTitle.get('Le guide simple pour commencer sans gaspiller son argent')!;
+    const debateId = forumPostByTitle.get('Faut-il limiter les dépôts pendant un événement de clan ?')!;
+    const guideComment = await prisma.forumComment.create({
+      data: { body: 'Je rajouterais de garder 500 money de réserve pour les événements.', authorId: userByName.get('milo')!.id, postId: guideId, score: 2, createdAt: daysAgo(5, 19) },
+    });
+    const guideReply = await prisma.forumComment.create({
+      data: { body: 'Oui, surtout avant le reset des quêtes.', authorId: userByName.get('nina')!.id, postId: guideId, parentId: guideComment.id, score: 1, createdAt: daysAgo(5, 20) },
+    });
+    const debateComment = await prisma.forumComment.create({
+      data: { body: 'Un plafond pénaliserait les clans qui se coordonnent vraiment.', authorId: userByName.get('theo')!.id, postId: debateId, score: 0, createdAt: daysAgo(1, 12) },
+    });
+    await prisma.forumPostVote.createMany({ data: [
+      { userId: userByName.get('milo')!.id, postId: guideId, value: 1 },
+      { userId: userByName.get('nina')!.id, postId: guideId, value: 1 },
+      { userId: userByName.get('zoe')!.id, postId: guideId, value: 1 },
+      { userId: userByName.get('ava')!.id, postId: forumPostByTitle.get('Les prix du bois ont baissé ce matin')!, value: 1 },
+      { userId: userByName.get('yanis')!.id, postId: forumPostByTitle.get('Les prix du bois ont baissé ce matin')!, value: 1 },
+      { userId: userByName.get('lena')!.id, postId: debateId, value: 1 },
+      { userId: userByName.get('theo')!.id, postId: debateId, value: -1 },
+      { userId: userByName.get('lena')!.id, postId: forumPostByTitle.get('Soirée jeux vendredi à 20 h 30')!, value: 1 },
+      { userId: userByName.get('milo')!.id, postId: forumPostByTitle.get('Soirée jeux vendredi à 20 h 30')!, value: 1 },
+    ] });
+    await prisma.forumCommentVote.createMany({ data: [
+      { userId: userByName.get('lena')!.id, commentId: guideComment.id, value: 1 },
+      { userId: userByName.get('nina')!.id, commentId: guideComment.id, value: 1 },
+      { userId: userByName.get('milo')!.id, commentId: guideReply.id, value: 1 },
+      { userId: userByName.get('zoe')!.id, commentId: debateComment.id, value: 1 },
+      { userId: userByName.get('lena')!.id, commentId: debateComment.id, value: -1 },
+    ] });
+  }
+
+  if (existingTables.has('ClanEvent')) {
+    const activeEvent = await prisma.clanEvent.create({
+      data: {
+        title: 'Sprint des clans',
+        slug: 'sprint-des-clans-octobre',
+        description: 'Cinq jours pour cumuler des victoires, soutenir son équipe et maîtriser deux mini-jeux.',
+        bannerUrl: SEED_IMAGE.editorial.clanPlanning,
+        status: 'ACTIVE',
+        highlightColor: '#8B5CF6',
+        rulesSummary: 'Les activités individuelles comptent pour le clan du joueur au moment de leur réalisation.',
+        startsAt: daysAgo(2, 18),
+        endsAt: daysFromNow(3, 22),
+        createdById: admin.id,
+        quests: { create: [
+          { title: 'Jouer ensemble', description: 'Terminer cinq parties, quel que soit le jeu.', activityType: 'PLAY_ANY_GAME', targetValue: 5, pointsReward: 80, sortOrder: 0 },
+          { title: 'Faire vivre le clan', description: 'Publier trois messages utiles dans le chat du clan.', activityType: 'CLAN_CHAT_MESSAGE', targetValue: 3, pointsReward: 45, sortOrder: 1 },
+        ] },
+        miniGames: { create: [
+          { title: 'Réflexe éclair', type: 'REFLEX', instructions: 'Cliquez dès que le signal passe au vert.', scoreMultiplier: 0.8, flatPointsBonus: 5, maxPointsPerAttempt: 100, maxAttemptsPerUser: 3, cooldownMinutes: 30, sortOrder: 0, configJson: JSON.stringify({ rounds: 5 }) },
+          { title: 'Rafale de taps', type: 'TAP_FRENZY', instructions: 'Faites le plus de taps possible en dix secondes.', scoreMultiplier: 0.5, flatPointsBonus: 0, maxPointsPerAttempt: 90, maxAttemptsPerUser: 4, cooldownMinutes: 20, sortOrder: 1, configJson: JSON.stringify({ durationSeconds: 10 }) },
+        ] },
+        rewardTiers: { create: [
+          { title: 'Champion', minRank: 1, maxRank: 1, moneyReward: 2000, auraReward: 120, itemId: itemByName.get('Mystery Crate')!.id },
+          { title: 'Podium', minRank: 2, maxRank: 3, moneyReward: 900, auraReward: 60 },
+        ] },
+      },
+      include: { quests: true, miniGames: true },
+    });
+    const playQuest = activeEvent.quests.find((quest) => quest.activityType === 'PLAY_ANY_GAME')!;
+    const chatQuest = activeEvent.quests.find((quest) => quest.activityType === 'CLAN_CHAT_MESSAGE')!;
+    const reflexGame = activeEvent.miniGames.find((game) => game.type === 'REFLEX')!;
+    await prisma.clanEventQuestProgress.createMany({ data: [
+      { questId: playQuest.id, userId: userByName.get('zoe')!.id, clanId: nebuleux.id, currentValue: 5, completedAt: hoursAgo(5) },
+      { questId: chatQuest.id, userId: userByName.get('lena')!.id, clanId: nebuleux.id, currentValue: 2 },
+      { questId: playQuest.id, userId: userByName.get('salma')!.id, clanId: orbit.id, currentValue: 4 },
+      { questId: playQuest.id, userId: userByName.get('milo')!.id, clanId: voltage.id, currentValue: 5, completedAt: hoursAgo(3) },
+    ] });
+    await prisma.clanEventMiniGameAttempt.createMany({ data: [
+      { eventId: activeEvent.id, miniGameId: reflexGame.id, userId: userByName.get('zoe')!.id, clanId: nebuleux.id, rawScore: 92, pointsAwarded: 79, createdAt: hoursAgo(8) },
+      { eventId: activeEvent.id, miniGameId: reflexGame.id, userId: userByName.get('milo')!.id, clanId: voltage.id, rawScore: 86, pointsAwarded: 74, createdAt: hoursAgo(6) },
+    ] });
+    await prisma.clanEventClanScore.createMany({ data: [
+      { eventId: activeEvent.id, clanId: nebuleux.id, totalPoints: 204, rank: 1 },
+      { eventId: activeEvent.id, clanId: voltage.id, totalPoints: 178, rank: 2 },
+      { eventId: activeEvent.id, clanId: orbit.id, totalPoints: 126, rank: 3 },
+    ] });
+    await prisma.clanEventActivity.createMany({ data: [
+      { eventId: activeEvent.id, clanId: nebuleux.id, userId: userByName.get('zoe')!.id, sourceType: 'QUEST_COMPLETED', label: 'Jouer ensemble terminé', points: 80, sourceId: playQuest.id, createdAt: hoursAgo(5) },
+      { eventId: activeEvent.id, clanId: nebuleux.id, userId: userByName.get('zoe')!.id, sourceType: 'EVENT_MINIGAME_POINTS', label: 'Réflexe éclair', points: 79, sourceId: reflexGame.id, createdAt: hoursAgo(8) },
+      { eventId: activeEvent.id, clanId: nebuleux.id, userId: userByName.get('lena')!.id, sourceType: 'CLAN_CHAT_MESSAGE', label: 'Animation du chat', points: 45, createdAt: hoursAgo(4.5) },
+      { eventId: activeEvent.id, clanId: voltage.id, userId: userByName.get('milo')!.id, sourceType: 'EVENT_MINIGAME_POINTS', label: 'Réflexe éclair', points: 74, sourceId: reflexGame.id, createdAt: hoursAgo(6) },
+      { eventId: activeEvent.id, clanId: voltage.id, userId: userByName.get('milo')!.id, sourceType: 'QUEST_COMPLETED', label: 'Jouer ensemble terminé', points: 80, sourceId: playQuest.id, createdAt: hoursAgo(3) },
+      { eventId: activeEvent.id, clanId: voltage.id, userId: userByName.get('milo')!.id, sourceType: 'PLAY_ANY_GAME', label: 'Série de parties', points: 24, createdAt: hoursAgo(2.5) },
+      { eventId: activeEvent.id, clanId: orbit.id, userId: userByName.get('salma')!.id, sourceType: 'CLAN_BANK_DEPOSIT', label: 'Dépôt coordonné', points: 42, metadata: JSON.stringify({ amount: 420 }), createdAt: hoursAgo(4) },
+      { eventId: activeEvent.id, clanId: orbit.id, userId: userByName.get('salma')!.id, sourceType: 'PLAY_ANY_GAME', label: 'Série de parties', points: 84, createdAt: hoursAgo(3.5) },
+    ] });
+    await prisma.clanEvent.create({
+      data: {
+        title: 'Nuit du Pixel', slug: 'nuit-du-pixel', description: 'Un événement à venir autour du Pixel Board.', bannerUrl: SEED_IMAGE.banner.gaming,
+        status: 'SCHEDULED', highlightColor: '#06B6D4', rulesSummary: 'Ouverture automatique au début de l événement.', startsAt: daysFromNow(5, 19), endsAt: daysFromNow(7, 23), createdById: admin.id,
+        quests: { create: [{ title: 'Premiers pixels', activityType: 'CLAN_CHAT_MESSAGE', targetValue: 4, pointsReward: 40 }] },
+        miniGames: { create: [{ title: 'Réflexe chromatique', type: 'REFLEX', maxPointsPerAttempt: 75, maxAttemptsPerUser: 2, cooldownMinutes: 30 }] },
+        rewardTiers: { create: [{ title: 'Palette d or', minRank: 1, maxRank: 1, moneyReward: 1500, auraReward: 80 }] },
+      },
+    });
+  }
+
+  if (existingTables.has('PixelBoardSettings')) {
+    await prisma.pixelBoardSettings.create({
+      data: { id: 'default', cooldownSeconds: 30, durationSeconds: 604800, startsAt: daysAgo(1, 18), endsAt: daysFromNow(6, 18), isPaused: false, isEnded: false, isLocked: false, lockedMessage: 'Le Pixel Board ouvrira lors du prochain événement.' },
+    });
+    const pixelEvents = [
+      { x: 46, y: 47, color: '#6A5CFF', username: 'zoe', clanId: nebuleux.id, timestamp: minutesAgo(90) },
+      { x: 47, y: 47, color: '#6A5CFF', username: 'lena', clanId: nebuleux.id, timestamp: minutesAgo(70) },
+      { x: 48, y: 47, color: '#6A5CFF', username: 'raph', clanId: nebuleux.id, timestamp: minutesAgo(50) },
+      { x: 47, y: 48, color: '#FFA800', username: 'salma', clanId: orbit.id, timestamp: minutesAgo(25) },
+      { x: 47, y: 48, color: '#6A5CFF', username: 'zoe', clanId: nebuleux.id, timestamp: minutesAgo(10) },
+      { x: 49, y: 49, color: '#00CC78', username: 'nina', clanId: null, timestamp: minutesAgo(2) },
+    ];
+    await prisma.pixelBoardEvent.createMany({ data: pixelEvents.map((pixel) => ({ x: pixel.x, y: pixel.y, color: pixel.color, userId: userByName.get(pixel.username)!.id, clanId: pixel.clanId, timestamp: pixel.timestamp })) });
+    const finalPixels = [...new Map(pixelEvents.map((pixel) => [`${pixel.x}:${pixel.y}`, pixel])).values()];
+    await prisma.pixelBoardPixel.createMany({ data: finalPixels.map((pixel) => ({ x: pixel.x, y: pixel.y, color: pixel.color, userId: userByName.get(pixel.username)!.id, clanId: pixel.clanId, updatedAt: pixel.timestamp })) });
+  }
+
+  if (
+    existingTables.has('ResourceMarketListing')
+    && ['Scierie Yanis', 'Depot Serveur Materiaux', 'Carriere Jade', 'Mine Theo'].every((name) => businessByName.has(name))
+  ) {
+    await prisma.resourceMarketListing.createMany({ data: [
+      { sellerId: userByName.get('yanis')!.id, businessId: businessByName.get('Scierie Yanis')!.id, resourceType: 'WOOD', quantity: 80, unitPrice: 12, isActive: true, createdAt: hoursAgo(9) },
+      { sellerId: admin.id, businessId: businessByName.get('Depot Serveur Materiaux')!.id, resourceType: 'WOOD', quantity: 150, unitPrice: 14, isActive: true, createdAt: daysAgo(1, 10) },
+      { sellerId: userByName.get('jade')!.id, businessId: businessByName.get('Carriere Jade')!.id, resourceType: 'STONE', quantity: 25, unitPrice: 8, isActive: true, createdAt: hoursAgo(5) },
+      { sellerId: userByName.get('theo')!.id, businessId: businessByName.get('Mine Theo')!.id, resourceType: 'IRON', quantity: 0, unitPrice: 11, isActive: false, createdAt: daysAgo(4, 14) },
+    ] });
+  }
+
+  if (existingTables.has('SocialContract')) {
+    const pendingContract = await prisma.socialContract.create({ data: { title: 'Duo Daily Racer', content: 'Nous nous engageons à partager nos réglages sans modifier le run de l autre.', creatorId: userByName.get('lena')!.id, createdAt: daysAgo(2, 18) } });
+    const signedContract = await prisma.socialContract.create({ data: { title: 'Caisse commune du vendredi', content: 'Chaque membre verse 200 money avant la soirée et les gains sont répartis à parts égales.', creatorId: userByName.get('zoe')!.id, createdAt: daysAgo(8, 12) } });
+    const teamContract = await prisma.socialContract.create({ data: { title: 'Organisation Sprint des clans', content: 'Les rôles tournent chaque soir : mini-jeu, banque, support et compte rendu.', creatorId: userByName.get('salma')!.id, createdAt: daysAgo(1, 17) } });
+    await prisma.socialContractParticipant.createMany({ data: [
+      { contractId: pendingContract.id, userId: userByName.get('lena')!.id, signedAt: daysAgo(2, 18) },
+      { contractId: pendingContract.id, userId: userByName.get('milo')!.id, signedAt: null },
+      { contractId: signedContract.id, userId: userByName.get('zoe')!.id, signedAt: daysAgo(8, 12) },
+      { contractId: signedContract.id, userId: userByName.get('raph')!.id, signedAt: daysAgo(7, 19) },
+      { contractId: teamContract.id, userId: userByName.get('salma')!.id, signedAt: daysAgo(1, 17) },
+      { contractId: teamContract.id, userId: userByName.get('ava')!.id, signedAt: hoursAgo(14) },
+      { contractId: teamContract.id, userId: userByName.get('nina')!.id, signedAt: null },
+      { contractId: teamContract.id, userId: userByName.get('tom')!.id, signedAt: null },
+    ] });
+  }
+
+  if (existingTables.has('MessageConversation')) {
+    const gameNight = await prisma.messageConversation.create({ data: { type: 'GROUP', title: 'Organisation soirée jeux', description: 'Choix des jeux, horaires et répartition des équipes.', icon: '🎮', imageUrl: SEED_IMAGE.banner.gaming, createdById: userByName.get('camille')!.id, lastMessageAt: hoursAgo(1.5), createdAt: daysAgo(2, 16) } });
+    await prisma.messageConversationParticipant.createMany({ data: [
+      { conversationId: gameNight.id, userId: userByName.get('camille')!.id, role: 'OWNER', isFavorite: true, joinedAt: daysAgo(2, 16), lastReadAt: hoursAgo(1) },
+      { conversationId: gameNight.id, userId: userByName.get('lena')!.id, role: 'MEMBER', joinedAt: daysAgo(2, 16), lastReadAt: hoursAgo(2) },
+      { conversationId: gameNight.id, userId: userByName.get('milo')!.id, role: 'MEMBER', joinedAt: daysAgo(2, 16), lastReadAt: hoursAgo(3) },
+      { conversationId: gameNight.id, userId: userByName.get('nina')!.id, role: 'MEMBER', joinedAt: daysAgo(2, 16), lastReadAt: hoursAgo(1.4) },
+    ] });
+    const gameMessages = await prisma.messageConversationMessage.createManyAndReturn({ data: [
+      { conversationId: gameNight.id, senderId: null, body: 'Camille a créé le groupe Organisation soirée jeux.', type: 'SYSTEM', createdAt: daysAgo(2, 16) },
+      { conversationId: gameNight.id, senderId: userByName.get('camille')!.id, body: 'Vendredi 20 h 30 : Racer puis Bomb Party, ça vous va ?', type: 'TEXT', pinnedAt: daysAgo(2, 16), pinnedByUserId: userByName.get('camille')!.id, createdAt: daysAgo(2, 16.1) },
+      { conversationId: gameNight.id, senderId: userByName.get('milo')!.id, body: 'Oui, je prépare deux équipes équilibrées.', type: 'TEXT', createdAt: hoursAgo(20) },
+      { conversationId: gameNight.id, senderId: userByName.get('nina')!.id, body: 'J ai mis le visuel de la soirée ici.', imageUrl: SEED_IMAGE.editorial.communityUpdate, type: 'TEXT', createdAt: hoursAgo(1.5) },
+    ], select: { id: true, body: true } });
+    const lastGameMessage = gameMessages.find((message) => message.body === 'J ai mis le visuel de la soirée ici.')!;
+    await prisma.messageConversationReaction.createMany({ data: [
+      { messageId: lastGameMessage.id, conversationId: gameNight.id, userId: userByName.get('lena')!.id, emoji: '🔥' },
+      { messageId: lastGameMessage.id, conversationId: gameNight.id, userId: userByName.get('milo')!.id, emoji: '🎮' },
+    ] });
+
+    const bankSupport = await prisma.messageConversation.create({ data: { type: 'GROUP', title: '[Orbit Banque] Support', description: 'Suivi d un virement affiché deux fois.', icon: '🏦', createdById: userByName.get('lucas')!.id, businessId: businessByName.get('Orbit Banque')!.id, tagType: 'Professionnel', tagLabel: 'Professionnel', lastMessageAt: hoursAgo(6), createdAt: daysAgo(1, 9) } });
+    await prisma.messageConversationParticipant.createMany({ data: [
+      { conversationId: bankSupport.id, userId: userByName.get('lucas')!.id, role: 'MEMBER', joinedAt: daysAgo(1, 9), lastReadAt: hoursAgo(5) },
+      { conversationId: bankSupport.id, userId: userByName.get('salma')!.id, role: 'OWNER', joinedAt: daysAgo(1, 9), lastReadAt: hoursAgo(5.5) },
+      { conversationId: bankSupport.id, userId: userByName.get('jade')!.id, role: 'MEMBER', joinedAt: daysAgo(1, 9), lastReadAt: hoursAgo(5.5) },
+    ] });
+    await prisma.messageConversationMessage.createMany({ data: [
+      { conversationId: bankSupport.id, senderId: null, body: 'Une conversation professionnelle a été ouverte avec Orbit Banque.', type: 'SYSTEM', createdAt: daysAgo(1, 9) },
+      { conversationId: bankSupport.id, senderId: userByName.get('lucas')!.id, body: 'Le même virement apparaît deux fois dans mon historique.', type: 'TEXT', createdAt: hoursAgo(8) },
+      { conversationId: bankSupport.id, senderId: userByName.get('jade')!.id, body: 'Le second affichage est une préautorisation, il disparaîtra au prochain rafraîchissement.', type: 'TEXT', createdAt: hoursAgo(6) },
+    ] });
+
+    const court = businessByName.get('Cour Supreme Aura')!;
+    const lawFirm = businessByName.get('Lex Nova')!;
+    await prisma.plainte.create({ data: { plaintifId: userByName.get('nina')!.id, defendantId: userByName.get('noah')!.id, courtId: court.id, title: 'Paiement de lot non reçu', description: 'Le lot annoncé après le tournoi n apparaît toujours pas dans mon historique.', evidence: 'Capture du classement et référence du tournoi.', status: 'PENDING', createdAt: hoursAgo(9) } });
+    await prisma.plainte.create({ data: { plaintifId: userByName.get('theo')!.id, defendantId: userByName.get('yanis')!.id, courtId: court.id, title: 'Annonce commerciale imprécise', description: 'Le prix affiché ne précisait pas les frais de livraison.', status: 'REJECTED', rejectionReason: 'Les échanges fournis montrent que les frais ont été acceptés avant achat.', createdAt: daysAgo(6, 11) } });
+    const acceptedComplaint = await prisma.plainte.create({ data: { plaintifId: userByName.get('lena')!.id, defendantId: userByName.get('milo')!.id, courtId: court.id, title: 'Accord de partage de gains contesté', description: 'Le partage prévu après une soirée Racer n a pas été appliqué.', evidence: 'Conversation du groupe et journal des transferts.', status: 'ACCEPTED', createdAt: daysAgo(3, 14) } });
+    const caseConversation = await prisma.messageConversation.create({ data: { type: 'GROUP', title: '⚖️ AFFAIRE-2026-90001', description: 'Audience privée relative à un accord de partage de gains.', icon: '⚖️', createdById: admin.id, lastMessageAt: hoursAgo(2), createdAt: daysAgo(3, 16) } });
+    const courtCase = await prisma.courtCase.create({ data: { caseNumber: 'AFFAIRE-2026-90001', plainteId: acceptedComplaint.id, conversationId: caseConversation.id, plaintifId: userByName.get('lena')!.id, defendantId: userByName.get('milo')!.id, plaintiffLawFirmId: lawFirm.id, plaintiffLawyerId: userByName.get('zoe')!.id, status: 'OPEN', createdAt: daysAgo(3, 16) } });
+    await prisma.messageConversation.update({ where: { id: caseConversation.id }, data: { courtCaseId: courtCase.id } });
+    await prisma.courtParty.createMany({ data: [
+      { caseId: courtCase.id, userId: admin.id, courtRole: 'JUDGE' },
+      { caseId: courtCase.id, userId: userByName.get('lena')!.id, courtRole: 'PLAINTIFF' },
+      { caseId: courtCase.id, userId: userByName.get('milo')!.id, courtRole: 'DEFENDANT' },
+      { caseId: courtCase.id, userId: userByName.get('zoe')!.id, courtRole: 'LAWYER_PLAINTIFF' },
+    ] });
+    await prisma.messageConversationParticipant.createMany({ data: [
+      { conversationId: caseConversation.id, userId: admin.id, role: 'OWNER', courtRole: 'JUDGE', joinedAt: daysAgo(3, 16), lastReadAt: hoursAgo(1) },
+      { conversationId: caseConversation.id, userId: userByName.get('lena')!.id, role: 'MEMBER', courtRole: 'PLAINTIFF', joinedAt: daysAgo(3, 16), lastReadAt: hoursAgo(2) },
+      { conversationId: caseConversation.id, userId: userByName.get('milo')!.id, role: 'MEMBER', courtRole: 'DEFENDANT', joinedAt: daysAgo(3, 16), lastReadAt: hoursAgo(4) },
+      { conversationId: caseConversation.id, userId: userByName.get('zoe')!.id, role: 'MEMBER', courtRole: 'LAWYER_PLAINTIFF', joinedAt: daysAgo(3, 17), lastReadAt: hoursAgo(2) },
+    ] });
+    await prisma.courtArgument.create({ data: { caseId: courtCase.id, authorId: userByName.get('zoe')!.id, side: 'PLAINTIFF', content: 'Les messages confirment un partage égal et le journal ne contient aucun transfert compensatoire.', createdAt: daysAgo(1, 15) } });
+    await prisma.messageConversationMessage.createMany({ data: [
+      { conversationId: caseConversation.id, senderId: null, body: 'L affaire AFFAIRE-2026-90001 est ouverte. Chaque partie peut préparer sa représentation.', type: 'COURT_SYSTEM', createdAt: daysAgo(3, 16) },
+      { conversationId: caseConversation.id, senderId: userByName.get('zoe')!.id, body: 'La partie plaignante a déposé son argument écrit.', type: 'TEXT', courtRole: 'LAWYER_PLAINTIFF', createdAt: daysAgo(1, 15) },
+      { conversationId: caseConversation.id, senderId: admin.id, body: 'La défense dispose encore de deux jours pour répondre.', type: 'COURT_SYSTEM', courtRole: 'JUDGE', createdAt: hoursAgo(2) },
+    ] });
   }
 
   await prisma.log.createMany({
@@ -3741,7 +4293,7 @@ async function main() {
         action: 'update_popup_create',
         userId: admin.id,
         username: 'admin',
-        details: JSON.stringify({ title: popup2?.title ?? 'Prediction market visuals' }),
+        details: JSON.stringify({ title: popup2?.title ?? 'Des visuels uniques pour chaque scénario' }),
         createdAt: hoursAgo(3),
       },
     ],
@@ -3749,9 +4301,9 @@ async function main() {
 
   console.log('Seed complete.');
   console.log(`Admin login: admin / ${ADMIN_PASSWORD}`);
-  console.log(`Mock users password: ${COMMON_PASSWORD}`);
-  console.log('Seeded features: games, daily racer, polytrack, clash village, shop, inventory, clans, clan wars, support, social, suggestions, polymarket, gifts, badges, quests, pass, inbox, update popups, admin pending users.');
-  console.log(`Kept active features only. No legacy placeholder entries were reintroduced for removed mock content.`);
+  console.log(`Demo users password: ${COMMON_PASSWORD}`);
+  console.log('Seeded features: games, shop, clans, clan events, Pixel Board, messaging, forum, surveys, justice, businesses, resources, social contracts, YouTube, support, suggestions, markets, gifts, quests, pass, and admin workflows.');
+  console.log('Generated local visuals cover avatars, banners, shop items, organizations, social posts, markets, videos, surveys, events, and updates.');
   console.log(`Pending polymarket suggestion id: ${polyPending.id}`);
 
   await writeSeedVersionMarker();
